@@ -1159,3 +1159,7 @@ a.mus-btn { text-decoration: none; color: var(--fg); }
 .cal { gap: 2px; }
 /* Menú: en pantallas angostas la cuadrícula usa todo el ancho para que cada día mida 44 px */
 @media (max-width: 400px) { .wk-grid { margin: 0 -14px; padding: 12px 2px; grid-template-columns: 24px repeat(7, 1fr); gap: 6px 2px; border-radius: 16px; } }
+.me-th img, .me-big img, .me-goal .tile img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
+.me-th { overflow: hidden; }
+.me-goal .tile, .me-big { overflow: hidden; }
+.me-open { text-decoration: none; color: var(--fg); display: inline-flex; align-items: center; min-height: 44px; }

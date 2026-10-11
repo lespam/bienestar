@@ -12,7 +12,9 @@ export async function sembrar() {
   const letras = (await parte<Letra[]>('letras')) ?? [];
   letras.forEach((l, i) => nuevas.push({ tipo: 'cancion', texto: l.texto, origen: 'Canción · ' + l.artista, mensaje: l.mensaje, tema: l.tema, semilla: 'contenido:letra:' + i }));
   const ya = new Set((await db.coleccion.where('semilla').anyOf(nuevas.map((n) => n.semilla!)).toArray()).map((x) => x.semilla));
-  const faltan = nuevas.filter((n) => !ya.has(n.semilla));
+  // Lo que quitaste no vuelve.
+  const quitadas = new Set(((await db.mente.get('quitadas'))?.v as string[] | undefined) ?? []);
+  const faltan = nuevas.filter((n) => !ya.has(n.semilla) && !quitadas.has(n.semilla!));
   if (faltan.length) await db.coleccion.bulkAdd(faltan);
 }
 

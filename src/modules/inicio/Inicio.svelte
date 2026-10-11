@@ -6,7 +6,9 @@
   import { fechaLarga, saludo } from '../../core/fechas';
   import { prefs, tocaRespaldo, ahoraNoRespaldo, enlaceObsidian, hacerRespaldo, elegirContenido } from '../ajustes';
   import { resumenDeHoy, empezarHoy, terminarHoy } from '../entreno';
-  import { mensajeDelDia } from '../mente';
+  import { mensajeDelDia, metasDelTablero, resumenDePlan } from '../mente';
+  import type { Meta } from '../../core/db';
+  import { onDestroy } from 'svelte';
 
   // Inicio solo lee: Entreno, Mente y Ajustes por su puerta (plan, punto 1).
   const hoy = new Date();
@@ -14,10 +16,17 @@
   let listo = $state(false);
   let mensaje = $state<{ texto: string; mensaje?: string } | null>(null);
   let cargando = $state(false);
+  let metas = $state<Meta[]>([]);
+  let fotos = $state<Record<number, string>>({});
+  let plan = $state<{ dia: number; texto: string; finDeSemana: boolean } | null>(null);
+  onDestroy(() => { for (const u of Object.values(fotos)) URL.revokeObjectURL(u); });
 
   async function leer() {
     rutina = await resumenDeHoy(hoy);
     mensaje = await mensajeDelDia(hoy);
+    metas = await metasDelTablero();
+    for (const m of metas.slice(0, 3)) if (m.imagen) fotos[m.id!] = URL.createObjectURL(m.imagen);
+    plan = await resumenDePlan(hoy);
     listo = true;
   }
   leer();
@@ -50,7 +59,7 @@
     nav.abrir('fin', { sesion: rutina.sesion });
   }
   function resumen() { nav.irTab('rutina'); nav.abrir('fin', { sesion: rutina?.sesion }); }
-  function pronto(titulo: string, fase: number) { nav.abrir('pronto', { titulo, fase }); }
+  const tono = (id?: number) => 't' + (((id ?? 0) % 3) + 1);
 </script>
 
 <div class="screen">
@@ -115,7 +124,7 @@
       <div class="in-mh"><h4>Mensaje del día</h4><span class="example">de tus frases</span></div>
       <p class="in-quote">“{mensaje.texto}”</p>
       {#if mensaje.mensaje}<p class="im-sub">{mensaje.mensaje}</p>{/if}
-      <button class="in-more" onclick={() => pronto('Colección', 7)}>Ver tu colección ›</button>
+      <button class="in-more" onclick={() => nav.abrir('mente')}>Ver tu colección ›</button>
     </section>
   {/if}
 
@@ -132,15 +141,39 @@
   <section class="in-area mn" aria-labelledby="in-a2">
     <div class="in-ah"><h3 id="in-a2">Mente</h3><span>Tu colección y tus metas</span></div>
     <div class="group">
-      <button class="in-row" onclick={() => pronto('Tablero de visión', 7)}><span class="in-ic"><Icono nombre="vision" /></span><span><b>Tablero de visión</b><small>Tus metas y cómo llegar</small></span><i aria-hidden="true">›</i></button>
-      <button class="in-row" onclick={() => pronto('Colección', 7)}><span class="in-ic"><Icono nombre="coleccion" /></span><span><b>Colección</b><small>Frases, imágenes, videos y canciones</small></span><i aria-hidden="true">›</i></button>
+      {#if metas.length}
+        <button class="in-vis" onclick={() => nav.abrir('mente', { tab: 'vis' })}>
+          <span class="in-vh"><b>Tablero de visión</b><small>{metas.length === 1 ? '1 meta' : metas.length + ' metas'}</small></span>
+          <span class="in-vt">
+            {#each metas.slice(0, 3) as m (m.id)}
+              <span><span class={'tile ' + tono(m.id)}>{#if fotos[m.id!]}<img src={fotos[m.id!]} alt="" />{:else}<Icono nombre={m.icono} />{/if}</span><span class="cap">{m.titulo}</span></span>
+            {/each}
+          </span>
+        </button>
+      {:else}
+        <button class="in-row" onclick={() => nav.abrir('mente', { tab: 'vis' })}><span class="in-ic"><Icono nombre="vision" /></span><span><b>Tablero de visión</b><small>Tus metas y cómo llegar</small></span><i aria-hidden="true">›</i></button>
+      {/if}
+      <button class="in-row" onclick={() => nav.abrir('mente')}><span class="in-ic"><Icono nombre="coleccion" /></span><span><b>Colección</b><small>Frases, imágenes, videos y canciones</small></span><i aria-hidden="true">›</i></button>
     </div>
   </section>
 
   <section class="in-area al" aria-labelledby="in-a3">
     <div class="in-ah"><h3 id="in-a3">Alma</h3><span>Tu semana</span></div>
     <div class="group">
-      <button class="in-row" onclick={() => pronto('Planeador semanal', 7)}><span class="in-ic"><Icono nombre="calendario" /></span><span><b>Planeador semanal</b><small>De lunes a viernes</small></span><i aria-hidden="true">›</i></button>
+      <div class="in-ph"><b>Tu día en el planeador</b></div>
+      <div class="in-items" aria-live="polite">
+        {#if plan?.dia === -1}
+          <p class="al-none">Tu planeador es de lunes a viernes. Hoy no hay nada que escribir.</p>
+          <button class="ghost in-pl" onclick={() => nav.abrir('alma', { k: 1 })}>Planear la próxima semana</button>
+        {:else if plan?.texto}
+          <p class="in-day">{plan.texto}</p>
+          <button class="ghost in-pl" onclick={() => nav.abrir('alma', { k: 0 })}>Ver o editar</button>
+        {:else if plan}
+          <p class="al-none">Aún no escribes nada para hoy. Es opcional.</p>
+          <button class="ghost in-pl" onclick={() => nav.abrir('alma', { k: 0, dia: plan?.dia })}>Escribir mi día</button>
+        {/if}
+      </div>
+      <button class="in-row" onclick={() => nav.abrir('alma', { k: 0 })}><span class="in-ic"><Icono nombre="calendario" /></span><span><b>Planeador semanal</b><small>De lunes a viernes</small></span><i aria-hidden="true">›</i></button>
     </div>
   </section>
 

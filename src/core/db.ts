@@ -17,7 +17,29 @@ export interface ItemColeccion {
   tema?: string;
   /** De dónde se copió una vez ('fabrica:...' o 'contenido:...'); vacío si lo agregaste tú. */
   semilla?: string;
+  /** Video o canción que agregaste: el link para abrirlo (YouTube, Apple Music). */
+  url?: string;
+  /** Imagen que elegiste de tu teléfono. */
+  imagen?: Blob;
 }
+/** Mente: una meta de tu tablero de visión, con los 4 pasos de WOOP. */
+export interface Meta {
+  id?: number;
+  titulo: string;
+  /** Trazo del ícono (vision, chart, rutina...) cuando no hay imagen tuya. */
+  icono: string;
+  imagen?: Blob;
+  resultado: string;
+  obstaculo: string;
+  plan: string;
+  destino: 'alma' | 'rutina';
+}
+/** Alma: un bloque de tu planeador (por ejemplo «Movimiento y salud»). */
+export interface AreaAlma { id?: number; nombre: string; corto: string; color: number }
+/** Alma: lo que escribiste en una semana. `lunes` es la fecha del lunes. `dias` son lunes a viernes. */
+export interface SemanaAlma { lunes: string; dias: string[]; areas: Record<string, string> }
+/** Mente: ajustes propios (por ahora, lo que quitaste de lo que viene de fábrica). */
+export interface AjusteMente { k: string; v: unknown }
 /** Mente: el mensaje elegido para cada día, para que no cambie durante el día. */
 export interface MensajeDia { fecha: string; item: number }
 /** Entreno: una sesión de entrenamiento. Abierta hasta que tú la termines; una parcial también cuenta. */
@@ -212,6 +234,10 @@ export class BaseBienestar extends Dexie {
   registro!: Table<Alimento, number>;
   menu!: Table<ItemMenu, [string, string]>;
   flexibles!: Table<DiaFlexible, string>;
+  metas!: Table<Meta, number>;
+  areas!: Table<AreaAlma, number>;
+  semanas!: Table<SemanaAlma, string>;
+  mente!: Table<AjusteMente, string>;
 
   constructor(nombre = 'bienestar') {
     super(nombre);
@@ -244,6 +270,8 @@ export class BaseBienestar extends Dexie {
     this.version(7).stores({ menu: '[fecha+lugar], fecha' });
     // Fase 6: días flexibles.
     this.version(8).stores({ flexibles: 'fecha' });
+    // Fase 7: metas, áreas y semanas del planeador, ajustes de Mente.
+    this.version(9).stores({ metas: '++id', areas: '++id', semanas: 'lunes', mente: 'k' });
   }
 }
 

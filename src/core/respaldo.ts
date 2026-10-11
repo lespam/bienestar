@@ -136,7 +136,7 @@ export async function importarZip(bytes: Uint8Array): Promise<ResultadoImportar>
  * Antes de que la base cambie de estructura (por ejemplo al llegar Entrenamiento), guarda una copia interna
  * de lo que ya tienes, para "Volver a mis datos anteriores" (plan, punto 2b). Debe correr antes de abrir la base de la app.
  */
-export async function copiaAntesDeActualizar(nombre = 'bienestar', versionNueva = 8, ahora = Date.now()): Promise<boolean> {
+export async function copiaAntesDeActualizar(nombre = 'bienestar', versionNueva = 9, ahora = Date.now()): Promise<boolean> {
   if (!(await Dexie.exists(nombre))) return false;
   const vieja = new Dexie(nombre);
   try {
