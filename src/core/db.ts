@@ -138,6 +138,20 @@ export interface PerfilComida {
 }
 /** Comida: ajustes y marcas propias (por ejemplo, qué recetas del archivo ya se copiaron). */
 export interface AjusteComida { k: string; v: unknown }
+/** Comida: un alimento que registraste. `comida`: 0 Desayuno, 1 Comida, 2 Colaciones, 3 Cena. Los números son aproximados y editables. */
+export interface Alimento {
+  id?: number;
+  fecha: string;
+  comida: 0 | 1 | 2 | 3;
+  n: string;
+  por: string;
+  k: number | null;
+  p: number;
+  c: number;
+  g: number;
+  /** La receta de la que salió, si salió de una. */
+  receta?: string;
+}
 /** Base: copias internas antes de importar o de cambiar la estructura. Nunca van en el respaldo. */
 export interface CopiaInterna { id?: number; fecha: number; motivo: string; datos: Blob }
 
@@ -163,6 +177,7 @@ export class BaseBienestar extends Dexie {
   recetas!: Table<Receta, string>;
   perfiles!: Table<PerfilComida, string>;
   comida!: Table<AjusteComida, string>;
+  registro!: Table<Alimento, number>;
 
   constructor(nombre = 'bienestar') {
     super(nombre);
@@ -189,6 +204,8 @@ export class BaseBienestar extends Dexie {
     this.version(4).stores({ pesos: '++id, fecha', medidas: '++id, zona, fecha', fotos: '++id, fecha', periodo: 'fecha', cuerpo: 'k' });
     // Fase 5: Comida.
     this.version(5).stores({ recetas: 'id, cat', perfiles: 'quien', comida: 'k' });
+    // Fase 5b: registro de comida por día.
+    this.version(6).stores({ registro: '++id, fecha' });
   }
 }
 

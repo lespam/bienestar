@@ -195,3 +195,61 @@ export const textoOrigen = (src: PerfilComida['src'], quien: 'les' | 'jeff'): st
 const MES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 /** "15 sep" a partir de AAAA-MM-DD. */
 export const diaCorto = (f: string) => +f.slice(8, 10) + ' ' + MES_CORTO[+f.slice(5, 7) - 1];
+
+// ---------- Registro del día ----------
+export const COMIDAS = ['Desayuno', 'Comida', 'Colaciones', 'Cena'] as const;
+export const DIAS_ATRAS = 30;
+const DIA_LARGO = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+/** Un alimento sin lo que lo ubica en la base: lo que se copia, se pide y se edita. */
+export interface Plato { n: string; por: string; k: number | null; p: number; c: number; g: number; receta?: string }
+
+export function sumas(items: Pick<Plato, 'k' | 'p' | 'c' | 'g'>[]) {
+  const t = { k: 0, p: 0, c: 0, g: 0 };
+  for (const i of items) { t.k += i.k ?? 0; t.p += i.p || 0; t.c += i.c || 0; t.g += i.g || 0; }
+  return t;
+}
+export const macroLinea = (i: Pick<Plato, 'por' | 'p' | 'c' | 'g'>) => i.por + ' · P ' + r1(i.p) + ' · C ' + r1(i.c) + ' · G ' + r1(i.g);
+
+/** AAAA-MM-DD de hoy más `off` días (negativo = antes). */
+export function fechaDe(off: number, hoy = new Date()): string {
+  const d = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + off);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+/** "Hoy · Jueves 1 oct", "Ayer · Miércoles 30 sep". */
+export function etiquetaDia(off: number, hoy = new Date()): string {
+  const f = fechaDe(off, hoy), d = new Date(+f.slice(0, 4), +f.slice(5, 7) - 1, +f.slice(8, 10));
+  const base = DIA_LARGO[d.getDay()] + ' ' + diaCorto(f);
+  return (off === 0 ? 'Hoy · ' : off === -1 ? 'Ayer · ' : off === 1 ? 'Mañana · ' : '') + base;
+}
+/** "Hoy", "Ayer", "Mar 29 sep": para elegir a qué días copiar. */
+export function diaBreve(off: number, hoy = new Date()): string {
+  if (off === 0) return 'Hoy';
+  if (off === -1) return 'Ayer';
+  const f = fechaDe(off, hoy), d = new Date(+f.slice(0, 4), +f.slice(5, 7) - 1, +f.slice(8, 10));
+  return DIA_LARGO[d.getDay()].slice(0, 3) + ' ' + diaCorto(f);
+}
+
+/** Lo que se agregaría a un día sin repetir lo que ya está igual (mismo nombre y porción). */
+export const sinRepetir = (ya: Pick<Plato, 'n' | 'por'>[], items: Plato[]) => items.filter((it) => !ya.some((x) => x.n === it.n && x.por === it.por));
+
+/** Lo último que registraste, sin repetir, lo más nuevo primero. */
+export function recientes<T extends Plato>(filas: T[], limite = 8): T[] {
+  const vistos = new Set<string>(), out: T[] = [];
+  for (const f of filas) {
+    const k = f.n + '|' + f.por;
+    if (vistos.has(k)) continue;
+    vistos.add(k); out.push(f);
+    if (out.length >= limite) break;
+  }
+  return out;
+}
+export function fraseDia(off: number, comidas: number): string {
+  if (off) return comidas ? 'Registro de ese día. Puedes agregar o corregir lo que falte.' : 'Sin registro este día, y está bien. Puedes agregar lo que recuerdes.';
+  return comidas >= 3 ? 'Ya registraste ' + comidas + ' comidas hoy. Registrar también es cuidarte.' : 'Cada comida que registras te da información, no calificaciones.';
+}
+/** Cuántos gramos mide la barra respecto a la referencia (si no hay, a lo registrado). */
+export function barra(valor: number, ref: number | null) {
+  const max = (ref || valor || 1) * 1.4;
+  return { w: Math.min(100, (valor / max) * 100), marca: ref ? (ref / max) * 100 : null };
+}

@@ -3,8 +3,8 @@ import { BaseBienestar, usarBase, db } from '../../src/core/db';
 import { cargarContenido } from '../../src/core/contenido';
 import { crearZip, leerZip } from '../../src/core/respaldo';
 import { strToU8, zipSync } from 'fflate';
-import { aplicarCambio, ajustar, alcanzaTxt, avisoConflicto, calBaja, calculadoraLibro, cantidadTxt, fmtQ, leerIngrediente, leerReceta, lineaIng, notaConflictos, porTxt, porcionDe } from '../../src/modules/comida/calculos';
-import { guardarPerfil, guardarReceta, leerPerfiles, listarRecetas, perfilInicial, quitarReceta, sembrarRecetas } from '../../src/modules/comida/datos';
+import { aplicarCambio, ajustar, barra, diaBreve, etiquetaDia, fechaDe, recientes, sinRepetir, sumas, alcanzaTxt, avisoConflicto, calBaja, calculadoraLibro, cantidadTxt, fmtQ, leerIngrediente, leerReceta, lineaIng, notaConflictos, porTxt, porcionDe } from '../../src/modules/comida/calculos';
+import { agregarAlimentos, alimentosDe, quitarAlimento, reponerDia, ultimosRegistrados, guardarPerfil, guardarReceta, leerPerfiles, listarRecetas, perfilInicial, quitarReceta, sembrarRecetas } from '../../src/modules/comida/datos';
 import { cargarPrefs } from '../../src/modules/ajustes';
 import type { Receta } from '../../src/core/db';
 
@@ -147,5 +147,45 @@ describe('perfiles y recetas guardados', () => {
     expect(l.datos.tablas.recetas).toHaveLength(1);
     expect(l.datos.tablas.perfiles).toHaveLength(1);
     expect(Object.keys(l.archivos).some((k) => k.startsWith('fotos/'))).toBe(true);
+  });
+});
+
+describe('registro del día', () => {
+  const hoy = new Date(2026, 9, 1);
+  it('pone la fecha y el nombre del día', () => {
+    expect(fechaDe(0, hoy)).toBe('2026-10-01');
+    expect(fechaDe(-1, hoy)).toBe('2026-09-30');
+    expect(fechaDe(-30, hoy)).toBe('2026-09-01');
+    expect(etiquetaDia(0, hoy)).toBe('Hoy · Jueves 1 oct');
+    expect(etiquetaDia(-1, hoy)).toBe('Ayer · Miércoles 30 sep');
+    expect(etiquetaDia(-5, hoy)).toBe('Sábado 26 sep');
+    expect(diaBreve(-2, hoy)).toBe('Mar 29 sep');
+  });
+  it('suma lo registrado y no cuenta lo que no tiene número', () => {
+    expect(sumas([{ k: 100, p: 1.5, c: 2, g: 3 }, { k: null, p: 2, c: 0, g: 0.5 }])).toEqual({ k: 100, p: 3.5, c: 2, g: 3.5 });
+  });
+  it('copiar no repite lo que ya está igual', () => {
+    const a = { n: 'Avena', por: '1 taza', k: 100, p: 1, c: 1, g: 1 };
+    expect(sinRepetir([a], [a, { ...a, por: '2 tazas' }])).toEqual([{ ...a, por: '2 tazas' }]);
+  });
+  it('recientes: lo más nuevo primero, sin repetir', () => {
+    const f = (n: string) => ({ n, por: '1', k: 1, p: 0, c: 0, g: 0 });
+    expect(recientes([f('a'), f('b'), f('a'), f('c')], 2).map((x) => x.n)).toEqual(['a', 'b']);
+  });
+  it('las barras usan la referencia si existe', () => {
+    expect(barra(70, 100)).toEqual({ w: 50, marca: (100 / 140) * 100 });
+    expect(barra(70, null).marca).toBeNull();
+  });
+  it('guarda alimentos por día y deja un día como estaba', async () => {
+    const base = { comida: 1 as const, por: '1', k: 100, p: 1, c: 1, g: 1 };
+    await agregarAlimentos([{ ...base, fecha: '2026-10-01', n: 'A' }, { ...base, fecha: '2026-10-02', n: 'B' }]);
+    const antes = await alimentosDe('2026-10-01');
+    expect(antes.map((x) => x.n)).toEqual(['A']);
+    await quitarAlimento(antes[0].id!);
+    expect(await alimentosDe('2026-10-01')).toEqual([]);
+    await reponerDia('2026-10-01', antes);
+    expect((await alimentosDe('2026-10-01')).map((x) => x.n)).toEqual(['A']);
+    expect((await alimentosDe('2026-10-02')).map((x) => x.n)).toEqual(['B']);
+    expect((await ultimosRegistrados()).map((x) => x.n)).toEqual(['B', 'A']);
   });
 });

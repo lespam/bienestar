@@ -1,4 +1,4 @@
-import { db, type PerfilComida, type Receta } from '../../core/db';
+import { db, type Alimento, type PerfilComida, type Receta } from '../../core/db';
 import { parte } from '../../core/contenido';
 import { registroNuevo } from '../ajustes';
 
@@ -44,4 +44,25 @@ export async function sembrarRecetas(): Promise<number> {
     await db.comida.put({ k: 'recetas-copiadas', v: [...hechas] });
   });
   return n;
+}
+
+// ---------- Registro de comida ----------
+export const alimentosDe = (fecha: string) => db.registro.where('fecha').equals(fecha).sortBy('id');
+export async function agregarAlimentos(filas: Omit<Alimento, 'id'>[]): Promise<number[]> {
+  const ids = (await db.registro.bulkAdd(filas.map((f) => limpio(f)), { allKeys: true })) as number[];
+  await registroNuevo();
+  return ids;
+}
+export const guardarAlimento = (a: Alimento) => db.registro.put(limpio(a));
+export const quitarAlimento = (id: number) => db.registro.delete(id);
+/** Deja un día exactamente como estaba (para Deshacer). */
+export async function reponerDia(fecha: string, filas: Alimento[]) {
+  await db.transaction('rw', db.registro, async () => {
+    await db.registro.where('fecha').equals(fecha).delete();
+    await db.registro.bulkPut(filas.map((f) => limpio(f)));
+  });
+}
+/** Lo último que registraste en cualquier día, lo más nuevo primero. */
+export async function ultimosRegistrados(limite = 60): Promise<Alimento[]> {
+  return db.registro.orderBy('id').reverse().limit(limite).toArray();
 }
