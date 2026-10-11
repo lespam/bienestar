@@ -1,0 +1,25 @@
+import { mount } from 'svelte';
+import '@fontsource/young-serif/400.css';
+import '@fontsource-variable/nunito-sans/opsz.css';
+import './core/calma.css';
+import App from './App.svelte';
+import { nav } from './core/nav.svelte';
+import { avisos } from './core/aviso.svelte';
+import { plataforma } from './core/plataforma.svelte';
+import { limpiarCopias } from './core/respaldo';
+import { cargarPrefs } from './modules/ajustes';
+
+async function iniciar() {
+  await cargarPrefs();
+  await limpiarCopias();
+  plataforma.revisarGuardado();
+  nav.conectar((t) => avisos.mostrar(t));
+  mount(App, { target: document.getElementById('app')! });
+
+  // Versión nueva: Inicio muestra "Actualizar". La app nunca se recarga sola.
+  if ('serviceWorker' in navigator && import.meta.env.PROD) {
+    const { registerSW } = await import('virtual:pwa-register');
+    const actualizar = registerSW({ onNeedRefresh: () => plataforma.ofrecerVersion(() => actualizar(true)) });
+  }
+}
+iniciar();

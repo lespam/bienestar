@@ -1,0 +1,26 @@
+import { test } from '@playwright/test';
+import { contenidoDePrueba } from './ayuda';
+const D = process.env.CAPTURAS;
+test.skip(!D, 'solo para revisar a mano');
+test('capturas', async ({ page }, info) => {
+  const w = info.project.name;
+  await page.goto('/');
+  await page.screenshot({ path: `${D}/${w}-bv1.png` });
+  await page.getByRole('button', { name: 'Continuar' }).click();
+  const e = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Elegir archivo' }).click();
+  await (await e).setFiles({ name: 'c.zip', mimeType: 'application/zip', buffer: contenidoDePrueba() });
+  await page.getByText('Listo. Ya está en tu teléfono:').waitFor();
+  await page.screenshot({ path: `${D}/${w}-bv2.png` });
+  await page.getByRole('button', { name: 'Ir a Inicio' }).click();
+  await page.getByRole('heading', { name: 'Rutina A' }).waitFor();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${D}/${w}-inicio.png`, fullPage: false });
+  await page.locator('.screen').evaluate((s) => s.scrollTo(0, 9999));
+  await page.screenshot({ path: `${D}/${w}-inicio-abajo.png` });
+  await page.getByRole('button', { name: 'Ajustes' }).click();
+  await page.getByRole('heading', { name: 'Ajustes' }).waitFor();
+  await page.screenshot({ path: `${D}/${w}-ajustes.png` });
+  await page.locator('.screen').evaluate((s) => s.scrollTo(0, 9999));
+  await page.screenshot({ path: `${D}/${w}-ajustes-abajo.png` });
+});
