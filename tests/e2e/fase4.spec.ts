@@ -56,10 +56,10 @@ test('Cuerpo: medidas ocultas, peso que se muestra, gráfica y zonas', async ({ 
   // Quitar una zona guarda su historial
   await page.getByRole('button', { name: '+ Agregar o quitar medidas' }).click();
   const zonas = page.getByRole('dialog', { name: 'Tus medidas' });
+  await revisarPantalla(page);
   await zonas.getByRole('switch', { name: 'Cintura' }).click();
   await zonas.getByLabel('Agregar otra').fill('espalda');
   await zonas.getByRole('button', { name: 'Agregar', exact: true }).click();
-  await revisarPantalla(page);
   await page.getByRole('button', { name: 'Cerrar' }).click();
   await expect(page.getByRole('radio', { name: 'Espalda' })).toBeVisible();
   await expect(page.getByRole('radio', { name: 'Cintura' })).toHaveCount(0);
