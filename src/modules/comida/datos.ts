@@ -1,4 +1,4 @@
-import { db, type Alimento, type ItemMenu, type PerfilComida, type Receta, type Tanda } from '../../core/db';
+import { db, type Alimento, type DiaFlexible, type ItemMenu, type PerfilComida, type Receta, type Tanda } from '../../core/db';
 import { parte } from '../../core/contenido';
 import { registroNuevo } from '../ajustes';
 import { comprasVacias, type EstadoCompras } from './compras';
@@ -126,3 +126,9 @@ export async function guardarTips(t: TipsGuardados) {
   await db.comida.put({ k: 'tips', v: limpio(t) });
   await registroNuevo();
 }
+
+// ---------- Días flexibles ----------
+export const leerFlexibles = () => db.flexibles.toArray();
+export const flexibleDe = (fecha: string) => db.flexibles.get(fecha);
+export async function guardarFlexible(d: DiaFlexible) { await db.flexibles.put(limpio(d)); await registroNuevo(); }
+export const quitarFlexible = (fecha: string) => db.flexibles.delete(fecha);

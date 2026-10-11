@@ -5,10 +5,10 @@
   import { nav } from '../../core/nav.svelte';
   import { guardar, prefs } from '../ajustes';
   import { COMIDAS, DIAS_ATRAS, barra, diaBreve, etiquetaDia, fechaDe, fmtN, fraseDia, kRango, macroLinea, porTxt, porcionDe, r1, recientes, sinRepetir, sumas, type Plato } from './calculos';
-  import { agregarAlimentos, alimentosDe, guardarAlimento, leerPerfiles, leerPrep, listarRecetas, menuDe, quitarAlimento, reponerDia, sembrarRecetas, ultimosRegistrados } from './datos';
+  import { agregarAlimentos, alimentosDe, guardarAlimento, leerPerfiles, flexibleDe, leerPrep, listarRecetas, menuDe, quitarAlimento, reponerDia, sembrarRecetas, ultimosRegistrados } from './datos';
   import { filaDeTanda } from './preparacion';
   import { NOMBRE_LUGAR, fechasDeSemana, indexar, llave, nombreDia } from './semana';
-  import { eleccion, reiniciarVista } from './estado.svelte';
+  import { eleccion, reiniciarVista, vista } from './estado.svelte';
 
   // Al volver a Comida, los números que mostraste con "Mostrar" vuelven a taparse.
   reiniciarVista();
@@ -28,6 +28,7 @@
   leerPerfiles().then((p) => { perfiles = p; perfil = p.les; });
 
   let tandas = $state<Tanda[]>([]);
+  let flexHoy = $state(false);
   let plan = $state<ItemMenu[]>([]);
   let recetasPlan = $state<Receta[]>([]);
   let verPasado = $state(false);
@@ -36,10 +37,10 @@
   let tanda = 0;
   async function cargar() {
     const mia = ++tanda, f = fecha, previo = fechaDe(off - 1);
-    const [hoy, ayer, menu, prep] = await Promise.all([alimentosDe(f), alimentosDe(previo), menuDe([f]), leerPrep()]);
-    if (mia === tanda) { items = hoy; anterior = ayer; plan = menu; tandas = prep; }
+    const [hoy, ayer, menu, prep, flex] = await Promise.all([alimentosDe(f), alimentosDe(previo), menuDe([f]), leerPrep(), flexibleDe(fechaDe(0))]);
+    if (mia === tanda) { items = hoy; anterior = ayer; plan = menu; tandas = prep; flexHoy = !!flex; }
   }
-  $effect(() => { void fecha; cargar(); });
+  $effect(() => { void fecha; void vista.cambio; cargar(); });
 
   const porComida = $derived([0, 1, 2, 3].map((i) => items.filter((x) => x.comida === i)));
   const total = $derived(sumas(items));
@@ -228,6 +229,11 @@
     <b aria-live="polite">{etiquetaDia(off)}</b>
     <button class="cal-nav" aria-label="Día siguiente" disabled={off >= MAX_ADELANTE} onclick={() => ir(1)}>›</button>
   </div>
+
+  {#if off === 0}
+    <button class="ghost fd-flexb" onclick={() => nav.abrir('flexible')}>{flexHoy ? 'Hoy es día flexible ✓' : 'Marcar como día flexible'}</button>
+    {#if flexHoy}<p class="tool-note left">Un día flexible es parte del plan. Mañana sigues como siempre.</p>{/if}
+  {/if}
 
   {#if off >= -VER_PLAN_ATRAS}
     <section class="pt" aria-labelledby="pt-h">

@@ -182,6 +182,8 @@ export interface ItemMenu {
 export interface ItemPrep { t: string; f: string; s?: string; m?: number; ok: boolean; fm?: string }
 /** Comida: una tanda de preparación en un día y a una hora. `auto`: la creó el menú y se va si queda vacía. */
 export interface Tanda { id: string; fecha: string; hora: string; auto?: boolean; items: ItemPrep[] }
+/** Comida: un día flexible. Todo es opcional. La fase del ciclo y el día de la semana se calculan, no se guardan. */
+export interface DiaFlexible { fecha: string; hora: string; emo: string; lugar: string; sueno: string; estres: string; comi: string }
 /** Base: copias internas antes de importar o de cambiar la estructura. Nunca van en el respaldo. */
 export interface CopiaInterna { id?: number; fecha: number; motivo: string; datos: Blob }
 
@@ -209,6 +211,7 @@ export class BaseBienestar extends Dexie {
   comida!: Table<AjusteComida, string>;
   registro!: Table<Alimento, number>;
   menu!: Table<ItemMenu, [string, string]>;
+  flexibles!: Table<DiaFlexible, string>;
 
   constructor(nombre = 'bienestar') {
     super(nombre);
@@ -239,6 +242,8 @@ export class BaseBienestar extends Dexie {
     this.version(6).stores({ registro: '++id, fecha' });
     // Fase 5c: menú de la semana.
     this.version(7).stores({ menu: '[fecha+lugar], fecha' });
+    // Fase 6: días flexibles.
+    this.version(8).stores({ flexibles: 'fecha' });
   }
 }
 

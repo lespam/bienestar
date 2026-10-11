@@ -8,3 +8,5 @@ export const Compras = () => import('./Compras.svelte');
 export const Preparacion = () => import('./Preparacion.svelte');
 export const Tips = () => import('./Tips.svelte');
 export const Tarjetas = () => import('./Tarjetas.svelte');
+export const Flexible = () => import('./Flexible.svelte');
+export const Patrones = () => import('./Patrones.svelte');
