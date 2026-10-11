@@ -191,15 +191,17 @@
     ocupados = ocup;
   }
   async function copiar() {
-    const c = copiando, fuente = planos(porComida[c]), previos: [string, Alimento[]][] = [];
-    for (const d of destinos) {
+    const c = copiando, fuente = planos(porComida[c]), lista = [...destinos];
+    // La hoja se cierra al tocar; el trabajo sigue detrás, para que no parezca trabada.
+    nav.cerrar();
+    const previos: [string, Alimento[]][] = [];
+    for (const d of lista) {
       const f = fechaDe(d), hoy = await alimentosDe(f);
       previos.push([f, hoy]);
       const nuevos = sinRepetir(hoy.filter((x) => x.comida === c), fuente);
       if (nuevos.length) await agregarAlimentos(nuevos.map((x) => ({ fecha: f, comida: c, ...x })));
     }
-    const cuantos = destinos.length;
-    nav.cerrar();
+    const cuantos = lista.length;
     await cargar();
     avisos.deshacer('Copiado a ' + cuantos + (cuantos === 1 ? ' día' : ' días'), async () => { for (const [f, filas] of previos) await reponerDia(f, filas); await cargar(); });
   }
