@@ -66,6 +66,8 @@ export interface FichaPropia {
 export interface AjusteEntreno { k: string; v: unknown }
 /** Entreno: marcas de Calentar, por fecha. */
 export interface Calentado { fecha: string; item: string }
+/** Herramientas: lo que está corriendo (cronómetro, temporizador) y tu duración de descanso preferida. */
+export interface AjusteHerramienta { k: string; v: unknown }
 /** Base: copias internas antes de importar o de cambiar la estructura. Nunca van en el respaldo. */
 export interface CopiaInterna { id?: number; fecha: number; motivo: string; datos: Blob }
 
@@ -82,6 +84,7 @@ export class BaseBienestar extends Dexie {
   fichas!: Table<FichaPropia, string>;
   entreno!: Table<AjusteEntreno, string>;
   calentados!: Table<Calentado, [string, string]>;
+  herramientas!: Table<AjusteHerramienta, string>;
 
   constructor(nombre = 'bienestar') {
     super(nombre);
@@ -102,6 +105,8 @@ export class BaseBienestar extends Dexie {
       entreno: 'k',
       calentados: '[fecha+item], fecha'
     });
+    // Fase 3: Herramientas.
+    this.version(3).stores({ herramientas: 'k' });
   }
 }
 

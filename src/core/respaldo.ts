@@ -51,6 +51,8 @@ export async function crearZip(ahora = new Date(), base: Dexie = db): Promise<Ui
     if (FUERA_DEL_RESPALDO.has(t.name)) continue;
     let filas = (await t.toArray()) as Fila[];
     if (t.name === 'ajustes') filas = filas.filter((f) => !CLAVES_PRIVADAS.has(String(f.k)));
+    // Un cronómetro o temporizador corriendo no tiene sentido en otro momento: no sale en el respaldo.
+    if (t.name === 'herramientas') filas = filas.filter((f) => !String(f.k).startsWith('en-marcha:'));
     tablas[t.name] = (await sacarFotos(filas, fotos)) as Fila[];
   }
   const datos: Datos = { app: 'bienestar', formato: FORMATO, fecha: iso(ahora), tablas };
@@ -134,7 +136,7 @@ export async function importarZip(bytes: Uint8Array): Promise<ResultadoImportar>
  * Antes de que la base cambie de estructura (por ejemplo al llegar Entrenamiento), guarda una copia interna
  * de lo que ya tienes, para "Volver a mis datos anteriores" (plan, punto 2b). Debe correr antes de abrir la base de la app.
  */
-export async function copiaAntesDeActualizar(nombre = 'bienestar', versionNueva = 2, ahora = Date.now()): Promise<boolean> {
+export async function copiaAntesDeActualizar(nombre = 'bienestar', versionNueva = 3, ahora = Date.now()): Promise<boolean> {
   if (!(await Dexie.exists(nombre))) return false;
   const vieja = new Dexie(nombre);
   try {

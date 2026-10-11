@@ -8,12 +8,13 @@
   import { prefs, Ajustes, Bienvenida } from './modules/ajustes';
   import { Inicio } from './modules/inicio';
   import { Rutina, Curso, Ficha, Descanso, Calentar, RegistroPR, Fin, Cardio } from './modules/entreno';
+  import { Herramientas } from './modules/herramientas';
 
   const TABS: [Tab, string][] = [['inicio', 'Inicio'], ['rutina', 'Rutina'], ['comida', 'Comida'], ['cuerpo', 'Cuerpo']];
   const FASE: Record<string, number> = { comida: 5, cuerpo: 4 };
   // Pantallas de la sesión: ocupan todo el teléfono, sin la barra de abajo (como en el mockup).
-  const SIN_BARRA = new Set(['curso', 'ficha', 'descanso', 'calentar', 'pr', 'fin', 'cardio']);
-  const PANTALLAS: Record<string, () => Promise<{ default: unknown }>> = { ajustes: Ajustes, curso: Curso, ficha: Ficha, descanso: Descanso, calentar: Calentar, pr: RegistroPR, fin: Fin, cardio: Cardio };
+  const SIN_BARRA = new Set(['curso', 'ficha', 'descanso', 'calentar', 'pr', 'fin', 'cardio', 'herramientas']);
+  const PANTALLAS: Record<string, () => Promise<{ default: unknown }>> = { ajustes: Ajustes, curso: Curso, ficha: Ficha, descanso: Descanso, calentar: Calentar, pr: RegistroPR, fin: Fin, cardio: Cardio, herramientas: Herramientas };
   const pantalla = $derived(nav.pantalla);
   const enBienvenida = $derived(!prefs.bienvenida);
 

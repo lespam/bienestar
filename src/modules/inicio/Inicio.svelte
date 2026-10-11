@@ -147,9 +147,9 @@
   <section class="tools">
     <h4>Herramientas</h4>
     <div class="quick q3">
-      <button onclick={() => pronto('Cronómetro', 3)}><Icono nombre="crono" />Cronómetro</button>
-      <button onclick={() => pronto('Temporizador', 3)}><Icono nombre="timer" />Temporizador</button>
-      <button onclick={() => pronto('Moneda', 3)}><Icono nombre="moneda" />Moneda</button>
+      <button onclick={() => nav.abrir('herramientas', { tool: 'crono' })}><Icono nombre="crono" />Cronómetro</button>
+      <button onclick={() => nav.abrir('herramientas', { tool: 'timer' })}><Icono nombre="timer" />Temporizador</button>
+      <button onclick={() => nav.abrir('herramientas', { tool: 'coin' })}><Icono nombre="moneda" />Moneda</button>
     </div>
   </section>
 

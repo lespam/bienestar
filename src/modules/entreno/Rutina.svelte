@@ -260,8 +260,8 @@
       </button>
       <div class="quick">
         <button onclick={() => nav.abrir('calentar', { letra: c!.letra })}><Icono nombre="fuego" />Calentar</button>
-        <button onclick={() => nav.abrir('pronto', { titulo: 'Cronómetro', fase: 3 })}><Icono nombre="crono" />Cronómetro</button>
-        <button onclick={() => nav.abrir('pronto', { titulo: 'Temporizador', fase: 3 })}><Icono nombre="timer" />Temporizador</button>
+        <button onclick={() => nav.abrir('herramientas', { tool: 'crono' })}><Icono nombre="crono" />Cronómetro</button>
+        <button onclick={() => nav.abrir('herramientas', { tool: 'timer' })}><Icono nombre="timer" />Temporizador</button>
         <button onclick={() => nav.abrir('descanso')}><Icono nombre="pulso" />Descanso</button>
       </div>
     </section>

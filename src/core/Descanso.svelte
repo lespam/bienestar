@@ -7,18 +7,21 @@
 
   // Descanso: pieza compartida. Cuenta con la hora real, así que no se atrasa si el teléfono la pausa un momento.
   // Entreno la usa entre series y Herramientas la usará sola. Quien la abre decide qué hacer con los segundos descansados.
-  let { siguiente = '', automatico = false, frase = null, alSalir }: {
+  let { siguiente = '', automatico = false, frase = null, largoInicial = 60, alElegirLargo, alSalir }: {
     siguiente?: string;
     automatico?: boolean;
     frase?: { texto: string; origen: string } | null;
+    /** Duración con la que empieza (la que elegiste la última vez). */
+    largoInicial?: number;
+    alElegirLargo?: (seg: number) => void;
     /** Segundos que de verdad descansaste. */
     alSalir?: (seg: number) => void;
   } = $props();
 
   const ARCO = 603.2;
   const LARGOS = [[60, '1 min'], [120, '2 min'], [300, '5 min']] as const;
-  let largo = $state(60);
-  let restante = $state(60);
+  let largo = $state(untrack(() => largoInicial));
+  let restante = $state(untrack(() => largoInicial));
   let corriendo = $state(false);
   let fin = 0;
   let medido = 0; // segundos que ya corrieron
@@ -47,7 +50,7 @@
   }
   function elegir(s: number) {
     const sigue = corriendo;
-    parar(); largo = s; restante = s;
+    parar(); largo = s; restante = s; alElegirLargo?.(s);
     if (sigue) iniciar();
   }
   function salir() {
