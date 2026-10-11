@@ -827,7 +827,7 @@ h4 { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-t
 .aj-opt p { margin: 0; font-size: 14px; line-height: 1.45; }
 .aj-sw { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding-top: 10px; border-top: 1px solid var(--line); font-size: 14px; line-height: 1.4; }
 .aj-sw small { display: block; font-size: 12px; color: var(--muted); }
-.am-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.am-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
 .am-days button { border: 1px solid var(--soft); background: var(--panel); border-radius: 12px; min-height: 52px; padding: 4px 0; display: grid; justify-items: center; align-content: center; gap: 1px; font-size: 12px; font-weight: 700; color: var(--muted); }
 .am-days button b { font-size: 15px; color: var(--fg); }
 .am-days button.on { background: var(--accent); border-color: var(--accent); color: var(--ink); }
@@ -1157,3 +1157,5 @@ a.mus-btn { text-decoration: none; color: var(--fg); }
 .pts button.on { border-color: var(--accent); color: var(--fg); }
 .ph-q { margin: 0; }
 .cal { gap: 2px; }
+/* Menú: en pantallas angostas la cuadrícula usa todo el ancho para que cada día mida 44 px */
+@media (max-width: 400px) { .wk-grid { margin: 0 -14px; padding: 12px 2px; grid-template-columns: 24px repeat(7, 1fr); gap: 6px 2px; border-radius: 16px; } }

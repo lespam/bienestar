@@ -46,8 +46,8 @@ export async function revisarPantalla(page: Page) {
     const vis = (e: Element) => { const b = e.getBoundingClientRect(); return b.width > 0 && b.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
     const anchos = [document.documentElement, ...document.querySelectorAll('.screen')].filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.className || e.tagName);
     const chicos = [...document.querySelectorAll('button, a[href], [role="switch"], input')].filter(vis).filter((e) => {
-      // Una casilla se toca por su fila completa (la etiqueta), así que se mide la etiqueta.
-      const hit = e instanceof HTMLInputElement && (e.type === 'checkbox' || e.type === 'radio') ? e.closest('label') ?? e : e;
+      // Una casilla o un archivo se toca por su etiqueta completa, así que se mide la etiqueta.
+      const hit = e instanceof HTMLInputElement && (e.type === 'checkbox' || e.type === 'radio' || e.type === 'file') ? e.closest('label') ?? e : e;
       const b = hit.getBoundingClientRect(); return b.height < 44 || b.width < 44;
     }).map((e) => (e.textContent || e.getAttribute('aria-label') || e.tagName).trim().slice(0, 30));
     const letra = [...document.querySelectorAll('body *')].filter(vis).filter((e) => [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent!.trim()))

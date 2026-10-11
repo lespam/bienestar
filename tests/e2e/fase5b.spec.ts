@@ -8,7 +8,7 @@ test('Comida: registrar, ver números, editar, quitar, copiar y moverse entre d�
   await expect(page.getByRole('heading', { name: 'Comida', level: 2 })).toBeFocused();
   await expect(page.getByText(/^Hoy · /)).toBeVisible();
   await expect(page.getByText('0 de 4 comidas registradas')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Día siguiente' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Día siguiente' })).toBeEnabled();
   await revisarPantalla(page);
 
   // Escribir un alimento en la cena

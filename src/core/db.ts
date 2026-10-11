@@ -152,6 +152,32 @@ export interface Alimento {
   /** La receta de la que salió, si salió de una. */
   receta?: string;
 }
+/** Comida: un lugar del menú. `lugar`: d Desayuno, c Comida, n Cena, a Colación AM, p Colación PM. */
+export type LugarMenu = 'd' | 'c' | 'n' | 'a' | 'p';
+export interface ItemMenu {
+  fecha: string;
+  lugar: LugarMenu;
+  /** dos: los dos comen lo mismo. cada: cada quien lo suyo. takeout. decidir: queda por decidir. col: una colación armada por partes. */
+  t: 'dos' | 'cada' | 'takeout' | 'decidir' | 'col';
+  /** Nombre del plato, del lugar de takeout o de lo que está por decidir. */
+  n: string;
+  /** dos: la receta. cada: la receta de cada quien. */
+  r?: string;
+  rl?: string;
+  rj?: string;
+  /** cada: el plato de cada quien. */
+  nl?: string;
+  nj?: string;
+  /** Tu nota en esa comida. */
+  nota?: string;
+  /** takeout: cuánto costó, en pesos, y quién comió (2 los dos, l tú, j Jeff). */
+  costo?: number;
+  quien?: '2' | 'l' | 'j';
+  /** takeout: la foto del ticket. Se queda en el teléfono y nunca se manda a la IA. */
+  ticket?: Blob;
+  /** col: las partes de la colación y, si va junto con una comida, con cuál. */
+  col?: { base: string; fruta: string; extra: string; junto: 'd' | 'c' | 'n' | null };
+}
 /** Base: copias internas antes de importar o de cambiar la estructura. Nunca van en el respaldo. */
 export interface CopiaInterna { id?: number; fecha: number; motivo: string; datos: Blob }
 
@@ -178,6 +204,7 @@ export class BaseBienestar extends Dexie {
   perfiles!: Table<PerfilComida, string>;
   comida!: Table<AjusteComida, string>;
   registro!: Table<Alimento, number>;
+  menu!: Table<ItemMenu, [string, string]>;
 
   constructor(nombre = 'bienestar') {
     super(nombre);
@@ -206,6 +233,8 @@ export class BaseBienestar extends Dexie {
     this.version(5).stores({ recetas: 'id, cat', perfiles: 'quien', comida: 'k' });
     // Fase 5b: registro de comida por día.
     this.version(6).stores({ registro: '++id, fecha' });
+    // Fase 5c: menú de la semana.
+    this.version(7).stores({ menu: '[fecha+lugar], fecha' });
   }
 }
 

@@ -45,6 +45,11 @@ class Nav {
     if (d) queueMicrotask(() => { if (d.isConnected) d.focus(); });
   }
 
+  /** Cierra hojas y pantallas hasta quedar en la pantalla `id` (por ejemplo, de una receta de vuelta al menú). */
+  cerrarHasta(id: string) {
+    while (this.pila.length && this.pantalla?.id !== id) this.cerrar();
+  }
+
   /** Reemplaza la pantalla de arriba, sin dejarla en la pila (por ejemplo, de la bienvenida a Inicio). */
   reemplazar(id: string, datos?: Record<string, unknown>) {
     this.pila = [...this.pila.slice(0, -1), { tipo: 'pantalla', id, datos, desde: null }];

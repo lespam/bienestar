@@ -4,7 +4,9 @@
   import { nav } from '../../core/nav.svelte';
   import { CATEGORIAS, CAT_COLOR, CAT_PLURAL, avisoConflicto, norm } from './calculos';
   import { guardarReceta, leerPerfiles, listarRecetas, quitarReceta, sembrarRecetas } from './datos';
-  import { numerosVisibles, vista } from './estado.svelte';
+  import { eleccion, numerosVisibles, vista } from './estado.svelte';
+  import { NOMBRE_LUGAR, nombreDia, platoTxt } from './semana';
+  import { itemDeMenu } from './datos';
   import FormReceta from './FormReceta.svelte';
   import Plato from './Plato.svelte';
 
@@ -20,6 +22,18 @@
     await cargar();
     listo = true;
   })();
+
+  // Si vienes del menú a elegir una receta, arriba se ve para qué lugar y qué hay ahora.
+  const eligiendo = $derived(eleccion.actual);
+  let ahora = $state('');
+  $effect(() => {
+    const e = eleccion.actual;
+    if (!e) { ahora = ''; return; }
+    if (e.modo === 'jeff') { ahora = 'Tú: ' + (e.les?.n ?? '') + '. Ahora elige la de Jeff.'; return; }
+    itemDeMenu(e.fecha, e.lugar).then((m) => { ahora = m ? 'Ahora: ' + platoTxt(m) : 'Ahora está libre'; });
+  });
+  const queEliges = $derived(eligiendo ? (eligiendo.modo === 'les' ? 'Para ti · ' : eligiendo.modo === 'jeff' ? 'Para Jeff · ' : 'Para los dos · ') + NOMBRE_LUGAR[eligiendo.lugar].toLowerCase() + ' del ' + nombreDia(eligiendo.fecha).toLowerCase() : '');
+  function volver() { eleccion.actual = null; nav.cerrar(); }
 
   const BOWL = 'M4 11h16a8 8 0 0 1-16 0zM9 4v4M12 3v5M15 4v4';
   const ver = $derived(numerosVisibles());
@@ -46,7 +60,7 @@
 </script>
 
 <header class="cur-head">
-  <button class="back" aria-label="Volver" onclick={() => nav.cerrar()}>‹ Volver</button>
+  <button class="back" aria-label="Volver" onclick={volver}>‹ Volver</button>
   <button class="edit" onclick={() => nav.abrirHoja('rc-form')}>+ Agregar</button>
 </header>
 <div class="screen">
@@ -54,6 +68,9 @@
     <h2 tabindex="-1">Recetario</h2>
     <p class="seg-help">Tus recetas y lo que lleva cada porción. Para pasar las de tus documentos, toca + Agregar y pégalas.</p>
   </div>
+  {#if eligiendo}
+    <div class="rc-pick"><span><small>Eliges</small><b>{queEliges}</b><em>{ahora}</em></span><button onclick={volver}>Cancelar</button></div>
+  {/if}
   <label class="rc-search">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
     <input type="search" placeholder="Buscar receta o ingrediente" aria-label="Buscar receta o ingrediente" bind:value={vista.q} />

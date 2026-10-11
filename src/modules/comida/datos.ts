@@ -1,4 +1,4 @@
-import { db, type Alimento, type PerfilComida, type Receta } from '../../core/db';
+import { db, type Alimento, type ItemMenu, type PerfilComida, type Receta } from '../../core/db';
 import { parte } from '../../core/contenido';
 import { registroNuevo } from '../ajustes';
 
@@ -66,3 +66,22 @@ export async function reponerDia(fecha: string, filas: Alimento[]) {
 export async function ultimosRegistrados(limite = 60): Promise<Alimento[]> {
   return db.registro.orderBy('id').reverse().limit(limite).toArray();
 }
+
+// ---------- Menú ----------
+export const menuDe = (fechas: string[]) => db.menu.where('fecha').anyOf(fechas).toArray();
+const sinTicket = (m: ItemMenu) => ({ ...limpio({ ...m, ticket: undefined }), ...(m.ticket ? { ticket: m.ticket } : {}) });
+export async function ponerEnMenu(m: ItemMenu) { await db.menu.put(sinTicket(m)); }
+export const quitarDelMenu = (fecha: string, lugar: ItemMenu['lugar']) => db.menu.delete([fecha, lugar]).then(() => {});
+/** Guarda varios lugares a la vez y avisa que ya hay un registro nuevo. */
+export async function ponerVariosEnMenu(filas: ItemMenu[]) {
+  await db.menu.bulkPut(filas.map(sinTicket));
+  await registroNuevo();
+}
+/** Deja esos días del menú exactamente como estaban (para Deshacer). */
+export async function reponerMenu(fechas: string[], filas: ItemMenu[]) {
+  await db.transaction('rw', db.menu, async () => {
+    await db.menu.where('fecha').anyOf(fechas).delete();
+    await db.menu.bulkPut(filas.map(sinTicket));
+  });
+}
+export const itemDeMenu = (fecha: string, lugar: ItemMenu['lugar']) => db.menu.get([fecha, lugar]);

@@ -4,9 +4,13 @@
   import { avisos } from '../../core/aviso.svelte';
   import { reducirFoto } from '../../core/imagen';
   import { nav } from '../../core/nav.svelte';
-  import { aplicarCambio, ajustar, alcanzaTxt, cantidadTxt, efectoTxt, notaConflictos, porTxt, porcionDe, r1 } from './calculos';
+  import { aplicarCambio, ajustar, alcanzaTxt, fmtQ, cantidadTxt, efectoTxt, notaConflictos, porTxt, porcionDe, r1 } from './calculos';
   import { guardarReceta, leerPerfiles, quitarReceta, verReceta } from './datos';
-  import { numerosVisibles, vista } from './estado.svelte';
+  import { eleccion, numerosVisibles, vista } from './estado.svelte';
+  import { NOMBRE_LUGAR, COMIDAS_MENU, etiquetaFecha, fechasDeSemana, indexar, itemCada, itemDos, llave, lugarDe, nombreDia, numeroDia, LETRA_DIA, platoTxt, rangoSemana } from './semana';
+  import { fechaDe } from './calculos';
+  import { itemDeMenu, menuDe, ponerEnMenu, quitarDelMenu } from './datos';
+  import type { ItemMenu, LugarMenu } from '../../core/db';
   import FormReceta from './FormReceta.svelte';
 
   const id = String(nav.pantalla?.datos?.id ?? '');
@@ -98,6 +102,55 @@
     input.value = '';
     await poner(x);
     avisos.deshacer('Foto guardada', () => poner(antes));
+  }
+
+  // ---------- Agregar al menú, o elegir para un lugar del menú ----------
+  const hoyIso = fechaDe(0);
+  const dias = fechasDeSemana(0);
+  const eligiendo = $derived(eleccion.actual);
+  let amDia = $state(hoyIso);
+  let amLugar = $state<LugarMenu>('c');
+  let amAhora = $state('');
+  $effect(() => {
+    void amDia; void amLugar;
+    itemDeMenu(amDia, amLugar).then((m) => { amAhora = m ? platoTxt(m) : ''; });
+  });
+  async function principal() {
+    if (!r) return;
+    if (eligiendo) { await elegirAqui(); return; }
+    amLugar = lugarDe(r.cat);
+    const ocupados = indexar(await menuDe(dias));
+    amDia = dias.find((f) => f >= hoyIso && !ocupados.has(llave(f, amLugar))) ?? hoyIso;
+    nav.abrirHoja('rc-am');
+  }
+  async function guardarEnMenu(item: ItemMenu, mensaje: string) {
+    const previo = await itemDeMenu(item.fecha, item.lugar);
+    await ponerEnMenu(item);
+    avisos.deshacer(mensaje, async () => { if (previo) await ponerEnMenu(previo); else await quitarDelMenu(item.fecha, item.lugar); });
+  }
+  async function agregarAlMenu() {
+    if (!r) return;
+    const item = itemDos(amDia, amLugar, r), dia = nombreDia(amDia).toLowerCase();
+    nav.cerrar();
+    await guardarEnMenu(item, 'Agregado al menú: ' + dia + ', ' + NOMBRE_LUGAR[amLugar].toLowerCase());
+  }
+  async function elegirAqui() {
+    const e = eleccion.actual;
+    if (!r || !e) return;
+    if (e.modo === 'les') {
+      eleccion.actual = { ...e, modo: 'jeff', les: { id: r.id, n: r.n } };
+      nav.cerrar();
+      avisos.mostrar('Listo tu plato. Ahora elige el de Jeff');
+      return;
+    }
+    const previo = await itemDeMenu(e.fecha, e.lugar);
+    const item = e.modo === 'jeff' && e.les ? itemCada(e.fecha, e.lugar, e.les, r) : itemDos(e.fecha, e.lugar, r);
+    await ponerEnMenu(item);
+    eleccion.actual = null;
+    nav.cerrarHasta('menu');
+    avisos.deshacer((previo ? 'Cambiado: ' : 'Agregado: ') + NOMBRE_LUGAR[e.lugar].toLowerCase() + ' del ' + nombreDia(e.fecha).toLowerCase(), async () => {
+      if (previo) await ponerEnMenu(previo); else await quitarDelMenu(e.fecha, e.lugar);
+    });
   }
 
   // ---------- Ajustar a una referencia ----------
@@ -280,5 +333,27 @@
         <p class="tool-note">Son ideas de cocina, no consejos médicos. Si tienes dudas, consulta a tu nutrióloga.</p>
       </div>
     {/if}
+  </Hoja>
+{/if}
+
+{#if r}
+  <div class="cur-foot"><button class="start" onclick={principal}>{eligiendo ? (eligiendo.modo === 'les' ? 'Elegir para mí' : eligiendo.modo === 'jeff' ? 'Elegir para Jeff' : 'Elegir para los dos') : 'Agregar al menú'}</button></div>
+{/if}
+
+{#if r && nav.hojaAbierta('rc-am')}
+  <Hoja titulo="Agregar al menú">
+    <p class="seg-help">{r.n} · semana del {rangoSemana(dias)}</p>
+    <span class="sh-lbl">Día</span>
+    <div class="am-days" role="radiogroup" aria-label="Día">
+      {#each dias as f, i (f)}
+        <button class:on={f === amDia} role="radio" aria-checked={f === amDia} aria-label={etiquetaFecha(f)} disabled={f < hoyIso} onclick={() => (amDia = f)}>{LETRA_DIA[i]}<b>{numeroDia(f)}</b></button>
+      {/each}
+    </div>
+    <span class="sh-lbl">Comida</span>
+    <div class="seg" role="radiogroup" aria-label="Comida">
+      {#each COMIDAS_MENU as c (c.l)}<button class:on={amLugar === c.l} role="radio" aria-checked={amLugar === c.l} onclick={() => (amLugar = c.l)}>{c.n}</button>{/each}
+    </div>
+    <p class="am-now" aria-live="polite">{amAhora ? 'Ahí está ' + amAhora + '. Se cambia por esta receta y puedes deshacerlo.' : 'Ese lugar está libre.'} Porciones: tú {fmtQ(les)}, Jeff {fmtQ(jeff)}.</p>
+    <button class="start" onclick={agregarAlMenu}>Agregar</button>
   </Hoja>
 {/if}

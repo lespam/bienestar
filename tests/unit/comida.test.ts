@@ -4,9 +4,11 @@ import { cargarContenido } from '../../src/core/contenido';
 import { crearZip, leerZip } from '../../src/core/respaldo';
 import { strToU8, zipSync } from 'fflate';
 import { aplicarCambio, ajustar, barra, diaBreve, etiquetaDia, fechaDe, recientes, sinRepetir, sumas, alcanzaTxt, avisoConflicto, calBaja, calculadoraLibro, cantidadTxt, fmtQ, leerIngrediente, leerReceta, lineaIng, notaConflictos, porTxt, porcionDe } from '../../src/modules/comida/calculos';
-import { agregarAlimentos, alimentosDe, quitarAlimento, reponerDia, ultimosRegistrados, guardarPerfil, guardarReceta, leerPerfiles, listarRecetas, perfilInicial, quitarReceta, sembrarRecetas } from '../../src/modules/comida/datos';
+import { itemDeMenu, menuDe, ponerEnMenu, ponerVariosEnMenu, quitarDelMenu, reponerMenu, agregarAlimentos, alimentosDe, quitarAlimento, reponerDia, ultimosRegistrados, guardarPerfil, guardarReceta, leerPerfiles, listarRecetas, perfilInicial, quitarReceta, sembrarRecetas } from '../../src/modules/comida/datos';
 import { cargarPrefs } from '../../src/modules/ajustes';
-import type { Receta } from '../../src/core/db';
+import type { ItemMenu, Receta } from '../../src/core/db';
+import { cambiosRepetir, fechasDeSemana, platoTxt, puntoDe, rangoSemana, takeoutTxt, takeouts } from '../../src/modules/comida/semana';
+import { colacionTxt } from '../../src/modules/comida/colacion';
 
 let n = 0;
 beforeEach(async () => { usarBase(new BaseBienestar('comida-' + n++)); await cargarPrefs(); });
@@ -187,5 +189,65 @@ describe('registro del día', () => {
     expect((await alimentosDe('2026-10-01')).map((x) => x.n)).toEqual(['A']);
     expect((await alimentosDe('2026-10-02')).map((x) => x.n)).toEqual(['B']);
     expect((await ultimosRegistrados()).map((x) => x.n)).toEqual(['B', 'A']);
+  });
+});
+
+describe('menú de la semana', () => {
+  const hoy = new Date(2026, 9, 1); // jueves
+  it('la semana va de lunes a domingo', () => {
+    expect(fechasDeSemana(0, hoy)).toEqual(['2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04']);
+    expect(fechasDeSemana(1, hoy)[0]).toBe('2026-09-21');
+    expect(fechasDeSemana(-1, hoy)[0]).toBe('2026-10-05');
+    expect(fechasDeSemana(0, new Date(2026, 9, 4))[0]).toBe('2026-09-28'); // un domingo sigue en su semana
+    expect(rangoSemana(fechasDeSemana(0, hoy))).toBe('28 sep – 4 oct');
+    expect(rangoSemana(fechasDeSemana(-1, hoy))).toBe('5 – 11 oct');
+  });
+  it('dice cómo se ve cada lugar', () => {
+    const m = (x: Partial<ItemMenu>): ItemMenu => ({ fecha: '2026-10-01', lugar: 'c', t: 'dos', n: 'Tinga', ...x });
+    expect(puntoDe(undefined)).toBe('');
+    expect(puntoDe(m({}))).toBe('f');
+    expect(puntoDe(m({ t: 'cada' }))).toBe('s');
+    expect(puntoDe(m({ t: 'takeout' }))).toBe('t');
+    expect(puntoDe(m({ t: 'decidir' }))).toBe('p');
+    expect(platoTxt(m({ t: 'cada', nl: 'Yogur', nj: 'Huevos' }))).toBe('Yogur / Huevos');
+    expect(platoTxt(m({ t: 'decidir', nota: 'algo con pollo' }))).toBe('Por decidir · algo con pollo');
+  });
+  it('suma los takeouts de la semana', () => {
+    const t = takeouts([{ fecha: 'a', lugar: 'n', t: 'takeout', n: 'X', costo: 380 }, { fecha: 'b', lugar: 'c', t: 'takeout', n: 'Y', costo: 120 }, { fecha: 'c', lugar: 'd', t: 'dos', n: 'Z' }]);
+    expect(t).toEqual({ n: 2, total: 500 });
+    expect(takeoutTxt(t)).toBe('2 veces · $500');
+    expect(takeoutTxt(takeouts([]))).toBe('Ninguno');
+  });
+  it('arma las colaciones por partes', () => {
+    expect(colacionTxt({ base: 'Yogur natural', fruta: 'Manzana', extra: '' })).toBe('Yogur natural + manzana');
+    expect(colacionTxt({ base: 'Fruta', fruta: 'Plátano', extra: 'Crema de cacahuate' })).toBe('Plátano + crema de cacahuate');
+    expect(colacionTxt({ base: 'Fruta', fruta: '', extra: '' })).toBe('Fruta');
+  });
+  it('repetir la semana pasada: solo de hoy en adelante y sin tocar takeouts', () => {
+    const pasada: ItemMenu[] = [
+      { fecha: '2026-09-23', lugar: 'c', t: 'dos', n: 'Tinga' }, // miércoles pasado → antes de hoy
+      { fecha: '2026-09-24', lugar: 'c', t: 'dos', n: 'Bowl' }, // jueves pasado → hoy
+      { fecha: '2026-09-25', lugar: 'n', t: 'dos', n: 'Tacos' }, // viernes
+      { fecha: '2026-09-26', lugar: 'n', t: 'takeout', n: 'Sushi' }
+    ];
+    const actual: ItemMenu[] = [{ fecha: '2026-10-01', lugar: 'c', t: 'dos', n: 'Sopa' }, { fecha: '2026-10-02', lugar: 'n', t: 'takeout', n: 'Pizza' }];
+    expect(cambiosRepetir(pasada, actual, '2026-10-01', 'libres').map((x) => x.fecha + x.lugar)).toEqual([]);
+    expect(cambiosRepetir(pasada, [], '2026-10-01', 'libres').map((x) => x.fecha + x.lugar)).toEqual(['2026-10-01c', '2026-10-02n']);
+    expect(cambiosRepetir(pasada, actual, '2026-10-01', 'todo').map((x) => x.fecha + x.lugar)).toEqual(['2026-10-01c']);
+  });
+  it('guarda el menú y lo deja como estaba', async () => {
+    const a: ItemMenu = { fecha: '2026-10-01', lugar: 'c', t: 'dos', n: 'Tinga', r: 'x' };
+    const b: ItemMenu = { fecha: '2026-10-02', lugar: 'n', t: 'takeout', n: 'Tacos', costo: 380, ticket: new Blob([new Uint8Array([1])], { type: 'image/jpeg' }) };
+    await ponerEnMenu(a);
+    await ponerVariosEnMenu([b]);
+    expect((await menuDe(['2026-10-01', '2026-10-02'])).map((x) => x.n).sort()).toEqual(['Tacos', 'Tinga']);
+    expect((await itemDeMenu('2026-10-02', 'n'))!.ticket).toBeInstanceOf(Blob);
+    const antes = await menuDe(['2026-10-01', '2026-10-02']);
+    await quitarDelMenu('2026-10-01', 'c');
+    await ponerEnMenu({ ...b, n: 'Otro' });
+    await reponerMenu(['2026-10-01', '2026-10-02'], antes);
+    expect((await menuDe(['2026-10-01', '2026-10-02'])).map((x) => x.n).sort()).toEqual(['Tacos', 'Tinga']);
+    const zip = leerZip(await crearZip(new Date('2026-10-11')))!;
+    expect(zip.datos.tablas.menu).toHaveLength(2);
   });
 });
