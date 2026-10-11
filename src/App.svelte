@@ -10,12 +10,12 @@
   import { Rutina, Curso, Ficha, Descanso, Calentar, RegistroPR, Fin, Cardio } from './modules/entreno';
   import { Herramientas } from './modules/herramientas';
   import { Cuerpo } from './modules/cuerpo';
+  import { Comida, Recetario, Receta, Perfiles } from './modules/comida';
 
   const TABS: [Tab, string][] = [['inicio', 'Inicio'], ['rutina', 'Rutina'], ['comida', 'Comida'], ['cuerpo', 'Cuerpo']];
-  const FASE: Record<string, number> = { comida: 5 };
-  // Pantallas de la sesión: ocupan todo el teléfono, sin la barra de abajo (como en el mockup).
+    // Pantallas de la sesión: ocupan todo el teléfono, sin la barra de abajo (como en el mockup).
   const SIN_BARRA = new Set(['curso', 'ficha', 'descanso', 'calentar', 'pr', 'fin', 'cardio', 'herramientas']);
-  const PANTALLAS: Record<string, () => Promise<{ default: unknown }>> = { ajustes: Ajustes, curso: Curso, ficha: Ficha, descanso: Descanso, calentar: Calentar, pr: RegistroPR, fin: Fin, cardio: Cardio, herramientas: Herramientas };
+  const PANTALLAS: Record<string, () => Promise<{ default: unknown }>> = { ajustes: Ajustes, curso: Curso, ficha: Ficha, descanso: Descanso, calentar: Calentar, pr: RegistroPR, fin: Fin, cardio: Cardio, herramientas: Herramientas, recetas: Recetario, receta: Receta, perfiles: Perfiles };
   const pantalla = $derived(nav.pantalla);
   const enBienvenida = $derived(!prefs.bienvenida);
 
@@ -62,8 +62,8 @@
             <Perezoso cargar={Rutina} />
           {:else if nav.tab === 'cuerpo'}
             <Perezoso cargar={Cuerpo} />
-          {:else}
-            <div class="screen"><Pronto titulo={TABS.find((x) => x[0] === nav.tab)![1]} fase={FASE[nav.tab]} /></div>
+          {:else if nav.tab === 'comida'}
+            <Perezoso cargar={Comida} />
           {/if}
           <nav class="nav" aria-label="Secciones">
             {#each TABS as [t, n] (t)}<button class:on={nav.tab === t} aria-current={nav.tab === t ? 'page' : undefined} onclick={() => nav.irTab(t)}>{n}</button>{/each}

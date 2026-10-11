@@ -1,0 +1,47 @@
+import { db, type PerfilComida, type Receta } from '../../core/db';
+import { parte } from '../../core/contenido';
+import { registroNuevo } from '../ajustes';
+
+// Comida es la única dueña de recetas y perfiles. Las recetas del archivo de contenido se copian una vez
+// a tu tabla y desde ahí son tuyas: si quitas una, no vuelve; si el archivo trae nuevas, solo se agregan esas.
+
+export const perfilInicial = (quien: 'les' | 'jeff'): PerfilComida => ({ quien, src: null, fecha: null, k: null, p: null, c: null, g: null, mk: null, mp: null, por: 1, gustos: [], no: [], nota: '' });
+
+const limpio = <T>(x: T): T => JSON.parse(JSON.stringify(x));
+
+// ---------- Perfiles ----------
+export async function leerPerfiles(): Promise<Record<'les' | 'jeff', PerfilComida>> {
+  const filas = await db.perfiles.toArray();
+  const de = (q: 'les' | 'jeff') => ({ ...perfilInicial(q), ...(filas.find((f) => f.quien === q) ?? {}) });
+  return { les: de('les'), jeff: de('jeff') };
+}
+export async function guardarPerfil(p: PerfilComida) {
+  await db.perfiles.put(limpio(p));
+  await registroNuevo();
+}
+
+// ---------- Recetas ----------
+export const listarRecetas = () => db.recetas.toArray();
+export const verReceta = (id: string) => db.recetas.get(id);
+export async function guardarReceta(r: Receta) { await db.recetas.put({ ...limpio({ ...r, img: undefined, page: undefined }), img: r.img, page: r.page }); }
+export const quitarReceta = (id: string) => db.recetas.delete(id);
+
+/** Copia las recetas del archivo de contenido que todavía no copiaste. Devuelve cuántas agregó. */
+export async function sembrarRecetas(): Promise<number> {
+  const pack = await parte<{ recetas?: Partial<Receta>[] }>('recetas');
+  const lista = Array.isArray(pack) ? (pack as Partial<Receta>[]) : pack?.recetas;
+  if (!lista?.length) return 0;
+  let n = 0;
+  await db.transaction('rw', [db.recetas, db.comida], async () => {
+    const hechas = new Set(((await db.comida.get('recetas-copiadas'))?.v as string[] | undefined) ?? []);
+    const nuevas: Receta[] = [];
+    for (const x of lista) {
+      if (!x.id || !x.n || hechas.has(x.id)) continue;
+      hechas.add(x.id);
+      nuevas.push({ cat: 'Comida', y: 1, t: '', src: '', u1: '', k: null, p: null, c: null, g: null, ing: [], steps: [], ...limpio(x) } as Receta);
+    }
+    if (nuevas.length) { await db.recetas.bulkPut(nuevas); n = nuevas.length; }
+    await db.comida.put({ k: 'recetas-copiadas', v: [...hechas] });
+  });
+  return n;
+}

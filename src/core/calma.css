@@ -838,7 +838,7 @@ h4 { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-t
 .rs-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .rs-ok { margin: 0; font-size: 14px; line-height: 1.45; color: var(--mint); }
 /* Objetivos táctiles de al menos 44 px en lo nuevo de la versión 6 */
-#v-perfiles .m-chips button, #v-recetas .m-chips button, #v-recetas .edit, #v-recetas .in-more, .ml-b .add { min-height: 44px; }
+.m-chips button, .cur-head .edit, .in-more, .ml-b .add { min-height: 44px; }
 .sh-head .cal-nav { flex-shrink: 0; }
 /* El aviso para deshacer ocupa como máximo 2 líneas */
 #undo-t { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

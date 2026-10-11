@@ -12,7 +12,10 @@ export function contenidoDePrueba(): Buffer {
       ejercicios: { a: { nombre: 'Ejercicio A', pagina: 1, registro: ['peso', 'reps'], gym: false, anim: 'a-glute-bridge' }, b: { nombre: 'Ejercicio B', pagina: 2, registro: ['peso', 'repsIzq', 'repsDer'], gym: true, anim: 'b-front-lat-pulldown' }, c: { nombre: 'Ejercicio C', pagina: 3, registro: ['seg'], gym: false, anim: 'a-front-plank' } },
       calentamientos: [{ para: ['A'], paginas: '80-81', bloques: [{ nombre: 'Bloque uno', elementos: [{ nombre: 'Elemento 1', pagina: 10 }, { nombre: 'Elemento 2', pagina: 11 }] }, { nombre: 'Bloque dos', elementos: [{ nombre: 'Elemento 3', pagina: 12 }] }] }]
     },
-    recetas: { recetas: [{ id: 'r1' }, { id: 'r2' }] },
+    recetas: { recetas: [
+      { id: 'tinga', n: 'Tinga de pollo', cat: 'Comida', y: 4, t: '40 min', src: 'Reto de prueba', u1: '1 taza', k: 290, p: 28, c: 12, g: 14, ing: [[500, 'g', 'Pechuga de pollo', 'P'], [4, 'pieza', 'Jitomate', 'V'], [2, 'cda', 'Aceite', 'G']], steps: ['Cuece el pollo.', 'Licúa el jitomate.'], sw: [{ dir: 'k-', t: 'Usa 1 cda de aceite en vez de 2', d: { k: -30, g: -3.5 }, set: ['Aceite', 1] }] },
+      { id: 'tacos', n: 'Tacos de champiñón', cat: 'Cena', y: 2, t: '20 min', src: '', u1: '3 tacos', k: 330, p: 12, c: 45, g: 11, ing: [[400, 'g', 'Champiñones', 'V'], [6, 'pieza', 'Tortilla de maíz', 'C']], steps: ['Saltea los champiñones.'] }
+    ] },
     intercambios: {},
     marcas: {},
     fresh: {},

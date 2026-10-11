@@ -78,6 +78,66 @@ export interface FotoCuerpo { id?: number; fecha: string; foto: Blob }
 export interface DiaPeriodo { fecha: string; nota: string }
 /** Cuerpo: tus zonas de medida (cuáles ves y cuáles conoces). */
 export interface AjusteCuerpo { k: string; v: unknown }
+/** Comida: un ingrediente. [cantidad, unidad, nombre, grupo de equivalentes]. La cantidad puede faltar ("al gusto"). */
+export type Ingrediente = [number | null, string, string, string?];
+/** Comida: una nota o un tip tuyo en una receta. */
+export interface NotaReceta { k: 'tip' | 'nota'; t: string }
+/** Comida: un cambio de ingredientes que acerca la receta a una referencia. */
+export interface CambioReceta { dir: string; t: string; d: { k?: number; p?: number; c?: number; g?: number }; add?: Ingrediente; set?: [string, number]; hecho?: boolean }
+/** Comida: una receta tuya. Las del archivo de contenido se copian una vez y desde ahí son tuyas. */
+export interface Receta {
+  id: string;
+  n: string;
+  cat: 'Desayuno' | 'Comida' | 'Cena' | 'Colación' | 'Base';
+  sub?: 'AM' | 'PM';
+  /** Cuántas porciones rinde. */
+  y: number;
+  t: string;
+  src: string;
+  /** Qué es 1 porción, en palabras. */
+  u1: string;
+  eq?: Record<string, number>;
+  k: number | null;
+  p: number | null;
+  c: number | null;
+  g: number | null;
+  ing: Ingrediente[];
+  steps: string[];
+  acomp?: string[] | string;
+  nota?: string;
+  /** Qué datos se estimaron al pasar la receta a la app. */
+  est?: string[];
+  sw?: CambioReceta[];
+  /** Cuando alguien no come un ingrediente: con qué va su versión. */
+  alt?: { w: 'les' | 'jeff'; x: string; by: string };
+  /** Porción de cada quien en esta receta, si cambiaste la de su perfil. */
+  por?: { les?: number; jeff?: number };
+  nts?: NotaReceta[];
+  img?: Blob;
+  page?: Blob;
+  /** La receta como estaba antes de aplicar cambios, para "Volver a la receta original". */
+  orig?: string;
+}
+/** Comida: lo que sabe la app de Les o de Jeff. Las referencias las escribe una persona; la app no las calcula. */
+export interface PerfilComida {
+  quien: 'les' | 'jeff';
+  /** Quién las definió. */
+  src: 'nut' | 'nos' | 'book' | null;
+  fecha: string | null;
+  k: [number, number] | null;
+  p: number | null;
+  c: number | null;
+  g: number | null;
+  mk: number | null;
+  mp: number | null;
+  /** Cuántas porciones de una receta come. */
+  por: number;
+  gustos: string[];
+  no: string[];
+  nota: string;
+}
+/** Comida: ajustes y marcas propias (por ejemplo, qué recetas del archivo ya se copiaron). */
+export interface AjusteComida { k: string; v: unknown }
 /** Base: copias internas antes de importar o de cambiar la estructura. Nunca van en el respaldo. */
 export interface CopiaInterna { id?: number; fecha: number; motivo: string; datos: Blob }
 
@@ -100,6 +160,9 @@ export class BaseBienestar extends Dexie {
   fotos!: Table<FotoCuerpo, number>;
   periodo!: Table<DiaPeriodo, string>;
   cuerpo!: Table<AjusteCuerpo, string>;
+  recetas!: Table<Receta, string>;
+  perfiles!: Table<PerfilComida, string>;
+  comida!: Table<AjusteComida, string>;
 
   constructor(nombre = 'bienestar') {
     super(nombre);
@@ -124,6 +187,8 @@ export class BaseBienestar extends Dexie {
     this.version(3).stores({ herramientas: 'k' });
     // Fase 4: Cuerpo.
     this.version(4).stores({ pesos: '++id, fecha', medidas: '++id, zona, fecha', fotos: '++id, fecha', periodo: 'fecha', cuerpo: 'k' });
+    // Fase 5: Comida.
+    this.version(5).stores({ recetas: 'id, cat', perfiles: 'quien', comida: 'k' });
   }
 }
 

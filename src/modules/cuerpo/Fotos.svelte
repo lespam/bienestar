@@ -6,7 +6,7 @@
   import type { FotoCuerpo } from '../../core/db';
   import { etiquetaFecha } from './calculos';
   import { agregarFoto, listarFotos, ponerFoto, quitarFoto } from './datos';
-  import { reducirFoto } from './imagen';
+  import { reducirFoto } from '../../core/imagen';
 
   // Las fotos están cubiertas hasta que tú decides verlas, y se cubren otra vez cuando sales o cambias de pestaña.
   let fotos = $state<FotoCuerpo[]>([]);

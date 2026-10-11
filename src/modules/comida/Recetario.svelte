@@ -1,0 +1,94 @@
+<script lang="ts">
+  import type { PerfilComida, Receta } from '../../core/db';
+  import { avisos } from '../../core/aviso.svelte';
+  import { nav } from '../../core/nav.svelte';
+  import { CATEGORIAS, CAT_COLOR, CAT_PLURAL, avisoConflicto, norm } from './calculos';
+  import { guardarReceta, leerPerfiles, listarRecetas, quitarReceta, sembrarRecetas } from './datos';
+  import { numerosVisibles, vista } from './estado.svelte';
+  import FormReceta from './FormReceta.svelte';
+  import Plato from './Plato.svelte';
+
+  let recetas = $state<Receta[]>([]);
+  let perfiles = $state<Record<'les' | 'jeff', Pick<PerfilComida, 'no'>>>({ les: { no: [] }, jeff: { no: [] } });
+  let listo = $state(false);
+
+  async function cargar() { recetas = await listarRecetas(); }
+  $effect(() => { if (vista.cambio) cargar(); });
+  (async () => {
+    await sembrarRecetas();
+    perfiles = await leerPerfiles();
+    await cargar();
+    listo = true;
+  })();
+
+  const BOWL = 'M4 11h16a8 8 0 0 1-16 0zM9 4v4M12 3v5M15 4v4';
+  const ver = $derived(numerosVisibles());
+  const cats = $derived(CATEGORIAS.filter((c) => recetas.some((r) => r.cat === c)));
+  const cat = $derived(vista.cat !== 'todo' && !cats.includes(vista.cat as never) ? 'todo' : vista.cat);
+  const q = $derived(norm(vista.q.trim()));
+  const filas = $derived(
+    recetas
+      .filter((r) => (cat === 'todo' || r.cat === cat) && (!q || norm(r.n).includes(q) || r.ing.some((it) => norm(it[2]).includes(q))))
+      .sort((a, b) => a.n.localeCompare(b.n, 'es'))
+  );
+
+  const meta = (r: Receta) => r.cat + ' · ' + r.y + (r.y > 1 ? ' porciones' : ' porción') + (r.t ? ' · ' + r.t : '');
+  const notas = (r: Receta) => (r.nts?.length ? ' · ' + r.nts.length + (r.nts.length === 1 ? ' nota' : ' notas y tips') : '');
+
+  async function guardada(r: Receta, nueva: boolean) {
+    await guardarReceta(r);
+    await cargar();
+    nav.cerrar();
+    if (!nueva) return;
+    nav.abrir('receta', { id: r.id });
+    avisos.deshacer('Receta guardada', async () => { await quitarReceta(r.id); nav.cerrar(); });
+  }
+</script>
+
+<header class="cur-head">
+  <button class="back" aria-label="Volver" onclick={() => nav.cerrar()}>‹ Volver</button>
+  <button class="edit" onclick={() => nav.abrirHoja('rc-form')}>+ Agregar</button>
+</header>
+<div class="screen">
+  <div class="tl-head">
+    <h2 tabindex="-1">Recetario</h2>
+    <p class="seg-help">Tus recetas y lo que lleva cada porción. Para pasar las de tus documentos, toca + Agregar y pégalas.</p>
+  </div>
+  <label class="rc-search">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
+    <input type="search" placeholder="Buscar receta o ingrediente" aria-label="Buscar receta o ingrediente" bind:value={vista.q} />
+  </label>
+  <div class="rc-view">
+    <span id="rc-vin-l">Ver como viñetas con fotos</span>
+    <button class="sw" role="switch" aria-checked={vista.vin} aria-labelledby="rc-vin-l" onclick={() => (vista.vin = !vista.vin)}><i></i></button>
+  </div>
+  <div class="m-chips" aria-label="Tipo de comida">
+    <button class:on={cat === 'todo'} aria-pressed={cat === 'todo'} onclick={() => (vista.cat = 'todo')}>Todas · {recetas.length}</button>
+    {#each cats as c (c)}
+      {@const on = cat === c}
+      <button class:on aria-pressed={on} onclick={() => (vista.cat = c)}>{CAT_PLURAL[c]} · {recetas.filter((r) => r.cat === c).length}</button>
+    {/each}
+  </div>
+  <div class="group" class:rc-grid={vista.vin}>
+    {#each filas as r (r.id)}
+      {@const aviso = avisoConflicto(r, perfiles)}
+      {#if vista.vin}
+        <button class="rc-card" onclick={() => nav.abrir('receta', { id: r.id })}>
+          <span class="rc-ph"><Plato receta={r} /></span>
+          <span class="rc-tx"><b>{r.n}</b><small>{meta(r)}{notas(r)}</small>{#if ver && r.k != null}<small>{Math.round(r.k)} kcal aprox. por porción</small>{/if}{#if aviso}<em>{aviso}</em>{/if}</span>
+        </button>
+      {:else}
+        <button class="rc-row" onclick={() => nav.abrir('receta', { id: r.id })}>
+          <span class="rc-th" style:--c={CAT_COLOR[r.cat]}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={BOWL} /></svg></span>
+          <span><b>{r.n}</b><small>{meta(r)}{notas(r)}</small>{#if ver && r.k != null}<small>{Math.round(r.k)} kcal aprox. por porción</small>{/if}{#if aviso}<em>{aviso}</em>{/if}</span>
+          <i aria-hidden="true">›</i>
+        </button>
+      {/if}
+    {:else}
+      {#if listo}<p class="rc-empty">{q ? 'No hay recetas con «' + vista.q.trim() + '». Puedes agregarla con + Agregar.' : 'Aún no hay recetas aquí.'}</p>{/if}
+    {/each}
+  </div>
+  <p class="tool-note">Calorías y macros aproximados, por porción.</p>
+</div>
+
+{#if nav.hojaAbierta('rc-form')}<FormReceta receta={null} alGuardar={guardada} />{/if}
