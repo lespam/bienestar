@@ -68,6 +68,12 @@
     <h2 tabindex="-1">Recetario</h2>
     <p class="seg-help">Tus recetas y lo que lleva cada porción. Para pasar las de tus documentos, toca + Agregar y pégalas.</p>
   </div>
+  {#if !eligiendo}
+    <button class="pr-btn" onclick={() => nav.abrir('tarjetas')}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="16" rx="3" /><path d="M9 2h6M8 20l-2 2M16 20l2 2" /></svg>
+      <span><b>Elegir con tarjetas</b><small>Desliza las que sí y acomódalas en la semana</small></span>
+    </button>
+  {/if}
   {#if eligiendo}
     <div class="rc-pick"><span><small>Eliges</small><b>{queEliges}</b><em>{ahora}</em></span><button onclick={volver}>Cancelar</button></div>
   {/if}

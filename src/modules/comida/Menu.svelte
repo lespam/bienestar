@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ItemMenu, LugarMenu, PerfilComida, Receta } from '../../core/db';
   import Hoja from '../../core/Hoja.svelte';
+  import Inspiracion from './Inspiracion.svelte';
   import { avisos } from '../../core/aviso.svelte';
   import { reducirFoto } from '../../core/imagen';
   import { nav } from '../../core/nav.svelte';
@@ -165,6 +166,7 @@
     avisos.deshacer(libres.length + ' comidas quedan por decidir', async () => { await reponerMenu(ds, antes); await cargar(); });
   }
   function irProxima() { nav.cerrar(); irSemana(-1); }
+  function irTarjetas() { nav.cerrar(); irSemana(0); nav.abrir('tarjetas'); }
   function abrirRepetir() { modoRepetir = 'libres'; if (nav.hojaAbierta('mn-pl')) nav.cerrar(); nav.abrirHoja('mn-rp'); }
   async function repetir() {
     const cs = cambiosRep;
@@ -220,6 +222,8 @@
   {#if pasadaVista}
     <p class="tool-note left">Es una semana pasada, solo para ver. <button class="link-btn" onclick={() => irSemana(0)}>Volver a esta semana</button></p>
   {/if}
+
+  {#if k === 0}<Inspiracion {recetas} />{/if}
 
   <div class="wk-grid" aria-label="Semana de un vistazo">
     <span></span>
@@ -380,11 +384,13 @@
       {#if !pasadaVista}<button class="ghost w-btn" onclick={abrirTakeout}>+ Ticket</button>{/if}
     </div>
   {/if}
-  <h4 class="mn-after">{pasadaVista ? 'De esa semana' : 'Después de planear'}</h4>
-  <div class="mn-acts">
-    <button class="ghost" onclick={() => nav.abrir('compras', { k })}>Lista de compras</button>
-    <button class="ghost" onclick={() => nav.abrir('prep', { k })}>Plan de preparación</button>
-  </div>
+  {#if !pasadaVista}
+    <h4 class="mn-after">Después de planear</h4>
+    <div class="mn-acts">
+      <button class="ghost" onclick={() => nav.abrir('compras', { k })}>Lista de compras</button>
+      <button class="ghost" onclick={() => nav.abrir('prep', { k })}>Plan de preparación</button>
+    </div>
+  {/if}
   {#if !pasadaVista}<p class="tool-note">Las porciones salen de los perfiles de cada quien. Puedes cambiarlas en cualquier comida.</p>{/if}
 </div>
 
@@ -418,6 +424,7 @@
     </div>
     <div class="pl-acts">
       {#if planear === 'esta'}
+        <button class="start" onclick={irTarjetas}>Elegir con tarjetas</button>
         <button class="ghost" onclick={abrirRepetir}>Repetir semana pasada</button>
         <button class="ghost" onclick={dejarLibresPorDecidir}>Dejar lo libre por decidir</button>
         <p class="note">Planea desde hoy. Los días que ya pasaron no se tocan.</p>

@@ -7,3 +7,4 @@ export const Menu = () => import('./Menu.svelte');
 export const Compras = () => import('./Compras.svelte');
 export const Preparacion = () => import('./Preparacion.svelte');
 export const Tips = () => import('./Tips.svelte');
+export const Tarjetas = () => import('./Tarjetas.svelte');

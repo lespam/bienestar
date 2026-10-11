@@ -203,3 +203,99 @@ test('Tips y combinaciones: marcar, agregar uno tuyo y ver recetas que ya usan l
   await expect(page.getByRole('heading', { name: 'Tips y combinaciones', level: 2 })).toBeVisible();
   expect(errores).toEqual([]);
 });
+
+test('Tarjetas: deslizar, botones, deshacer y acomodar en la semana', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Recetario' }).click();
+  await page.getByRole('button', { name: /Elegir con tarjetas/ }).click();
+  await expect(page.getByRole('heading', { name: 'Elegir con tarjetas', level: 2 })).toBeVisible();
+  await expect(page.getByText('Sí 0 · No 0 · Quedan 2')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Acomodar mis elegidas', exact: true })).toBeDisabled();
+  await revisarPantalla(page);
+
+  // Botón Sí en la primera, deslizar a la izquierda la segunda
+  await page.getByRole('button', { name: 'Sí', exact: true }).click();
+  await expect(page.getByText('Sí 1 · No 0 · Quedan 1')).toBeVisible();
+  const arriba = page.locator('.tj-card[data-pos="0"]');
+  await expect(arriba).toContainText('Tinga de pollo');
+  const caja = (await arriba.boundingBox())!;
+  await page.mouse.move(caja.x + caja.width / 2, caja.y + 120);
+  await page.mouse.down();
+  await page.mouse.move(caja.x + caja.width / 2 - 160, caja.y + 120, { steps: 8 });
+  await page.mouse.up();
+  await expect(page.getByText('Sí 1 · No 1 · Quedan 0')).toBeVisible();
+  await expect(page.getByText('No quedan tarjetas.')).toBeVisible();
+
+  // Deshacer vuelve la última; con el teclado: flecha derecha es sí
+  await page.getByRole('button', { name: 'Deshacer' }).click();
+  await expect(page.getByText('Sí 1 · No 0 · Quedan 1')).toBeVisible();
+  await page.locator('.tj-card[tabindex]').focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByText('Sí 2 · No 0 · Quedan 0')).toBeVisible();
+  await revisarPantalla(page);
+
+  // Acomodar
+  await page.getByRole('button', { name: 'Acomodar mis elegidas (2)' }).click();
+  await expect(page.getByRole('heading', { name: 'Acomoda la semana', level: 2 })).toBeVisible();
+  const hoy = await page.evaluate(() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); });
+  const cena = page.locator(`.tj-cell[data-f="${hoy}"][data-l="n"]`);
+  const comida = page.locator(`.tj-cell[data-f="${hoy}"][data-l="c"]`);
+  await expect(cena).toHaveAttribute('aria-label', /cena: libre$/);
+  await cena.click();
+  await expect(page.getByText('Primero toca una tarjeta')).toBeVisible();
+  await page.getByRole('button', { name: /Tacos de champiñón/ }).click();
+  await expect(page.getByText('Toca el lugar para «Tacos de champiñón».')).toBeVisible();
+  await cena.click();
+  await expect(page.getByText(/^Tacos de champiñón: .+, cena$/)).toBeVisible();
+  await expect(cena).toHaveAttribute('aria-label', /cena: .*Tacos de champiñón/);
+  await revisarPantalla(page);
+
+  // Arrastrar la otra tarjeta a la comida de hoy
+  const chip = page.getByRole('button', { name: /Tinga de pollo/ });
+  const c1 = (await chip.boundingBox())!, c2 = (await comida.boundingBox())!;
+  await page.mouse.move(c1.x + c1.width / 2, c1.y + c1.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(c2.x + c2.width / 2, c2.y + c2.height / 2, { steps: 10 });
+  await page.mouse.up();
+  await expect(comida).toHaveAttribute('aria-label', /comida: .*Tinga de pollo/);
+  await page.waitForTimeout(500);
+
+  // Volver al mazo con "Volver", y de ahí al Recetario
+  await page.getByRole('button', { name: 'Volver' }).click();
+  await expect(page.getByRole('heading', { name: 'Elegir con tarjetas', level: 2 })).toBeVisible();
+  await page.getByRole('button', { name: 'Acomodar mis elegidas (2)' }).click();
+  await page.getByRole('button', { name: 'Ver el menú de la semana' }).click();
+  await expect(page.getByRole('heading', { name: 'Menú de la semana', level: 2 })).toBeVisible();
+  await expect(page.getByRole('img', { name: /comida: Los dos|comida: Tinga/ }).first()).toBeVisible();
+  expect(errores).toEqual([]);
+});
+
+test('Menú: Inspiración se abre y se cierra, y los accesos de después de planear van solo donde sirven', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Menú', exact: true }).first().click();
+  const tg = page.getByRole('button', { name: /^Inspiración/ });
+  await expect(tg).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByText('Arroz + frijoles: proteína completa')).toBeHidden();
+  await tg.click();
+  await expect(tg).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByText('Arroz + frijoles: proteína completa')).toBeVisible();
+  await revisarPantalla(page);
+  await tg.click();
+  await expect(page.getByText('Prep del domingo: 3 bases para la semana')).toBeHidden();
+
+  // Próxima semana: sin Inspiración, con lista y preparación
+  await page.getByRole('button', { name: 'Semana siguiente' }).click();
+  await expect(page.getByRole('button', { name: /^Inspiración/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Lista de compras' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Plan de preparación' })).toBeVisible();
+  // Semana pasada: solo para ver
+  await page.getByRole('button', { name: 'Semana anterior' }).click();
+  await page.getByRole('button', { name: 'Semana anterior' }).click();
+  await expect(page.getByText('Es una semana pasada, solo para ver.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Lista de compras' })).toHaveCount(0);
+  expect(errores).toEqual([]);
+});

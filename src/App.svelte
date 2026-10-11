@@ -10,12 +10,12 @@
   import { Rutina, Curso, Ficha, Descanso, Calentar, RegistroPR, Fin, Cardio } from './modules/entreno';
   import { Herramientas } from './modules/herramientas';
   import { Cuerpo } from './modules/cuerpo';
-  import { Comida, Recetario, Receta, Perfiles, Menu, Compras, Preparacion, Tips } from './modules/comida';
+  import { Comida, Recetario, Receta, Perfiles, Menu, Compras, Preparacion, Tips, Tarjetas } from './modules/comida';
 
   const TABS: [Tab, string][] = [['inicio', 'Inicio'], ['rutina', 'Rutina'], ['comida', 'Comida'], ['cuerpo', 'Cuerpo']];
     // Pantallas de la sesión: ocupan todo el teléfono, sin la barra de abajo (como en el mockup).
   const SIN_BARRA = new Set(['curso', 'ficha', 'descanso', 'calentar', 'pr', 'fin', 'cardio', 'herramientas']);
-  const PANTALLAS: Record<string, () => Promise<{ default: unknown }>> = { ajustes: Ajustes, curso: Curso, ficha: Ficha, descanso: Descanso, calentar: Calentar, pr: RegistroPR, fin: Fin, cardio: Cardio, herramientas: Herramientas, recetas: Recetario, receta: Receta, perfiles: Perfiles, menu: Menu, compras: Compras, prep: Preparacion, tips: Tips };
+  const PANTALLAS: Record<string, () => Promise<{ default: unknown }>> = { ajustes: Ajustes, curso: Curso, ficha: Ficha, descanso: Descanso, calentar: Calentar, pr: RegistroPR, fin: Fin, cardio: Cardio, herramientas: Herramientas, recetas: Recetario, receta: Receta, perfiles: Perfiles, menu: Menu, compras: Compras, prep: Preparacion, tips: Tips, tarjetas: Tarjetas };
   const pantalla = $derived(nav.pantalla);
   const enBienvenida = $derived(!prefs.bienvenida);
 
