@@ -4,7 +4,7 @@
   import { avisos } from '../../core/aviso.svelte';
   import { reducirFoto } from '../../core/imagen';
   import { nav } from '../../core/nav.svelte';
-  import { aplicarCambio, ajustar, alcanzaTxt, fmtQ, cantidadTxt, efectoTxt, notaConflictos, porTxt, porcionDe, r1 } from './calculos';
+  import { lineaIng, aplicarCambio, ajustar, alcanzaTxt, fmtQ, cantidadTxt, efectoTxt, notaConflictos, porTxt, porcionDe, r1 } from './calculos';
   import { guardarReceta, leerPerfiles, quitarReceta, verReceta } from './datos';
   import { eleccion, numerosVisibles, vista } from './estado.svelte';
   import { NOMBRE_LUGAR, COMIDAS_MENU, etiquetaFecha, fechasDeSemana, indexar, itemCada, itemDos, llave, lugarDe, nombreDia, numeroDia, LETRA_DIA, platoTxt, rangoSemana } from './semana';
@@ -12,6 +12,7 @@
   import { itemDeMenu, menuDe, ponerEnMenu, quitarDelMenu } from './datos';
   import type { ItemMenu, LugarMenu } from '../../core/db';
   import FormReceta from './FormReceta.svelte';
+  import { AnfitrionIA, cambiosDeIngredientes, pedirIA, tipsDeReceta } from '../ia';
 
   const id = String(nav.pantalla?.datos?.id ?? '');
   let r = $state<Receta | null>(null);
@@ -87,6 +88,33 @@
     await poner(x);
     document.getElementById('rc-nt-t')?.focus();
     avisos.deshacer(k === 'tip' ? 'Tip agregado' : 'Nota agregada', () => poner(antes));
+  }
+  // ---------- Ideas con IA (opcional) ----------
+  const ingTxt = () => (r?.ing ?? []).map(lineaIng);
+  async function guardarSugerida(k: 'tip' | 'nota', t: string) {
+    const antes = copia(), x = copia();
+    x.nts = [...(x.nts ?? []), { k, t, ia: true }];
+    await poner(x);
+    avisos.deshacer(k === 'tip' ? 'Tip agregado' : 'Nota agregada', () => poner(antes));
+  }
+  function tipsIA() {
+    if (!r) return;
+    const nombre = r.n, ing = ingTxt();
+    pedirIA({
+      fn: 'tips', titulo: 'Ayuda con IA', envia: 'el nombre y los ingredientes de la receta',
+      ejecutar: async (clave) => ({ intro: 'Tres ideas para preparar «' + nombre + '».', items: (await tipsDeReceta(clave, nombre, ing)).map((t) => ({ t, act: 'Guardar como tip', aplicar: () => guardarSugerida('tip', t) })) })
+    });
+  }
+  function ingredientesIA() {
+    if (!r) return;
+    const nombre = r.n, ing = ingTxt();
+    pedirIA({
+      fn: 'ing', titulo: 'Ayuda con IA', envia: 'el nombre y los ingredientes de la receta',
+      ejecutar: async (clave) => ({
+        intro: 'Cambios posibles en «' + nombre + '».',
+        items: (await cambiosDeIngredientes(clave, nombre, ing)).map((c) => ({ t: 'Si no tienes ' + c.ing.toLowerCase() + ': ' + c.alt, sub: 'Revisa cómo cambia el sabor y tus porciones.', act: 'Guardar como nota', aplicar: () => guardarSugerida('nota', 'Cambio posible: ' + c.ing + ' → ' + c.alt) }))
+      })
+    });
   }
   async function quitarNota(i: number) {
     const antes = copia(), x = copia();
@@ -258,7 +286,7 @@
       {#if r.nts?.length}
         <div class="rc-nts">
           {#each r.nts as x, i (i)}
-            <div class="rc-nt"><span class="tag {x.k === 'tip' ? 'f' : 's'}">{x.k === 'tip' ? 'Tip' : 'Nota'}</span><p>{x.t}</p><button aria-label={'Quitar esta ' + (x.k === 'tip' ? 'tip' : 'nota')} onclick={() => quitarNota(i)}>×</button></div>
+            <div class="rc-nt"><span class="tag {x.k === 'tip' ? 'f' : 's'}">{x.k === 'tip' ? 'Tip' : 'Nota'}</span><p>{x.t}{#if x.ia}<span class="ai-tag">Sugerido por IA</span>{/if}</p><button aria-label={'Quitar esta ' + (x.k === 'tip' ? 'tip' : 'nota')} onclick={() => quitarNota(i)}>×</button></div>
           {/each}
         </div>
       {:else}<p class="seg-help">Aún no tiene. Una nota es algo tuyo (por ejemplo, cómo le quedó a Jeff). Un tip es algo que la mejora.</p>{/if}
@@ -271,6 +299,12 @@
       <button class="add" onclick={agregarNota}>+ Agregar</button>
     </section>
 
+    <section class="rc-sec" aria-labelledby="rc-h6">
+      <h4 id="rc-h6">Ideas con IA</h4>
+      <div class="ai-acts"><button class="ai-btn" onclick={tipsIA}>Tips para prepararla</button><button class="ai-btn" onclick={ingredientesIA}>Cambiar un ingrediente</button></div>
+      <p class="seg-help">Se envía a Anthropic: el nombre y los ingredientes de esta receta.</p>
+    </section>
+
     <button class="pr-btn" onclick={abrirAjustar}>
       <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" /><circle cx="15" cy="6" r="2" /><circle cx="9" cy="12" r="2" /><circle cx="17" cy="18" r="2" /></svg>
       <span><b>Ajustar a una referencia</b><small>Cambia el tamaño de una porción o algunos ingredientes</small></span>
@@ -281,7 +315,8 @@
   {/if}
 </div>
 
-{#if r && nav.hojaAbierta('rc-form')}<FormReceta receta={r} alGuardar={guardada} />{/if}
+{#if r && nav.hojaEnPila('rc-form')}<FormReceta receta={r} alGuardar={guardada} />{/if}
+<AnfitrionIA />
 
 {#if r && nav.hojaAbierta('rc-aj')}
   <Hoja titulo="Ajustar la receta">

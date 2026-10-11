@@ -9,7 +9,8 @@
   import { leerPerfiles, listarRecetas, menuDe, ponerEnMenu, ponerVariosEnMenu, quitarDelMenu, reponerMenu, sembrarRecetas } from './datos';
   import { eleccion, vista } from './estado.svelte';
   import { COLACION, colacionTxt } from './colacion';
-  import { COMIDAS_MENU, LETRA_DIA, NOMBRE_LUGAR, SEMANAS_ATRAS, cambiosRepetir, dinero, etiquetaFecha, fechasDeSemana, indexar, itemDecidir, itemTakeout, llave, nombreDia, numeroDia, platoTxt, puntoDe, rangoSemana, takeoutTxt, takeouts, tipoTxt, tituloSemana } from './semana';
+  import { AnfitrionIA, ideasDeMenu, pedirIA } from '../ia';
+  import { COMIDAS_MENU, LETRA_DIA, NOMBRE_LUGAR, SEMANAS_ATRAS, cambiosRepetir, dinero, etiquetaFecha, fechasDeSemana, indexar, itemDecidir, itemDos, itemTakeout, llave, nombreDia, numeroDia, platoTxt, puntoDe, rangoSemana, takeoutTxt, takeouts, tipoTxt, tituloSemana } from './semana';
 
   // Al llegar al menú ya no estás eligiendo receta.
   eleccion.actual = null;
@@ -87,6 +88,29 @@
   function verReceta(id?: string) {
     if (!id || !porId.has(id)) { avisos.mostrar('Esta comida no está en el recetario'); return; }
     nav.abrir('receta', { id });
+  }
+
+  // ---------- Ideas con IA (opcional) ----------
+  function ideasIA(l: LugarMenu) {
+    const fecha = sel, comida = NOMBRE_LUGAR[l], cat = ({ d: 'Desayuno', c: 'Comida', n: 'Cena' } as Record<string, string>)[l];
+    const candidatas = recetas.filter((r) => r.cat === cat);
+    if (!candidatas.length) { avisos.mostrar('No tienes recetas de este tipo en tu Recetario'); return; }
+    const usadas = new Set(items.flatMap((m) => (m.t === 'dos' || m.t === 'cada' ? [m.r, m.rl, m.rj] : [])).filter((x): x is string => !!x));
+    const nombresUsados = candidatas.filter((r) => usadas.has(r.id)).map((r) => r.n);
+    pedirIA({
+      fn: 'idea', titulo: 'Ayuda con IA', envia: 'los nombres de tus recetas y qué comidas están libres',
+      ejecutar: async (clave) => {
+        const ids = await ideasDeMenu(clave, comida, candidatas.map((r) => ({ id: r.id, n: r.n })), nombresUsados);
+        const rs = ids.map((i) => porId.get(i)).filter((r): r is Receta => !!r);
+        return {
+          intro: 'Ideas de tu Recetario para ' + comida.toLowerCase() + ' del ' + nombreDia(fecha).toLowerCase() + '. Las que no están en tu menú esta semana van primero.',
+          items: rs.sort((a, b) => Number(usadas.has(a.id)) - Number(usadas.has(b.id))).map((r) => ({
+            t: r.n, sub: usadas.has(r.id) ? 'Ya está en tu menú esta semana' : 'Aún no está en tu menú', act: 'Agregar al menú',
+            aplicar: () => cambiar([fecha], () => ponerEnMenu(itemDos(fecha, l, r)), r.n + ': ' + nombreDia(fecha).toLowerCase() + ', ' + comida.toLowerCase())
+          }))
+        };
+      }
+    });
   }
 
   // ---------- Por decidir, libre ----------
@@ -268,6 +292,7 @@
           <div class="ml-b">
             {@render pregunta(l)}
             {#if sel >= hoyIso}<button class="add" onclick={() => dejarDecidir(l)}>Dejar por decidir</button>{/if}
+            {#if sel >= hoyIso && l !== 'a' && l !== 'p'}<button class="ai-btn" onclick={() => ideasIA(l)}>Ideas con IA para {NOMBRE_LUGAR[l].toLowerCase()}</button>{/if}
           </div>
         {/if}
       </section>
@@ -495,3 +520,5 @@
     <button class="start" onclick={guardarTakeout}>Guardar</button>
   </Hoja>
 {/if}
+
+<AnfitrionIA />

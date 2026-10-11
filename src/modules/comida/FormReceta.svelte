@@ -5,9 +5,11 @@
   import { avisos } from '../../core/aviso.svelte';
   import { leerIngrediente, leerReceta, lineaIng, type Borrador } from './calculos';
   import { numerosVisibles } from './estado.svelte';
+  import { reducirFoto } from '../../core/imagen';
+  import { aBase64, AnfitrionIA, leerRecetaDeFoto, pedirIA } from '../ia';
 
   // Agregar o editar una receta. Pegar separa el texto en partes; siempre revisas antes de guardar.
-  // La pestaña Foto lee con IA y llega en la fase 8.
+  // La pestaña Foto lee con IA (opcional, con tu propia clave): siempre revisas antes de guardar.
   let { receta, alGuardar }: { receta: Receta | null; alGuardar: (r: Receta, nueva: boolean) => void } = $props();
 
   type Pestaña = 'foto' | 'pegar' | 'escribir';
@@ -17,6 +19,9 @@
   let pestaña = $state<Pestaña>(edita ? 'escribir' : 'pegar');
   let texto = $state('');
   let pegada = $state(false);
+  let leidaIA = $state(false);
+  let foto = $state<File | null>(null);
+  let fotoUrl = $state('');
   let nombre = $state(inicial?.n ?? '');
   let cat = $state<Receta['cat']>(inicial?.cat ?? 'Comida');
   let rinde = $state<string | number>(inicial ? String(inicial.y) : '');
@@ -38,6 +43,33 @@
   }
   const EJEMPLO = '# Enfrijoladas de pollo\nRinde: 4 porciones · 35 min\n\nIngredientes:\n- 400 g de pechuga de pollo cocida\n- 2 tazas de frijoles negros cocidos\n- 12 tortillas de maíz\n- 100 g de queso fresco\n- ½ cebolla\n- 1 chile chipotle\n\nPreparación:\n1. Licúa los frijoles con el chipotle y un poco de su caldo.\n2. Calienta la salsa en una olla.\n3. Pasa las tortillas por la salsa y rellénalas con el pollo.\n4. Sirve con el queso y la cebolla.\n\nPor porción: 500 kcal · proteína 45 g · carbohidratos 50 g · grasa 12 g';
 
+  function elegirFoto(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const f = input.files?.[0];
+    input.value = '';
+    if (!f) return;
+    if (fotoUrl) URL.revokeObjectURL(fotoUrl);
+    foto = f; fotoUrl = URL.createObjectURL(f);
+  }
+  function otraFoto() { if (fotoUrl) URL.revokeObjectURL(fotoUrl); foto = null; fotoUrl = ''; }
+  function leerConIA() {
+    const f = foto;
+    if (!f) return;
+    pedirIA({
+      fn: 'foto', titulo: 'Leer la receta', envia: 'la imagen de la receta',
+      manual: { texto: 'Pegar o escribir la receta', hacer: () => (pestaña = 'pegar') },
+      ejecutar: async (clave) => {
+        const b = await reducirFoto(f, 1600);
+        const tipo = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(b.type) ? b.type : 'image/jpeg';
+        const d = await leerRecetaDeFoto(clave, { tipo, base64: await aBase64(b) });
+        nombre = d.n; cat = d.cat; rinde = String(d.y); tiempo = d.t;
+        ing = d.ing.join('\n'); pasos = d.steps.join('\n');
+        nums = { k: txt(d.k), p: txt(d.p), c: txt(d.c), g: txt(d.g) };
+        leidaIA = true; pegada = false; pestaña = 'escribir';
+        return { intro: '', items: [], cerrar: true };
+      }
+    });
+  }
   function separar() {
     if (!texto.trim()) { document.getElementById('rs-text')?.focus(); avisos.mostrar('Pega una receta o usa el ejemplo'); return; }
     llenar(leerReceta(texto));
@@ -48,7 +80,7 @@
   function guardar() {
     const n = nombre.trim();
     if (!n) { document.getElementById('rs-name')?.focus(); avisos.mostrar('Escribe el nombre de la receta'); return; }
-    const base: Receta = inicial ? structuredClone($state.snapshot(inicial)) as Receta : { id: 'r' + Date.now(), n, cat, y: 1, t: '', src: pegada ? 'Pegada de tus documentos' : '', u1: '', k: null, p: null, c: null, g: null, ing: [], steps: [], sw: [] };
+    const base: Receta = inicial ? structuredClone($state.snapshot(inicial)) as Receta : { id: 'r' + Date.now(), n, cat, y: 1, t: '', src: leidaIA ? 'Leída con IA de una foto · revísala' : pegada ? 'Pegada de tus documentos' : '', u1: '', k: null, p: null, c: null, g: null, ing: [], steps: [], sw: [] };
     if (inicial) { base.img = inicial.img; base.page = inicial.page; }
     const nueva: Receta = {
       ...base, n, cat, y: Math.max(1, Math.round(num(rinde) || 1)), t: tiempo.trim(),
@@ -73,8 +105,17 @@
 
     {#if pestaña === 'foto'}
       <div class="man">
-        <p class="seg-help">Esta parte llega en la fase 8. Mientras, puedes pegar el texto de la receta o escribirla.</p>
-        <button class="start" onclick={() => (pestaña = 'pegar')}>Pegar la receta</button>
+        {#if !foto}
+          <div class="to-pick">
+            <label><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></svg>Tomar foto<input type="file" accept="image/*" capture="environment" onchange={elegirFoto} /></label>
+            <label><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3" /><circle cx="9" cy="10" r="2" /><path d="M21 16l-5-5-8 8" /></svg>Elegir de la galería<input type="file" accept="image/*" onchange={elegirFoto} /></label>
+          </div>
+        {:else}
+          <div class="rs-prev"><img src={fotoUrl} alt="Foto de tu receta" /><button class="link-btn" onclick={otraFoto}>Tomar otra foto</button></div>
+        {/if}
+        <p class="tool-note left">Toma la foto de una receta escrita: de tu libro, tus notas o una captura. La foto se envía a Anthropic para leerla, con tu clave de IA. La app separa el nombre, los ingredientes y los pasos. Antes de guardar, tú revisas todo.</p>
+        <button class="start" disabled={!foto} onclick={leerConIA}>Leer la receta</button>
+        <button class="ghost" onclick={() => (pestaña = 'pegar')}>Pegar o escribir la receta</button>
       </div>
     {:else if pestaña === 'pegar'}
       <div class="man">
@@ -86,7 +127,7 @@
       </div>
     {:else}
       <div class="man">
-        {#if pegada}<p class="rs-ok">Listo. Revisa cada parte y cambia lo que haga falta.</p>{/if}
+        {#if leidaIA}<p class="rs-ok" role="status">Leída con IA. Revisa cada parte y cambia lo que haga falta.</p>{:else if pegada}<p class="rs-ok">Listo. Revisa cada parte y cambia lo que haga falta.</p>{/if}
         <label for="rs-name">Nombre</label><input id="rs-name" type="text" placeholder="Ej. Tinga de pollo" bind:value={nombre} />
         <span class="sh-lbl">Tipo</span>
         <div class="m-chips" role="radiogroup" aria-label="Tipo de comida">
@@ -119,3 +160,4 @@
     {/if}
   </div>
 </Hoja>
+<AnfitrionIA />

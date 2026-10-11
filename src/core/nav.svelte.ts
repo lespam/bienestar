@@ -26,6 +26,8 @@ class Nav {
     return c?.tipo === 'hoja' ? c : null;
   }
   hojaAbierta(id: string) { return this.hoja?.id === id; }
+  /** La hoja está abierta, aunque haya otra encima (por ejemplo, la ayuda con IA sobre un formulario). */
+  hojaEnPila(id: string) { return this.pila.some((c) => c.tipo === 'hoja' && c.id === id); }
 
   private foco(): HTMLElement | null {
     return typeof document !== 'undefined' && document.activeElement instanceof HTMLElement ? document.activeElement : null;

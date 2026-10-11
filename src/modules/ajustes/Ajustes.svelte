@@ -1,5 +1,6 @@
 <script lang="ts">
   import Interruptor from '../../core/Interruptor.svelte';
+  import { AjustesIA } from '../ia';
   import Hoja from '../../core/Hoja.svelte';
   import { nav } from '../../core/nav.svelte';
   import { avisos } from '../../core/aviso.svelte';
@@ -102,9 +103,7 @@
     </div>
   </section>
 
-  <section class="tp-sec"><h4>Asistente con IA</h4>
-    <p class="tp-hint">Llega en la fase 8. Mientras, la app funciona igual sin IA.</p>
-  </section>
+  <AjustesIA />
 
   <section class="tp-sec"><h4>Respaldo</h4>
     <div class="group aj-g aj-bk">

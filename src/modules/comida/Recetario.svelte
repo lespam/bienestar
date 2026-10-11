@@ -114,4 +114,4 @@
   <p class="tool-note">Calorías y macros aproximados, por porción.</p>
 </div>
 
-{#if nav.hojaAbierta('rc-form')}<FormReceta receta={null} alGuardar={guardada} />{/if}
+{#if nav.hojaEnPila('rc-form')}<FormReceta receta={null} alGuardar={guardada} />{/if}

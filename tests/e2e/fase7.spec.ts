@@ -14,7 +14,7 @@ test('Mente: mensaje del día, colección con filtros, agregar, editar, quitar y
 
   // La letra de la prueba llegó del contenido personal y es una canción
   await page.getByRole('button', { name: /^Canciones · 1$/ }).click();
-  await expect(page.getByText('Letra de prueba')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Editar: Letra de prueba' })).toBeVisible();
   await page.getByRole('button', { name: /^Todo · /, }).click();
 
   // Otra frase: cambia o se queda en una frase de tu colección

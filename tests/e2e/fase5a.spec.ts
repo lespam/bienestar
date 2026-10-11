@@ -87,7 +87,7 @@ test('Recetario: pegar una receta, editarla y quitarla', async ({ page }) => {
   const hoja = page.getByRole('dialog', { name: 'Agregar receta' });
   await expect(hoja).toBeVisible();
   await hoja.getByRole('tab', { name: 'Foto' }).click();
-  await expect(hoja.getByText('Esta parte llega en la fase 8')).toBeVisible();
+  await expect(hoja.getByRole('button', { name: 'Leer la receta' })).toBeDisabled();
   await hoja.getByRole('tab', { name: 'Pegar' }).click();
   await revisarPantalla(page);
   await hoja.getByRole('button', { name: 'Usar una receta de ejemplo' }).click();

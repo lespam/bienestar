@@ -103,7 +103,7 @@ export interface AjusteCuerpo { k: string; v: unknown }
 /** Comida: un ingrediente. [cantidad, unidad, nombre, grupo de equivalentes]. La cantidad puede faltar ("al gusto"). */
 export type Ingrediente = [number | null, string, string, string?];
 /** Comida: una nota o un tip tuyo en una receta. */
-export interface NotaReceta { k: 'tip' | 'nota'; t: string }
+export interface NotaReceta { k: 'tip' | 'nota'; t: string; /** La sugirió la IA y la revisaste antes de guardarla. */ ia?: true }
 /** Comida: un cambio de ingredientes que acerca la receta a una referencia. */
 export interface CambioReceta { dir: string; t: string; d: { k?: number; p?: number; c?: number; g?: number }; add?: Ingrediente; set?: [string, number]; hecho?: boolean }
 /** Comida: una receta tuya. Las del archivo de contenido se copian una vez y desde ahí son tuyas. */

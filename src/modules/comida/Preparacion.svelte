@@ -4,6 +4,7 @@
   import { avisos } from '../../core/aviso.svelte';
   import { nav } from '../../core/nav.svelte';
   import { cap, fechaDe } from './calculos';
+  import { AnfitrionIA, ordenarPreparacion, pedirIA } from '../ia';
   import { guardarPrep, leerPrep } from './datos';
   import { cuandoTxt, diaTanda, estTxt, hechas, horaTxt, idTanda, minutosPendientes, preparoTxt, sumarDias, tandasDeSemana, ultimoDia } from './preparacion';
   import { fechasDeSemana, LETRA_DIA, numeroDia, etiquetaFecha, rangoSemana } from './semana';
@@ -60,6 +61,36 @@
     agregando = '';
     guardar();
     avisos.deshacer('Agregado a esta tanda', () => { t.items = t.items.filter((x) => x.t !== item.t); guardar(); });
+  }
+
+  // ---------- Ordenar con IA (opcional) ----------
+  const llaveItem = (i: ItemPrep) => i.t + '|' + i.f;
+  function ordenarIA() {
+    const t = tandas.find((x) => x.fecha >= hoy && x.items.filter((i) => !i.ok).length > 1);
+    if (!t) { avisos.mostrar('No hay nada más que ordenar por ahora'); return; }
+    const id = t.id, cuando = diaTanda(t.fecha, hoy).toLowerCase(), pend = t.items.filter((i) => !i.ok).map((i) => ({ t: i.t, f: i.f, m: i.m }));
+    pedirIA({
+      fn: 'prep', titulo: 'Ayuda con IA', envia: 'los nombres y tiempos de tus tandas',
+      ejecutar: async (clave) => {
+        const orden = (await ordenarPreparacion(clave, pend.map((i) => ({ t: i.t, m: i.m })))).map((n) => pend[n]);
+        return {
+          intro: 'Para la tanda de ' + cuando + ': empieza por lo que más tarda y deja lo rápido para el final.',
+          items: [{
+            t: orden.map((it, n) => (n + 1) + '. ' + it.t + (it.m ? ' (' + it.m + ' min)' : '')).join('  '), sub: 'Así lo largo se cocina mientras haces lo demás.', act: 'Usar este orden',
+            aplicar: () => {
+              const tt = todas.find((x) => x.id === id);
+              if (!tt) return;
+              const antes = $state.snapshot(todas) as Tanda[];
+              const hechasAntes = tt.items.filter((i) => i.ok), faltan = tt.items.filter((i) => !i.ok);
+              const colocadas = orden.map((o) => faltan.find((i) => llaveItem(i) === llaveItem(o as ItemPrep))).filter((i): i is ItemPrep => !!i);
+              tt.items = [...hechasAntes, ...colocadas, ...faltan.filter((i) => !colocadas.includes(i))];
+              guardar();
+              avisos.deshacer('Orden actualizado', () => { todas = antes; guardar(); });
+            }
+          }]
+        };
+      }
+    });
   }
 
   // ---------- Cuándo preparas ----------
@@ -153,6 +184,9 @@
       {/if}
     {/each}
   </div>
+  {#if tandas.some((x) => x.fecha >= hoy && x.items.filter((i) => !i.ok).length > 1)}
+    <button class="ghost" onclick={ordenarIA}>Ordenar mi preparación con IA</button>
+  {/if}
   <p class="tool-note">Si cambias el menú, el plan se actualiza. Los tiempos son aproximados.</p>
 </div>
 
@@ -172,3 +206,5 @@
     <button class="start" onclick={guardarCuando}>Guardar</button>
   </Hoja>
 {/if}
+
+<AnfitrionIA />

@@ -24,19 +24,19 @@ export const TIPS: Tip[] = [
 ];
 export const TIPS_AL_EMPEZAR = 6;
 
-export interface TipsGuardados { inicio: string | null; ok: string[]; mios: { id: string; t: string; ok: boolean }[] }
+export interface TipsGuardados { inicio: string | null; ok: string[]; mios: { id: string; t: string; ok: boolean; ia?: true }[] }
 export const tipsVacios = (): TipsGuardados => ({ inicio: null, ok: [], mios: [] });
 
 const dif = (a: string, b: string) => Math.round((new Date(+b.slice(0, 4), +b.slice(5, 7) - 1, +b.slice(8, 10)).getTime() - new Date(+a.slice(0, 4), +a.slice(5, 7) - 1, +a.slice(8, 10)).getTime()) / 864e5);
 
-export interface FilaTip { id: string; t: string; w: string; ok: boolean; mio?: boolean; nuevo?: boolean }
+export interface FilaTip { id: string; t: string; w: string; ok: boolean; mio?: boolean; nuevo?: boolean; ia?: true }
 /** Los tips que ya llegaron, con tus marcas. Primero los tuyos; el que llegó esta semana lleva «Nuevo». */
 export function tipsVisibles(g: TipsGuardados, hoy: string): FilaTip[] {
   const semanas = g.inicio ? Math.max(0, Math.floor(dif(g.inicio, hoy) / 7)) : 0;
   const n = Math.min(TIPS.length, TIPS_AL_EMPEZAR + semanas);
   const ok = new Set(g.ok);
   const base: FilaTip[] = TIPS.slice(0, n).map((x, i) => ({ ...x, ok: ok.has(x.id), nuevo: semanas > 0 && semanas <= TIPS.length - TIPS_AL_EMPEZAR && i === n - 1 && !ok.has(x.id) }));
-  const mios: FilaTip[] = g.mios.map((x) => ({ id: x.id, t: x.t, w: 'Lo agregaste tú.', ok: x.ok, mio: true }));
+  const mios: FilaTip[] = g.mios.map((x) => ({ id: x.id, t: x.t, w: x.ia ? 'Lo sugirió la IA y lo guardaste tú.' : 'Lo agregaste tú.', ok: x.ok, mio: true, ...(x.ia ? { ia: true as const } : {}) }));
   return [...mios, ...base];
 }
 
