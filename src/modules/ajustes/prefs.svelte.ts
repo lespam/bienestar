@@ -48,6 +48,13 @@ export async function guardar<K extends keyof Prefs>(k: K, v: Prefs[K]) {
   }
 }
 
+/** Otros módulos la llaman al guardar tu primer registro: pide guardar los datos de forma permanente. */
+export async function registroNuevo() {
+  if (prefs.primerRegistro != null) return;
+  await guardar('primerRegistro', Date.now());
+  await plataforma.pedirGuardado();
+}
+
 /** La tarjeta mensual: 30 días sin respaldo (o desde tu primer registro); "Ahora no" la esconde 7 días. */
 export function tocaRespaldo(p: Pick<Prefs, 'recordarRespaldo' | 'ultimoRespaldo' | 'primerRegistro' | 'respaldoOcultoHasta'>, ahora = Date.now()): boolean {
   if (!p.recordarRespaldo) return false;

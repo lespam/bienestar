@@ -2,6 +2,15 @@
   // Trazos copiados del mockup. Decorativos por defecto (aria-hidden); el botón lleva el nombre.
   const TRAZOS: Record<string, string> = {
     engrane: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    abajo: '<path d="M6 9l6 6 6-6"/>',
+    reloj: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    carita: '<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c1.8 2 5.2 2 7 0M9 9.5h.01M15 9.5h.01"/>',
+    trofeo: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/>',
+    fuego: '<path d="M12 3c2 3 5 5 5 9a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-8z"/>',
+    pulso: '<path d="M3 12h4l2-5 4 10 2-5h6"/>',
+    casa: '<path d="M3 11l9-7 9 7M5 10v10h14V10"/>',
+    play: '<path d="M6 4l14 8-14 8z"/>',
     rutina: '<path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/>',
     comida: '<path d="M4 11h16a8 8 0 0 1-16 0zM9 4v4M12 3v5M15 4v4"/>',
     cuerpo: '<circle cx="12" cy="5" r="2"/><path d="M5 9h14M12 9v6M8.5 21l3.5-6 3.5 6"/>',

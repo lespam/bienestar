@@ -33,3 +33,12 @@ export async function mensajeDelDia(hoy = new Date()): Promise<ItemColeccion | n
   await db.mensajes.put({ fecha, item: it.id! });
   return it;
 }
+
+/** Una frase al azar de tu Colección, para el descanso. */
+export async function fraseAlAzar(): Promise<{ texto: string; origen: string } | null> {
+  await sembrar();
+  const textos = (await db.coleccion.toArray()).filter((x) => x.tipo !== 'imagen' && x.texto);
+  if (!textos.length) return null;
+  const it = textos[Math.floor(Math.random() * textos.length)];
+  return { texto: it.texto, origen: it.origen };
+}

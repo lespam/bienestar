@@ -5,7 +5,7 @@ export default defineConfig({
   testDir: 'tests/e2e',
   fullyParallel: true,
   reporter: process.env.CI ? 'github' : 'list',
-  use: { baseURL: 'http://localhost:4173', serviceWorkers: 'block', locale: 'es-MX', acceptDownloads: true },
+  use: { baseURL: 'http://localhost:4173', serviceWorkers: 'block', locale: 'es-MX', acceptDownloads: true, launchOptions: { args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] } },
   webServer: { command: 'npm run build && npm run preview', url: 'http://localhost:4173', reuseExistingServer: !process.env.CI, timeout: 120_000 },
   projects: [
     { name: '412', use: { viewport: { width: 412, height: 915 } } },

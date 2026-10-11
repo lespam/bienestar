@@ -1,3 +1,4 @@
+import Dexie from 'dexie';
 import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
 import { db, FUERA_DEL_RESPALDO, CLAVES_PRIVADAS } from './db';
 import { iso, DIA_MS } from './fechas';
@@ -43,10 +44,10 @@ function ponerFotos(v: unknown, archivos: Record<string, Uint8Array>): unknown {
 }
 
 /** Todo lo tuyo en un ZIP, menos las copias internas y tu clave de IA. */
-export async function crearZip(ahora = new Date()): Promise<Uint8Array> {
+export async function crearZip(ahora = new Date(), base: Dexie = db): Promise<Uint8Array> {
   const tablas: Record<string, Fila[]> = {};
   const fotos: Record<string, Uint8Array> = {};
-  for (const t of db.tables) {
+  for (const t of base.tables) {
     if (FUERA_DEL_RESPALDO.has(t.name)) continue;
     let filas = (await t.toArray()) as Fila[];
     if (t.name === 'ajustes') filas = filas.filter((f) => !CLAVES_PRIVADAS.has(String(f.k)));
@@ -127,4 +128,24 @@ export async function importarZip(bytes: Uint8Array): Promise<ResultadoImportar>
   const copia = await guardarCopia('importar');
   await reemplazar(l.datos, l.archivos);
   return { ok: true, copia };
+}
+
+/**
+ * Antes de que la base cambie de estructura (por ejemplo al llegar Entrenamiento), guarda una copia interna
+ * de lo que ya tienes, para "Volver a mis datos anteriores" (plan, punto 2b). Debe correr antes de abrir la base de la app.
+ */
+export async function copiaAntesDeActualizar(nombre = 'bienestar', versionNueva = 2, ahora = Date.now()): Promise<boolean> {
+  if (!(await Dexie.exists(nombre))) return false;
+  const vieja = new Dexie(nombre);
+  try {
+    await vieja.open();
+    if (vieja.verno >= versionNueva || !vieja.tables.some((t) => t.name === 'copias')) return false;
+    const zip = await crearZip(new Date(ahora), vieja);
+    await vieja.table('copias').add({ fecha: ahora, motivo: 'actualizar', datos: new Blob([zip as BlobPart], { type: 'application/zip' }) });
+    return true;
+  } catch {
+    return false;
+  } finally {
+    vieja.close();
+  }
 }

@@ -62,26 +62,27 @@ const unilateral = (registro: CampoReg[]) => registro.some((c) => /Izq$/.test(c)
 const KG = 0.45359237;
 const enKg = (peso: number, unidad: string) => (unidad === 'lb' ? peso * KG : peso);
 const num = (x: number | null | undefined) => (typeof x === 'number' && Number.isFinite(x) ? x : null);
-const lista = (xs: (number | null)[]) => xs.map((x) => (x == null ? '–' : x)).join(', ');
+const TAPA = '•••';
+const lista = (xs: (number | null)[], ocultar = false) => xs.map((x) => (x == null ? '–' : ocultar ? TAPA : x)).join(', ');
 
 /** "Peso corporal · 20, 18, 16 reps" o "15 lb · izq 10, 10, 9 · der 10, 9, 9 reps". */
-export function textoSeries(registro: CampoReg[], series: Pick<Serie, 'v' | 'unidad' | 'n'>[]): string {
+export function textoSeries(registro: CampoReg[], series: Pick<Serie, 'v' | 'unidad' | 'n'>[], ocultar = false): string {
   const orden = [...series].sort((a, b) => a.n - b.n);
   if (!orden.length) return '';
   const mt = metricaDe(registro), partes: string[] = [];
   if (registro.includes('peso')) {
     const pesos = orden.map((s) => num(s.v.peso) ?? 0), u = orden[0].unidad;
-    partes.push(pesos.every((p) => p === pesos[0]) ? (pesos[0] > 0 ? `${pesos[0]} ${u}` : 'Peso corporal') : lista(pesos) + ' ' + u);
+    partes.push(pesos.every((p) => p === pesos[0]) ? (pesos[0] > 0 ? `${ocultar ? TAPA : pesos[0]} ${u}` : 'Peso corporal') : lista(pesos, ocultar) + ' ' + u);
   }
   if (unilateral(registro)) {
-    partes.push('izq ' + lista(orden.map((s) => num(s.v[mt.izq]))));
-    partes.push('der ' + lista(orden.map((s) => num(s.v[mt.der]))) + ' ' + UNIDAD_METRICA[mt.m]);
-  } else partes.push(lista(orden.map((s) => num(s.v[mt.uno]))) + ' ' + UNIDAD_METRICA[mt.m]);
+    partes.push('izq ' + lista(orden.map((s) => num(s.v[mt.izq])), ocultar));
+    partes.push('der ' + lista(orden.map((s) => num(s.v[mt.der])), ocultar) + ' ' + UNIDAD_METRICA[mt.m]);
+  } else partes.push(lista(orden.map((s) => num(s.v[mt.uno])), ocultar) + ' ' + UNIDAD_METRICA[mt.m]);
   return partes.join(' · ');
 }
 
 // ---------- Récord ----------
-interface Marca { peso: number; valor: number; texto: string; lado?: 'izq' | 'der' }
+export interface Marca { peso: number; valor: number; texto: string; tapado: string; lado?: 'izq' | 'der' }
 /** La mejor serie: primero el peso y luego las repeticiones, los segundos o los pasos. */
 export function mejorMarca(registro: CampoReg[], series: Pick<Serie, 'v' | 'unidad'>[]): Marca | null {
   const mt = metricaDe(registro), uni = unilateral(registro), conPeso = registro.includes('peso');
@@ -93,7 +94,8 @@ export function mejorMarca(registro: CampoReg[], series: Pick<Serie, 'v' | 'unid
       if (v == null || v <= 0) continue;
       const k = enKg(peso, s.unidad);
       if (!mejor || k > mejor.peso || (k === mejor.peso && v > mejor.valor)) {
-        mejor = { peso: k, valor: v, lado, texto: (peso > 0 ? `${peso} ${s.unidad} × ` : '') + `${v} ${UNIDAD_METRICA[mt.m]}` };
+        const u = UNIDAD_METRICA[mt.m];
+        mejor = { peso: k, valor: v, lado, texto: (peso > 0 ? `${peso} ${s.unidad} × ` : '') + `${v} ${u}`, tapado: (peso > 0 ? `${TAPA} ${s.unidad} × ` : '') + `${TAPA} ${u}` };
       }
     }
   }

@@ -6,10 +6,12 @@ import App from './App.svelte';
 import { nav } from './core/nav.svelte';
 import { avisos } from './core/aviso.svelte';
 import { plataforma } from './core/plataforma.svelte';
-import { limpiarCopias } from './core/respaldo';
+import { copiaAntesDeActualizar, limpiarCopias } from './core/respaldo';
 import { cargarPrefs } from './modules/ajustes';
 
 async function iniciar() {
+  // Antes de abrir la base: si va a cambiar de estructura, guarda una copia interna de lo que ya tienes.
+  await copiaAntesDeActualizar();
   await cargarPrefs();
   await limpiarCopias();
   plataforma.revisarGuardado();

@@ -9,7 +9,8 @@ export function contenidoDePrueba(): Buffer {
       alcance: 'calentamientos y semanas 1-2',
       semanas: [{ desde: 1, hasta: 2, rutinas: ['A', 'B', 'C'] }],
       rutinas: { A: { pagina: 1, grupos: [{ tipo: 'superserie', ejercicios: [{ codigo: 'A1', clave: 'a', series: 3, rango: '10-20' }, { codigo: 'A2', clave: 'b', series: 3, rango: '8-12' }] }, { tipo: 'suelto', ejercicios: [{ codigo: '', clave: 'c', series: 1, rango: '10' }] }] } },
-      ejercicios: { a: { nombre: 'Ejercicio A', pagina: 1, registro: ['reps'], gym: false }, b: { nombre: 'Ejercicio B', pagina: 2, registro: ['reps'], gym: true }, c: { nombre: 'Ejercicio C', pagina: 3, registro: ['seg'], gym: false } }
+      ejercicios: { a: { nombre: 'Ejercicio A', pagina: 1, registro: ['peso', 'reps'], gym: false, anim: 'a-glute-bridge' }, b: { nombre: 'Ejercicio B', pagina: 2, registro: ['peso', 'repsIzq', 'repsDer'], gym: true, anim: 'b-front-lat-pulldown' }, c: { nombre: 'Ejercicio C', pagina: 3, registro: ['seg'], gym: false, anim: 'a-front-plank' } },
+      calentamientos: [{ para: ['A'], paginas: '80-81', bloques: [{ nombre: 'Bloque uno', elementos: [{ nombre: 'Elemento 1', pagina: 10 }, { nombre: 'Elemento 2', pagina: 11 }] }, { nombre: 'Bloque dos', elementos: [{ nombre: 'Elemento 3', pagina: 12 }] }] }]
     },
     recetas: { recetas: [{ id: 'r1' }, { id: 'r2' }] },
     intercambios: {},
@@ -42,7 +43,9 @@ export async function revisarPantalla(page: Page) {
     const vis = (e: Element) => { const b = e.getBoundingClientRect(); return b.width > 0 && b.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
     const anchos = [document.documentElement, ...document.querySelectorAll('.screen')].filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.className || e.tagName);
     const chicos = [...document.querySelectorAll('button, a[href], [role="switch"], input')].filter(vis).filter((e) => {
-      const b = e.getBoundingClientRect(); return b.height < 44 || b.width < 44;
+      // Una casilla se toca por su fila completa (la etiqueta), así que se mide la etiqueta.
+      const hit = e instanceof HTMLInputElement && (e.type === 'checkbox' || e.type === 'radio') ? e.closest('label') ?? e : e;
+      const b = hit.getBoundingClientRect(); return b.height < 44 || b.width < 44;
     }).map((e) => (e.textContent || e.getAttribute('aria-label') || e.tagName).trim().slice(0, 30));
     const letra = [...document.querySelectorAll('body *')].filter(vis).filter((e) => [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent!.trim()))
       .filter((e) => !e.closest('.sr') && parseFloat(getComputedStyle(e).fontSize) < 12).map((e) => e.textContent!.trim().slice(0, 30));
@@ -54,4 +57,16 @@ export async function revisarPantalla(page: Page) {
   const axe = await new AxeBuilder({ page: page as never }).analyze();
   const graves = axe.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
   expect(graves.map((v) => v.id + ': ' + v.nodes.map((n) => n.target.join(' ')).join(', ')), 'accesibilidad').toEqual([]);
+}
+
+/** Carga el contenido de prueba desde la bienvenida y llega a Inicio. */
+export async function entrarConContenido(page: Page) {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Continuar' }).click();
+  const elegir = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Elegir archivo' }).click();
+  await (await elegir).setFiles({ name: 'contenido.zip', mimeType: 'application/zip', buffer: contenidoDePrueba() });
+  await expect(page.getByText('Listo. Ya está en tu teléfono:')).toBeVisible();
+  await page.getByRole('button', { name: 'Ir a Inicio' }).click();
+  await expect(page.getByRole('heading', { name: 'Rutina A' })).toBeVisible();
 }

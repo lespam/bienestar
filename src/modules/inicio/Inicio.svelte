@@ -5,18 +5,18 @@
   import { plataforma } from '../../core/plataforma.svelte';
   import { fechaLarga, saludo } from '../../core/fechas';
   import { prefs, tocaRespaldo, ahoraNoRespaldo, enlaceObsidian, hacerRespaldo, elegirContenido } from '../ajustes';
-  import { rutinaDeHoy } from '../entreno';
+  import { resumenDeHoy, empezarHoy, terminarHoy } from '../entreno';
   import { mensajeDelDia } from '../mente';
 
   // Inicio solo lee: Entreno, Mente y Ajustes por su puerta (plan, punto 1).
   const hoy = new Date();
-  let rutina = $state<Awaited<ReturnType<typeof rutinaDeHoy>>>(null);
+  let rutina = $state<Awaited<ReturnType<typeof resumenDeHoy>>>(null);
   let listo = $state(false);
   let mensaje = $state<{ texto: string; mensaje?: string } | null>(null);
   let cargando = $state(false);
 
   async function leer() {
-    rutina = await rutinaDeHoy();
+    rutina = await resumenDeHoy(hoy);
     mensaje = await mensajeDelDia(hoy);
     listo = true;
   }
@@ -36,6 +36,20 @@
     const t = await hacerRespaldo();
     if (t) avisos.mostrar(t);
   }
+  async function empezar() {
+    const id = await empezarHoy();
+    if (id == null) return;
+    nav.irTab('rutina');
+    nav.abrir('curso');
+  }
+  function seguir() { nav.irTab('rutina'); nav.abrir('curso'); }
+  async function terminarAsi() {
+    if (rutina?.sesion == null) return;
+    await terminarHoy(rutina.sesion);
+    nav.irTab('rutina');
+    nav.abrir('fin', { sesion: rutina.sesion });
+  }
+  function resumen() { nav.irTab('rutina'); nav.abrir('fin', { sesion: rutina?.sesion }); }
   function pronto(titulo: string, fase: number) { nav.abrir('pronto', { titulo, fase }); }
 </script>
 
@@ -55,10 +69,24 @@
   {#if listo}
     <section class="in-main" aria-label="Lo principal de hoy">
       {#if rutina}
-        <div class="im-eye"><span>Hoy</span></div>
-        <h3>Rutina {rutina.letra}</h3>
-        <p class="im-sub">{rutina.ejercicios} ejercicios · {rutina.enGym ? rutina.enGym + ' en el gym' : 'todos en casa'}</p>
-        <button class="start" onclick={() => nav.irTab('rutina')}>Empezar Rutina {rutina.letra}</button>
+        {#if rutina.estado === 'abierta'}
+          <div class="im-eye"><span>Sesión abierta</span></div>
+          <h3>Rutina {rutina.letra}</h3>
+          <p class="im-sub">Llevas {rutina.empezados} de {rutina.ejercicios} ejercicios. Lo que hiciste ya está guardado.</p>
+          <div class="im-bar" aria-hidden="true">{#each [...Array(rutina.ejercicios).keys()] as i (i)}<i class:on={i < rutina.empezados}></i>{/each}</div>
+          <div class="im-two"><button class="im-go" onclick={seguir}>Seguir</button><button class="im-end" onclick={terminarAsi}>Terminar así</button></div>
+        {:else if rutina.estado === 'hecha'}
+          <div class="im-eye"><span>Hoy</span></div>
+          <h3>Rutina {rutina.letra} guardada</h3>
+          <p class="im-sub">{rutina.empezados >= rutina.ejercicios ? `Hiciste los ${rutina.ejercicios} ejercicios.` : `Hiciste ${rutina.empezados} ${rutina.empezados === 1 ? 'ejercicio' : 'ejercicios'}. Cuenta como sesión.`}</p>
+          <button class="ghost" onclick={resumen}>Ver resumen</button>
+        {:else}
+          <div class="im-eye"><span>Hoy</span>{#if rutina.cuando}<span>{rutina.cuando}</span>{/if}</div>
+          <h3>Rutina {rutina.letra}</h3>
+          <p class="im-sub">{rutina.ejercicios} ejercicios · {rutina.enGym ? rutina.enGym + ' en el gym' : 'todos en casa'}</p>
+          {#if rutina.mejor}<p class="feel"><Icono nombre="carita" /><span>Las últimas 3 veces terminaste sintiéndote mejor.</span></p>{/if}
+          <button class="start" onclick={empezar}>Empezar Rutina {rutina.letra}</button>
+        {/if}
       {:else}
         <div class="im-eye"><span>Para empezar</span></div>
         <h3>Carga tu contenido personal</h3>

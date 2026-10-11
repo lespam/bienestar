@@ -79,3 +79,40 @@ describe('dónde quedaste', () => {
     expect(t).not.toMatch(/fall|mal|culp|debes/i);
   });
 });
+
+import { armarSemana, letraQueToca, lineaCuando, proximasLetras, semanaDelPrograma, ultimasMejor, DIAS_INICIALES } from '../../src/modules/entreno/semana';
+import type { Programa } from '../../src/modules/entreno/programa';
+
+const prog = { alcance: '', semanas: [{ desde: 1, hasta: 2, rutinas: ['A', 'B', 'C'] }], rutinas: { A: { pagina: 1, grupos: [] }, B: { pagina: 2, grupos: [] }, C: { pagina: 3, grupos: [] } }, ejercicios: {} } as unknown as Programa;
+
+describe('qué toca y la semana', () => {
+  it('sigue el ciclo A, B, C después de la última', () => {
+    expect(letraQueToca(prog, [])).toBe('A');
+    expect(letraQueToca(prog, [{ tipo: 'rutina', rutina: 'A', inicio: 1 }])).toBe('B');
+    expect(letraQueToca(prog, [{ tipo: 'rutina', rutina: 'C', inicio: 5 }, { tipo: 'rutina', rutina: 'A', inicio: 1 }])).toBe('A');
+    expect(proximasLetras(prog, 'C', 3)).toEqual(['C', 'A', 'B']);
+  });
+  it('semana del programa cuenta desde la primera sesión', () => {
+    expect(semanaDelPrograma([])).toBe(1);
+    expect(semanaDelPrograma([{ inicio: 0 }], 8 * 86_400_000)).toBe(2);
+  });
+  it('arma de lunes a domingo con hechas, hoy y las que siguen', () => {
+    const hoy = new Date(2026, 9, 1); // jueves 1 de octubre
+    const s = armarSemana(hoy, [{ fecha: '2026-09-28', tipo: 'rutina', rutina: 'A', abierta: 0 }, { fecha: '2026-09-29', tipo: 'rutina', rutina: 'B', abierta: 0 }], ['C', 'A', 'B'], DIAS_INICIALES);
+    expect(s.map((d) => d.num)).toEqual([28, 29, 30, 1, 2, 3, 4]);
+    expect(s.map((d) => d.estado)).toEqual(['hecha', 'hecha', 'libre', 'hoy', 'luego', 'luego', 'libre']);
+    expect(s[3].ses).toBe('C');
+    expect(s[4].ses).toBe('A');
+  });
+  it('la línea de cuándo y dónde', () => {
+    const c = { dias: DIAS_INICIALES, hora: '19:00', lugar: 'en la sala' };
+    expect(lineaCuando(c, new Date(2026, 9, 1))).toBe('Hoy a las 7 pm, en la sala');
+    expect(lineaCuando(c, new Date(2026, 9, 4))).toBe('Hoy no tienes hora planeada');
+  });
+  it('el mensaje de "mejor" solo sale con tres sesiones seguidas', () => {
+    const m = (i: number, sintio: 'mejor' | 'igual') => ({ inicio: i, abierta: 0 as const, sintio });
+    expect(ultimasMejor([m(1, 'mejor'), m(2, 'mejor')])).toBe(false);
+    expect(ultimasMejor([m(1, 'mejor'), m(2, 'mejor'), m(3, 'mejor')])).toBe(true);
+    expect(ultimasMejor([m(1, 'mejor'), m(2, 'igual'), m(3, 'mejor')])).toBe(false);
+  });
+});

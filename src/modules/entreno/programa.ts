@@ -44,13 +44,21 @@ export function semanaDelPrograma(p: Programa, semana: number) {
   return { semana, usada: p.semanas.find((s) => semana >= s.desde && semana <= s.hasta) ?? p.semanas[p.semanas.length - 1], pasada: semana > hasta };
 }
 
-/** La rutina que toca. Se reemplaza por la lógica con sesiones más adelante en la fase 2. */
-export async function rutinaDeHoy(): Promise<{ letra: string; ejercicios: number; enGym: number } | null> {
-  const p = await programa();
-  if (!p) return null;
-  const letra = p.semanas[0]?.rutinas[0];
-  const r = letra ? p.rutinas[letra] : null;
-  if (!r) return null;
-  const todos = r.grupos.flatMap((g) => g.ejercicios);
-  return { letra, ejercicios: todos.length, enGym: todos.filter((e) => p.ejercicios[e.clave]?.gym).length };
+/** Dónde aparece un ejercicio en las rutinas: letra, código, series y rango. */
+export function buscarEjercicio(p: Programa, clave: string): { letra: Letra; item: ItemRutina; ejercicio: Ejercicio } | null {
+  for (const letra of Object.keys(p.rutinas) as Letra[]) {
+    for (const g of p.rutinas[letra].grupos) {
+      const item = g.ejercicios.find((e) => e.clave === clave);
+      if (item && p.ejercicios[clave]) return { letra, item, ejercicio: { ...item, ...p.ejercicios[clave] } };
+    }
+  }
+  return null;
+}
+
+/** Solo links web. Agrega https:// si falta y descarta cualquier otro esquema. */
+export function enlaceSeguro(u: string): string | null {
+  const t = u.trim();
+  if (!t) return null;
+  const con = /^[a-z][a-z0-9+.-]*:/i.test(t) ? t : 'https://' + t;
+  try { const x = new URL(con); return x.protocol === 'https:' || x.protocol === 'http:' ? x.href : null; } catch { return null; }
 }

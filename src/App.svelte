@@ -7,9 +7,13 @@
   import { plataforma } from './core/plataforma.svelte';
   import { prefs, Ajustes, Bienvenida } from './modules/ajustes';
   import { Inicio } from './modules/inicio';
+  import { Rutina, Curso, Ficha, Descanso, Calentar, RegistroPR, Fin } from './modules/entreno';
 
   const TABS: [Tab, string][] = [['inicio', 'Inicio'], ['rutina', 'Rutina'], ['comida', 'Comida'], ['cuerpo', 'Cuerpo']];
-  const FASE: Record<string, number> = { rutina: 2, comida: 5, cuerpo: 4 };
+  const FASE: Record<string, number> = { comida: 5, cuerpo: 4 };
+  // Pantallas de la sesión: ocupan todo el teléfono, sin la barra de abajo (como en el mockup).
+  const SIN_BARRA = new Set(['curso', 'ficha', 'descanso', 'calentar', 'pr', 'fin']);
+  const PANTALLAS: Record<string, () => Promise<{ default: unknown }>> = { ajustes: Ajustes, curso: Curso, ficha: Ficha, descanso: Descanso, calentar: Calentar, pr: RegistroPR, fin: Fin };
   const pantalla = $derived(nav.pantalla);
   const enBienvenida = $derived(!prefs.bienvenida);
 
@@ -36,20 +40,24 @@
     {:else}
       {#if pantalla}
         <section class="view">
-          {#if pantalla.id === 'ajustes'}
-            <Perezoso cargar={Ajustes} />
+          {#if PANTALLAS[pantalla.id]}
+            {#key pantalla}<Perezoso cargar={PANTALLAS[pantalla.id] as never} />{/key}
           {:else}
             <header class="cur-head"><button class="back" onclick={() => nav.cerrar()}>‹ Volver</button></header>
             <div class="screen"><Pronto titulo={String(pantalla.datos?.titulo ?? '')} fase={Number(pantalla.datos?.fase ?? 0)} /></div>
           {/if}
-          <nav class="nav" aria-label="Secciones">
-            {#each TABS as [t, n] (t)}<button class:on={nav.tab === t} aria-current={nav.tab === t ? 'page' : undefined} onclick={() => nav.irTab(t)}>{n}</button>{/each}
-          </nav>
+          {#if !SIN_BARRA.has(pantalla.id)}
+            <nav class="nav" aria-label="Secciones">
+              {#each TABS as [t, n] (t)}<button class:on={nav.tab === t} aria-current={nav.tab === t ? 'page' : undefined} onclick={() => nav.irTab(t)}>{n}</button>{/each}
+            </nav>
+          {/if}
         </section>
       {:else}
         <section class="view">
           {#if nav.tab === 'inicio'}
             <Perezoso cargar={Inicio} />
+          {:else if nav.tab === 'rutina'}
+            <Perezoso cargar={Rutina} />
           {:else}
             <div class="screen"><Pronto titulo={TABS.find((x) => x[0] === nav.tab)![1]} fase={FASE[nav.tab]} /></div>
           {/if}
