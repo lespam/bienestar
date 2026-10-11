@@ -1,6 +1,7 @@
 import { db, type Alimento, type ItemMenu, type PerfilComida, type Receta } from '../../core/db';
 import { parte } from '../../core/contenido';
 import { registroNuevo } from '../ajustes';
+import { comprasVacias, type EstadoCompras } from './compras';
 
 // Comida es la única dueña de recetas y perfiles. Las recetas del archivo de contenido se copian una vez
 // a tu tabla y desde ahí son tuyas: si quitas una, no vuelve; si el archivo trae nuevas, solo se agregan esas.
@@ -85,3 +86,14 @@ export async function reponerMenu(fechas: string[], filas: ItemMenu[]) {
   });
 }
 export const itemDeMenu = (fecha: string, lugar: ItemMenu['lugar']) => db.menu.get([fecha, lugar]);
+
+// ---------- Lista de compras ----------
+// Lo que marcas y lo que agregas se guarda por semana, con el lunes como llave.
+export async function leerCompras(lunes: string): Promise<EstadoCompras> {
+  const fila = await db.comida.get('compras:' + lunes);
+  return { ...comprasVacias(), ...((fila?.v as Partial<EstadoCompras> | undefined) ?? {}) };
+}
+export async function guardarCompras(lunes: string, e: EstadoCompras) {
+  await db.comida.put({ k: 'compras:' + lunes, v: limpio(e) });
+  await registroNuevo();
+}
