@@ -383,6 +383,7 @@
   <h4 class="mn-after">{pasadaVista ? 'De esa semana' : 'Después de planear'}</h4>
   <div class="mn-acts">
     <button class="ghost" onclick={() => nav.abrir('compras', { k })}>Lista de compras</button>
+    <button class="ghost" onclick={() => nav.abrir('prep', { k })}>Plan de preparación</button>
   </div>
   {#if !pasadaVista}<p class="tool-note">Las porciones salen de los perfiles de cada quien. Puedes cambiarlas en cualquier comida.</p>{/if}
 </div>

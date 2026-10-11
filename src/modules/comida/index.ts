@@ -5,3 +5,5 @@ export const Receta = () => import('./Receta.svelte');
 export const Perfiles = () => import('./Perfiles.svelte');
 export const Menu = () => import('./Menu.svelte');
 export const Compras = () => import('./Compras.svelte');
+export const Preparacion = () => import('./Preparacion.svelte');
+export const Tips = () => import('./Tips.svelte');

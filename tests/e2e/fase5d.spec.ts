@@ -98,3 +98,108 @@ test('Lista de compras: se arma del menú, va a la tienda correcta, se marca y s
   await revisarPantalla(page);
   expect(errores).toEqual([]);
 });
+
+test('Plan de preparación: sale del menú, se marca, se agrega y se cambia la hora', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+
+  // La tinga para hoy pide una tanda de preparación hoy
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Recetario' }).click();
+  await page.getByRole('button', { name: /Tinga de pollo/ }).click();
+  await page.getByRole('button', { name: 'Agregar al menú' }).click();
+  await page.getByRole('dialog', { name: 'Agregar al menú' }).getByRole('button', { name: 'Agregar', exact: true }).click();
+  await expect(page.getByText(/^Agregado al menú: /)).toBeVisible();
+  await page.waitForTimeout(500);
+  await page.getByRole('button', { name: 'Volver' }).click();
+  await page.getByRole('button', { name: 'Volver' }).click();
+
+  const hoy = page.locator('.pt');
+  await expect(hoy.getByText('Preparación · 8 pm')).toBeVisible();
+  await expect(hoy.getByText('Preparar tinga de pollo')).toBeVisible();
+  await revisarPantalla(page);
+  await hoy.getByRole('button', { name: 'Ver', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Plan de preparación', level: 2 })).toBeVisible();
+  await expect(page.getByText('Para la comida del', { exact: false })).toBeVisible();
+  await expect(page.getByText('0 de 1 listas · unos 20 min')).toBeVisible();
+  await expect(page.getByText('Hoy a las 8 pm')).toBeVisible();
+  await revisarPantalla(page);
+
+  // Marcar
+  await page.getByRole('checkbox', { name: /Preparar tinga de pollo/ }).check();
+  await expect(page.getByText('Esta semana ya preparaste 1 cosa.')).toBeVisible();
+  await expect(page.locator('.pp-t .tag.f')).toHaveText('Lista');
+  await page.waitForTimeout(400);
+
+  // Agregar algo a la tanda
+  await page.getByRole('button', { name: '+ Agregar algo' }).click();
+  await page.getByRole('textbox', { name: 'Agregar algo a esta tanda' }).fill('lavar la lechuga');
+  await page.getByRole('button', { name: 'Agregar', exact: true }).click();
+  await expect(page.getByText('Lavar la lechuga')).toBeVisible();
+  await expect(page.getByText('1 de 2 listas · unos')).toHaveCount(0);
+
+  // Cambiar la hora (la tinga ya está hecha y lo que queda es tuyo, así que otros días sirven)
+  await page.getByRole('button', { name: 'Cambiar cuándo preparas esta tanda' }).click();
+  const hoja = page.getByRole('dialog', { name: 'Cuándo preparas' });
+  await expect(hoja.getByText('La app no puede avisarte a una hora exacta.')).toBeVisible();
+  await expect(hoja.getByRole('radio', { checked: true })).toBeEnabled();
+  await expect(hoja.getByRole('radio').nth(1)).toBeEnabled();
+  await hoja.getByLabel('Hora').fill('18:30');
+  await revisarPantalla(page);
+  await hoja.getByRole('button', { name: 'Guardar' }).dispatchEvent('click');
+  await expect(page.getByText('Hoy a las 6:30 pm').first()).toBeVisible();
+
+  // Se queda al volver a abrir
+  await page.waitForTimeout(400);
+  await page.reload();
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await expect(page.locator('.pt').getByText('Preparación · 6:30 pm')).toBeVisible();
+  await expect(page.locator('.pt').getByText('Lavar la lechuga')).toBeVisible();
+  expect(errores).toEqual([]);
+});
+
+test('Tips y combinaciones: marcar, agregar uno tuyo y ver recetas que ya usan la combinación', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Tips', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Tips y combinaciones', level: 2 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Por probar · 6' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Ya los practicas · 0' })).toBeVisible();
+  await expect(page.getByText('Aquí aparecen los que marques.')).toBeVisible();
+  await revisarPantalla(page);
+
+  await page.getByRole('checkbox', { name: /Deja agua a la vista/ }).check();
+  await expect(page.getByRole('heading', { name: 'Por probar · 5' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Ya los practicas · 1' })).toBeVisible();
+  await expect(page.getByText('Movido a «Ya los practicas»')).toBeVisible();
+  await page.getByRole('button', { name: 'Deshacer' }).click();
+  await expect(page.getByRole('heading', { name: 'Por probar · 6' })).toBeVisible();
+  await page.getByRole('checkbox', { name: /Deja agua a la vista/ }).check();
+
+  await page.getByRole('button', { name: '+ Agregar un tip' }).click();
+  await page.getByRole('textbox', { name: 'Escribe tu tip' }).fill('lavar la fruta al llegar');
+  await page.getByRole('button', { name: 'Agregar', exact: true }).click();
+  await expect(page.getByText('Lavar la fruta al llegar')).toBeVisible();
+  await expect(page.locator('.tag.t', { hasText: 'Tuyo' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Por probar · 6' })).toBeVisible();
+  await page.waitForTimeout(400);
+  await page.reload();
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Tips', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Ya los practicas · 1' })).toBeVisible();
+  await expect(page.getByText('Lavar la fruta al llegar')).toBeVisible();
+
+  // Combinaciones: la tinga lleva jitomate y aceite
+  await page.getByRole('tab', { name: 'Combinaciones' }).click();
+  await expect(page.getByRole('heading', { name: 'Verduras + un poco de aceite' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Arroz + frijoles' })).toBeVisible();
+  const card = page.locator('.cb-card', { hasText: 'Verduras + un poco de aceite' });
+  await expect(card.getByText('En tu menú esta semana')).toHaveCount(0);
+  await revisarPantalla(page);
+  await card.getByRole('button', { name: /Tinga de pollo/ }).click();
+  await expect(page.getByRole('heading', { name: 'Tinga de pollo' }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Volver' }).click();
+  await expect(page.getByRole('heading', { name: 'Tips y combinaciones', level: 2 })).toBeVisible();
+  expect(errores).toEqual([]);
+});

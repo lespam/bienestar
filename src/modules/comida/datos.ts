@@ -1,7 +1,10 @@
-import { db, type Alimento, type ItemMenu, type PerfilComida, type Receta } from '../../core/db';
+import { db, type Alimento, type ItemMenu, type PerfilComida, type Receta, type Tanda } from '../../core/db';
 import { parte } from '../../core/contenido';
 import { registroNuevo } from '../ajustes';
 import { comprasVacias, type EstadoCompras } from './compras';
+import { sincronizar } from './preparacion';
+import { tipsVacios, type TipsGuardados } from './tips';
+import { fechaDe } from './calculos';
 
 // Comida es la única dueña de recetas y perfiles. Las recetas del archivo de contenido se copian una vez
 // a tu tabla y desde ahí son tuyas: si quitas una, no vuelve; si el archivo trae nuevas, solo se agregan esas.
@@ -71,11 +74,12 @@ export async function ultimosRegistrados(limite = 60): Promise<Alimento[]> {
 // ---------- Menú ----------
 export const menuDe = (fechas: string[]) => db.menu.where('fecha').anyOf(fechas).toArray();
 const sinTicket = (m: ItemMenu) => ({ ...limpio({ ...m, ticket: undefined }), ...(m.ticket ? { ticket: m.ticket } : {}) });
-export async function ponerEnMenu(m: ItemMenu) { await db.menu.put(sinTicket(m)); }
-export const quitarDelMenu = (fecha: string, lugar: ItemMenu['lugar']) => db.menu.delete([fecha, lugar]).then(() => {});
+export async function ponerEnMenu(m: ItemMenu) { await db.menu.put(sinTicket(m)); await sincronizarPrep([m.fecha]); }
+export const quitarDelMenu = (fecha: string, lugar: ItemMenu['lugar']) => db.menu.delete([fecha, lugar]).then(() => sincronizarPrep([fecha]));
 /** Guarda varios lugares a la vez y avisa que ya hay un registro nuevo. */
 export async function ponerVariosEnMenu(filas: ItemMenu[]) {
   await db.menu.bulkPut(filas.map(sinTicket));
+  await sincronizarPrep([...new Set(filas.map((f) => f.fecha))]);
   await registroNuevo();
 }
 /** Deja esos días del menú exactamente como estaban (para Deshacer). */
@@ -84,6 +88,7 @@ export async function reponerMenu(fechas: string[], filas: ItemMenu[]) {
     await db.menu.where('fecha').anyOf(fechas).delete();
     await db.menu.bulkPut(filas.map(sinTicket));
   });
+  await sincronizarPrep(fechas);
 }
 export const itemDeMenu = (fecha: string, lugar: ItemMenu['lugar']) => db.menu.get([fecha, lugar]);
 
@@ -95,5 +100,29 @@ export async function leerCompras(lunes: string): Promise<EstadoCompras> {
 }
 export async function guardarCompras(lunes: string, e: EstadoCompras) {
   await db.comida.put({ k: 'compras:' + lunes, v: limpio(e) });
+  await registroNuevo();
+}
+
+// ---------- Plan de preparación ----------
+export async function leerPrep(): Promise<Tanda[]> {
+  return ((await db.comida.get('prep'))?.v as Tanda[] | undefined) ?? [];
+}
+export async function guardarPrep(t: Tanda[]) {
+  await db.comida.put({ k: 'prep', v: limpio(t) });
+  await registroNuevo();
+}
+/** Lo que se cambió en el menú se refleja en la preparación de esos días. */
+export async function sincronizarPrep(fechas: string[]) {
+  if (!fechas.length) return;
+  const [tandas, menu] = await Promise.all([leerPrep(), db.menu.where('fecha').anyOf(fechas).toArray()]);
+  await guardarPrep(sincronizar(tandas, menu, fechas, fechaDe(0)));
+}
+
+// ---------- Tips ----------
+export async function leerTips(): Promise<TipsGuardados> {
+  return { ...tipsVacios(), ...((await db.comida.get('tips'))?.v as Partial<TipsGuardados> | undefined) };
+}
+export async function guardarTips(t: TipsGuardados) {
+  await db.comida.put({ k: 'tips', v: limpio(t) });
   await registroNuevo();
 }

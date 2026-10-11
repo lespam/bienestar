@@ -1,12 +1,13 @@
 <script lang="ts">
-  import type { Alimento, ItemMenu, LugarMenu, PerfilComida, Receta } from '../../core/db';
+  import type { Alimento, ItemMenu, LugarMenu, PerfilComida, Receta, Tanda } from '../../core/db';
   import Hoja from '../../core/Hoja.svelte';
   import { avisos } from '../../core/aviso.svelte';
   import { nav } from '../../core/nav.svelte';
   import { guardar, prefs } from '../ajustes';
   import { COMIDAS, DIAS_ATRAS, barra, diaBreve, etiquetaDia, fechaDe, fmtN, fraseDia, kRango, macroLinea, porTxt, porcionDe, r1, recientes, sinRepetir, sumas, type Plato } from './calculos';
-  import { agregarAlimentos, alimentosDe, guardarAlimento, leerPerfiles, listarRecetas, menuDe, quitarAlimento, reponerDia, sembrarRecetas, ultimosRegistrados } from './datos';
-  import { NOMBRE_LUGAR, indexar, llave, nombreDia } from './semana';
+  import { agregarAlimentos, alimentosDe, guardarAlimento, leerPerfiles, leerPrep, listarRecetas, menuDe, quitarAlimento, reponerDia, sembrarRecetas, ultimosRegistrados } from './datos';
+  import { filaDeTanda } from './preparacion';
+  import { NOMBRE_LUGAR, fechasDeSemana, indexar, llave, nombreDia } from './semana';
   import { eleccion, reiniciarVista } from './estado.svelte';
 
   // Al volver a Comida, los números que mostraste con "Mostrar" vuelven a taparse.
@@ -26,6 +27,7 @@
 
   leerPerfiles().then((p) => { perfiles = p; perfil = p.les; });
 
+  let tandas = $state<Tanda[]>([]);
   let plan = $state<ItemMenu[]>([]);
   let recetasPlan = $state<Receta[]>([]);
   let verPasado = $state(false);
@@ -34,8 +36,8 @@
   let tanda = 0;
   async function cargar() {
     const mia = ++tanda, f = fecha, previo = fechaDe(off - 1);
-    const [hoy, ayer, menu] = await Promise.all([alimentosDe(f), alimentosDe(previo), menuDe([f])]);
-    if (mia === tanda) { items = hoy; anterior = ayer; plan = menu; }
+    const [hoy, ayer, menu, prep] = await Promise.all([alimentosDe(f), alimentosDe(previo), menuDe([f]), leerPrep()]);
+    if (mia === tanda) { items = hoy; anterior = ayer; plan = menu; tandas = prep; }
   }
   $effect(() => { void fecha; cargar(); });
 
@@ -54,6 +56,7 @@
   const COMIDA_DE: Record<LugarMenu, 0 | 1 | 2 | 3> = { d: 0, a: 2, c: 1, p: 2, n: 3 };
   const ORDEN: LugarMenu[] = ['d', 'a', 'c', 'p', 'n'];
   const planIdx = $derived(indexar(plan));
+  const filaPrep = $derived(off >= 0 ? filaDeTanda(tandas, fecha, fechaDe(0)) : null);
   const articulo = (l: string) => ({ d: 'el desayuno', c: 'la comida', n: 'la cena' } as Record<string, string>)[l] ?? '';
   const pasado = $derived(off < 0);
   const futuro = $derived(off > 0);
@@ -250,6 +253,12 @@
             </div>
           {/each}
         {/if}
+        {#if filaPrep}
+          <div class="pt-row">
+            <span><small>Preparación{filaPrep.hora ? ' · ' + filaPrep.hora : ''}</small><b class:pt-done={filaPrep.lista}>{filaPrep.titulo}</b>{#if filaPrep.mas}<em>{filaPrep.mas}</em>{/if}</span>
+            {#if filaPrep.lista}<span class="pt-ok" aria-hidden="true">✓</span>{:else}<button class="pt-link" onclick={() => nav.abrir('prep', { k: fecha > fechasDeSemana(0)[6] ? -1 : 0 })}>Ver</button>{/if}
+          </div>
+        {/if}
       </div>
     </section>
   {/if}
@@ -305,10 +314,11 @@
 
   <section class="tools">
     <h4>Para planear</h4>
-    <div class="quick q3">
+    <div class="quick">
       <button onclick={() => nav.abrir('menu')}><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>Menú</button>
       <button onclick={() => nav.abrir('recetas')}><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2zM22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z" /></svg>Recetario</button>
       <button onclick={() => nav.abrir('perfiles')}><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3" /><path d="M3 20a6 6 0 0 1 12 0" /><circle cx="17" cy="9" r="2.5" /><path d="M16 14.1a5 5 0 0 1 5 4.9" /></svg>Perfiles</button>
+      <button onclick={() => nav.abrir('tips')}><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.2h5c0-.9.4-1.7 1.1-2.2A6 6 0 0 0 12 3z" /></svg>Tips</button>
     </div>
   </section>
   <p class="tool-note">Las referencias de tu perfil las defines tú o con tu nutrióloga. La app no da consejos médicos.</p>

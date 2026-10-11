@@ -178,6 +178,10 @@ export interface ItemMenu {
   /** col: las partes de la colación y, si va junto con una comida, con cuál. */
   col?: { base: string; fruta: string; extra: string; junto: 'd' | 'c' | 'n' | null };
 }
+/** Comida: una cosa por preparar dentro de una tanda. `fm` (fecha:lugar) dice de qué comida del menú salió; lo que agregas tú no lo lleva. */
+export interface ItemPrep { t: string; f: string; s?: string; m?: number; ok: boolean; fm?: string }
+/** Comida: una tanda de preparación en un día y a una hora. `auto`: la creó el menú y se va si queda vacía. */
+export interface Tanda { id: string; fecha: string; hora: string; auto?: boolean; items: ItemPrep[] }
 /** Base: copias internas antes de importar o de cambiar la estructura. Nunca van en el respaldo. */
 export interface CopiaInterna { id?: number; fecha: number; motivo: string; datos: Blob }
 

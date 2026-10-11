@@ -190,7 +190,7 @@ test('Menú y Comida: agregar desde la receta y registrar lo planeado de hoy', a
   await page.getByRole('button', { name: 'Volver' }).click();
   await page.getByRole('button', { name: 'Comida', exact: true }).click();
   const hoy = page.locator('.pt');
-  await expect(hoy.getByText('Tinga de pollo')).toBeVisible();
+  await expect(hoy.getByText('Tinga de pollo', { exact: true })).toBeVisible();
   await expect(hoy.getByText('Tú: 1 porción · Jeff: 1 porción')).toBeVisible();
   await revisarPantalla(page);
   await hoy.getByRole('button', { name: /^Registrar comida: Tinga de pollo/ }).click();
