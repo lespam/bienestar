@@ -53,6 +53,7 @@ test('Descanso recuerda la duración que elegiste', async ({ page }) => {
   await page.getByRole('button', { name: 'Descanso', exact: true }).click();
   await page.getByRole('radio', { name: '5 min' }).click();
   await expect(page.getByRole('timer', { name: 'Tiempo de descanso' })).toContainText('5:00');
+  await page.waitForTimeout(500);
   await page.reload();
   await page.getByRole('button', { name: 'Rutina', exact: true }).click();
   await page.getByRole('button', { name: 'Descanso', exact: true }).click();
