@@ -9,9 +9,10 @@
   import { Inicio } from './modules/inicio';
   import { Rutina, Curso, Ficha, Descanso, Calentar, RegistroPR, Fin, Cardio } from './modules/entreno';
   import { Herramientas } from './modules/herramientas';
+  import { Cuerpo } from './modules/cuerpo';
 
   const TABS: [Tab, string][] = [['inicio', 'Inicio'], ['rutina', 'Rutina'], ['comida', 'Comida'], ['cuerpo', 'Cuerpo']];
-  const FASE: Record<string, number> = { comida: 5, cuerpo: 4 };
+  const FASE: Record<string, number> = { comida: 5 };
   // Pantallas de la sesión: ocupan todo el teléfono, sin la barra de abajo (como en el mockup).
   const SIN_BARRA = new Set(['curso', 'ficha', 'descanso', 'calentar', 'pr', 'fin', 'cardio', 'herramientas']);
   const PANTALLAS: Record<string, () => Promise<{ default: unknown }>> = { ajustes: Ajustes, curso: Curso, ficha: Ficha, descanso: Descanso, calentar: Calentar, pr: RegistroPR, fin: Fin, cardio: Cardio, herramientas: Herramientas };
@@ -59,6 +60,8 @@
             <Perezoso cargar={Inicio} />
           {:else if nav.tab === 'rutina'}
             <Perezoso cargar={Rutina} />
+          {:else if nav.tab === 'cuerpo'}
+            <Perezoso cargar={Cuerpo} />
           {:else}
             <div class="screen"><Pronto titulo={TABS.find((x) => x[0] === nav.tab)![1]} fase={FASE[nav.tab]} /></div>
           {/if}

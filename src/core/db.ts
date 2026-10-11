@@ -68,6 +68,16 @@ export interface AjusteEntreno { k: string; v: unknown }
 export interface Calentado { fecha: string; item: string }
 /** Herramientas: lo que está corriendo (cronómetro, temporizador) y tu duración de descanso preferida. */
 export interface AjusteHerramienta { k: string; v: unknown }
+/** Cuerpo: un peso. Se guarda oculto; tú decides cuándo verlo. */
+export interface Peso { id?: number; fecha: string; valor: number; unidad: 'lb' | 'kg' }
+/** Cuerpo: una medida de una zona, en cm. */
+export interface Medida { id?: number; zona: string; fecha: string; cm: number }
+/** Cuerpo: una foto reducida. Vive solo dentro de la app. */
+export interface FotoCuerpo { id?: number; fecha: string; foto: Blob }
+/** Cuerpo: un día marcado de Período, con nota opcional. */
+export interface DiaPeriodo { fecha: string; nota: string }
+/** Cuerpo: tus zonas de medida (cuáles ves y cuáles conoces). */
+export interface AjusteCuerpo { k: string; v: unknown }
 /** Base: copias internas antes de importar o de cambiar la estructura. Nunca van en el respaldo. */
 export interface CopiaInterna { id?: number; fecha: number; motivo: string; datos: Blob }
 
@@ -85,6 +95,11 @@ export class BaseBienestar extends Dexie {
   entreno!: Table<AjusteEntreno, string>;
   calentados!: Table<Calentado, [string, string]>;
   herramientas!: Table<AjusteHerramienta, string>;
+  pesos!: Table<Peso, number>;
+  medidas!: Table<Medida, number>;
+  fotos!: Table<FotoCuerpo, number>;
+  periodo!: Table<DiaPeriodo, string>;
+  cuerpo!: Table<AjusteCuerpo, string>;
 
   constructor(nombre = 'bienestar') {
     super(nombre);
@@ -107,6 +122,8 @@ export class BaseBienestar extends Dexie {
     });
     // Fase 3: Herramientas.
     this.version(3).stores({ herramientas: 'k' });
+    // Fase 4: Cuerpo.
+    this.version(4).stores({ pesos: '++id, fecha', medidas: '++id, zona, fecha', fotos: '++id, fecha', periodo: 'fecha', cuerpo: 'k' });
   }
 }
 

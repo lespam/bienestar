@@ -1152,3 +1152,8 @@ a.mus-btn { text-decoration: none; color: var(--fg); }
 .cardio-lista .fila { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; background: var(--panel); border-radius: 14px; font-size: 14px; }
 .cardio-lista small { color: var(--muted); display: block; font-size: 12px; }
 .cardio-lista button { min-height: 44px; min-width: 44px; background: none; border: 0; color: var(--muted); font-size: 18px; }
+.pts { display: flex; flex-wrap: wrap; gap: 6px; }
+.pts button { border: 1px solid var(--soft); background: none; border-radius: 99px; min-height: 44px; padding: 0 14px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.pts button.on { border-color: var(--accent); color: var(--fg); }
+.ph-q { margin: 0; }
+.cal { gap: 2px; }
