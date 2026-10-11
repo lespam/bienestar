@@ -9,8 +9,10 @@ import type { Letra } from './programa';
 // Las series se guardan en cuanto las marcas; la sesión sigue abierta hasta que la termines.
 
 export interface Cuando { dias: boolean[]; hora: string; lugar: string }
-export interface AjustesEntreno { modo: Modo; primero: 'gym' | 'casa'; cuando: Cuando }
-const INICIALES: AjustesEntreno = { modo: 'mixto', primero: 'gym', cuando: { dias: DIAS_INICIALES, hora: '19:00', lugar: 'en la sala' } };
+/** La rutina que elegiste para un día, distinta a la que toca por el ciclo. Solo vale ese día. */
+export interface RutinaElegida { letra: Letra; fecha: string }
+export interface AjustesEntreno { modo: Modo; primero: 'gym' | 'casa'; cuando: Cuando; elegida: RutinaElegida | null }
+const INICIALES: AjustesEntreno = { modo: 'mixto', primero: 'gym', elegida: null, cuando: { dias: DIAS_INICIALES, hora: '19:00', lugar: 'en la sala' } };
 
 export async function leerAjustes(): Promise<AjustesEntreno> {
   const filas = await db.entreno.toArray();
@@ -98,4 +100,44 @@ export async function marcarCalentado(fecha: string, item: string, puesto: boole
 export async function marcarVarios(fecha: string, items: string[], puesto: boolean) {
   if (puesto) await db.calentados.bulkPut(items.map((item) => ({ fecha, item })));
   else await db.calentados.bulkDelete(items.map((item) => [fecha, item] as [string, string]));
+}
+
+// ---------- Ejercicios saltados ----------
+// Se guardan junto a los ajustes de Entreno, uno por sesión. Las series que sí hiciste no se tocan.
+const claveSaltados = (sesion: number) => 'saltados:' + sesion;
+export async function saltadosDe(sesion: number): Promise<string[]> {
+  const f = await db.entreno.get(claveSaltados(sesion));
+  return Array.isArray(f?.v) ? (f!.v as string[]) : [];
+}
+export async function ponerSaltado(sesion: number, clave: string, saltado: boolean) {
+  const ahora = new Set(await saltadosDe(sesion));
+  if (saltado) ahora.add(clave); else ahora.delete(clave);
+  if (ahora.size) await db.entreno.put({ k: claveSaltados(sesion), v: [...ahora] });
+  else await db.entreno.delete(claveSaltados(sesion));
+}
+
+// ---------- Cardio ----------
+export interface Cardio { sesion: number; fecha: string; nombre: string; min: number; nota: string }
+/** Cardio terminado: una sesión de tipo cardio con una sola serie (los minutos). No usa el reloj de Rutina. */
+export async function guardarCardio(nombre: string, min: number, nota: string, ahora = new Date()): Promise<number> {
+  const fin = ahora.getTime();
+  const id = await db.sesiones.add({ fecha: iso(ahora), tipo: 'cardio', modo: 'libro', primero: 'casa', abierta: 0, inicio: fin - min * 60000, fin, nota });
+  await db.series.add({ sesion: id, clave: 'cardio', sust: nombre, n: 0, v: { min }, unidad: prefs.unidad, hora: fin });
+  await registroNuevo();
+  return id;
+}
+export async function borrarCardio(sesion: number) {
+  await db.transaction('rw', [db.sesiones, db.series], async () => {
+    await db.series.where('sesion').equals(sesion).delete();
+    await db.sesiones.delete(sesion);
+  });
+}
+export async function cardiosRecientes(n = 10): Promise<Cardio[]> {
+  const ss = (await db.sesiones.toArray()).filter((s) => s.tipo === 'cardio').sort((a, b) => b.inicio - a.inicio).slice(0, n);
+  const out: Cardio[] = [];
+  for (const s of ss) {
+    const serie = await db.series.where('sesion').equals(s.id!).first();
+    out.push({ sesion: s.id!, fecha: s.fecha, nombre: serie?.sust ?? 'Cardio', min: Number(serie?.v.min ?? 0), nota: s.nota });
+  }
+  return out;
 }

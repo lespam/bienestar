@@ -3,13 +3,13 @@
   import Icono from '../../core/Icono.svelte';
   import { nav } from '../../core/nav.svelte';
   import { avisos } from '../../core/aviso.svelte';
-  import { fechaLarga, saludo } from '../../core/fechas';
+  import { fechaLarga, iso, saludo } from '../../core/fechas';
   import { prefs } from '../ajustes';
   import { dondeQuedaste, ejerciciosEmpezados, textoSeries, type Modo } from './calculos';
   import { cargarContexto, datosDeEjercicio, planDe, type Contexto } from './contexto';
   import { cambiarModoSesion, guardarAjuste, guardarSustituto, iniciarSesion, quitarSustituto, terminarSesion, type Cuando } from './datos';
-  import { fechaCorta3, lineaCuando } from './semana';
-  import { tieneGym, type Ejercicio, type Grupo } from './programa';
+  import { fechaCorta3, lineaCuando, rutinasDelPrograma } from './semana';
+  import { tieneGym, type Ejercicio, type Grupo, type Letra } from './programa';
   import Animacion from './Animacion.svelte';
   import Rico from './Rico.svelte';
   import SustitutoHoja from './SustitutoHoja.svelte';
@@ -53,6 +53,13 @@
     await guardarAjuste('modo', m);
     c.aj.modo = m;
     if (c.hoy?.estado === 'abierta') { await cambiarModoSesion(c.hoy.sesion.id!, m, primero); c.hoy.sesion.modo = m; }
+  }
+  const ciclo = $derived(c ? rutinasDelPrograma(c.p) : []);
+  /** Elegir otra rutina vale solo hoy; si eliges la que toca, se borra la elección. */
+  async function elegirRutina(l: Letra) {
+    if (!c || estado !== 'nueva') return;
+    await guardarAjuste('elegida', l === c.tocaPorCiclo ? null : { letra: l, fecha: iso(hoy) });
+    await leer();
   }
   async function elegirPrimero(p: 'gym' | 'casa') {
     if (!c) return;
@@ -194,6 +201,11 @@
     <section class="today">
       <h3>Rutina {c.letra}</h3>
       <p>{todos.length} ejercicios · {nSuper} {nSuper === 1 ? 'superserie' : 'superseries'} (p. {c.p.rutinas[c.letra].pagina})</p>
+      {#if estado === 'nueva' && ciclo.length > 1}
+        <div class="mini"><span>Hacer hoy:</span>
+          {#each ciclo as l (l)}<button class="l" class:on={c.letra === l} aria-pressed={c.letra === l} aria-label={'Rutina ' + l + (l === c.tocaPorCiclo ? ', la que toca' : '')} onclick={() => elegirRutina(l)}>{l}</button>{/each}
+        </div>
+      {/if}
       <div class="when-row"><Icono nombre="reloj" /><span>{lineaCuando(c.aj.cuando, hoy)}</span><button class="when-btn" onclick={abrirCuando}>Cambiar</button></div>
     </section>
 
@@ -241,6 +253,10 @@
       <button class="pr-btn" onclick={() => nav.abrir('pr')}>
         <Icono nombre="trofeo" />
         <span><b>Registro de PR</b><small>Tus récords y sesiones pasadas</small></span>
+      </button>
+      <button class="pr-btn" onclick={() => nav.abrir('cardio')}>
+        <Icono nombre="pulso" />
+        <span><b>Cardio</b><small>Registra una caminata, bici u otro</small></span>
       </button>
       <div class="quick">
         <button onclick={() => nav.abrir('calentar', { letra: c!.letra })}><Icono nombre="fuego" />Calentar</button>

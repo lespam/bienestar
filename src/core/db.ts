@@ -60,6 +60,7 @@ export interface FichaPropia {
   tips?: string[];
   videos?: { t: string; u: string }[];
   faciles?: { n: string; p: string }[];
+  dificiles?: { n: string; p: string }[];
 }
 /** Entreno: Cuándo y dónde, y lo último que elegiste en Rutina. */
 export interface AjusteEntreno { k: string; v: unknown }

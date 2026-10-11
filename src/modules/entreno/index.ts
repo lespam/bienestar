@@ -10,3 +10,4 @@ export const Descanso = () => import('./DescansoEntreno.svelte');
 export const Calentar = () => import('./Calentar.svelte');
 export const RegistroPR = () => import('./PR.svelte');
 export const Fin = () => import('./Fin.svelte');
+export const Cardio = () => import('./Cardio.svelte');

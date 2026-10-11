@@ -160,3 +160,50 @@ test('Solo casa pide el sustituto y la sesión lo usa', async ({ page }) => {
   await expect(page.getByText('Pullover con mancuerna')).toBeVisible();
   expect(errores).toEqual([]);
 });
+
+test('Elegir otra rutina, saltar un ejercicio, variación más difícil y cardio', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await page.getByRole('button', { name: 'Rutina', exact: true }).click();
+
+  // Elegir otra rutina solo cambia hoy y se puede volver a la que toca
+  await page.getByRole('button', { name: 'Rutina B' }).click();
+  await expect(page.getByRole('heading', { name: 'Rutina B', level: 3 })).toBeVisible();
+  await revisarPantalla(page);
+  await page.getByRole('button', { name: 'Rutina A, la que toca' }).click();
+  await expect(page.getByRole('heading', { name: 'Rutina A', level: 3 })).toBeVisible();
+
+  // Más difícil, en la ficha
+  await page.getByRole('button', { name: 'Ver ficha' }).first().click();
+  await page.getByRole('button', { name: 'Agregar variación más difícil' }).click();
+  const hoja = page.getByRole('dialog', { name: 'Variación más difícil' });
+  await hoja.getByLabel('Ejercicio').fill('Glute bridge con una pierna');
+  await hoja.getByRole('button', { name: 'Agregar' }).click();
+  await expect(page.getByText('Glute bridge con una pierna')).toBeVisible();
+  await page.getByRole('button', { name: 'Volver', exact: true }).click();
+
+  // Saltar un ejercicio de la superserie
+  await page.getByRole('button', { name: 'Empezar Rutina A' }).first().click();
+  await expect(page.getByRole('button', { name: 'Guardar y pasar a A2' })).toBeVisible();
+  await page.getByRole('button', { name: 'Saltar este ejercicio' }).last().click();
+  await expect(page.getByText('Saltado', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Guardar y descansar' })).toBeVisible();
+  await revisarPantalla(page);
+  await page.getByRole('button', { name: 'Incluirlo de nuevo' }).click();
+  await expect(page.getByRole('button', { name: 'Guardar y pasar a A2' })).toBeVisible();
+  await page.getByRole('button', { name: 'Saltar este ejercicio' }).last().click();
+  await expect(page.getByText('Saltado', { exact: true })).toBeVisible();
+  await page.reload();
+  await page.getByRole('button', { name: 'Seguir', exact: true }).click();
+  await expect(page.getByText('Saltado', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Volver a Rutina A' }).click();
+
+  // Cardio
+  await page.getByRole('button', { name: /Cardio/ }).click();
+  await expect(page.getByRole('heading', { name: 'Cardio', level: 2 })).toBeVisible();
+  await page.getByLabel('Minutos').fill('30');
+  await revisarPantalla(page);
+  await page.getByRole('button', { name: 'Guardar cardio' }).click();
+  await expect(page.getByText('Caminata · 30 min')).toBeVisible();
+  expect(errores).toEqual([]);
+});

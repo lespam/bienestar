@@ -15,6 +15,8 @@ export interface Contexto {
   /** Sesión de hoy: abierta, terminada o ninguna. */
   hoy: { sesion: Sesion; estado: 'abierta' | 'hecha' } | null;
   letra: Letra;
+  /** La rutina que toca por el ciclo, aunque hoy hayas elegido otra. */
+  tocaPorCiclo: Letra;
   grupos: Grupo[];
   semana: DiaSemana[];
   semanaN: number;
@@ -37,7 +39,8 @@ export async function cargarContexto(ahora = new Date()): Promise<Contexto | nul
   const abierta = sesiones.filter((s) => s.abierta).sort((a, b) => b.inicio - a.inicio)[0];
   const hecha = sesiones.filter((s) => !s.abierta && s.fecha === hoyIso && s.tipo === 'rutina').sort((a, b) => b.inicio - a.inicio)[0];
   const hoy = abierta ? { sesion: abierta, estado: 'abierta' as const } : hecha ? { sesion: hecha, estado: 'hecha' as const } : null;
-  const letra = (hoy?.sesion.rutina ?? letraQueToca(p, sesiones)) as Letra;
+  const elegida = aj.elegida && aj.elegida.fecha === hoyIso && p.rutinas[aj.elegida.letra] ? aj.elegida.letra : null;
+  const letra = (hoy?.sesion.rutina ?? elegida ?? letraQueToca(p, sesiones)) as Letra;
   const grupos = gruposDeRutina(p, letra);
   const propias = sesiones.filter((s) => s.tipo === 'rutina' && s.rutina === letra && s.id !== hoy?.sesion.id);
   const previas = hoy ? propias.filter((s) => s.inicio < hoy.sesion.inicio) : propias;
@@ -48,12 +51,11 @@ export async function cargarContexto(ahora = new Date()): Promise<Contexto | nul
   const previos = grupos.flatMap((g) => g.ejercicios).map((e) => ({ e, series: historialDe(excluir(todas, hoy?.sesion.id), e.clave)[0]?.series ?? [] }));
   const donde = dondeEstas(letra, nth, anterior, '', previos);
 
-  const tocaAhora = hoy ? letra : letraQueToca(p, sesiones)!;
-  const seguidas = proximasLetras(p, tocaAhora, 8);
+  const seguidas = proximasLetras(p, letra, 8);
   const semana = armarSemana(ahora, sesiones, seguidas, aj.cuando.dias);
   const terminadas = sesiones.filter((s) => !s.abierta);
   return {
-    p, aj, todas, sustitutos: Object.fromEntries(susts.map((s) => [s.clave, s])), hoy, letra, grupos, semana,
+    p, aj, todas, tocaPorCiclo: letraQueToca(p, sesiones)!, sustitutos: Object.fromEntries(susts.map((s) => [s.clave, s])), hoy, letra, grupos, semana,
     semanaN: semanaDelPrograma(sesiones, ahora.getTime()), llevas: terminadas.length, nth, anterior, donde, mejor: ultimasMejor(sesiones)
   };
 }

@@ -22,6 +22,7 @@
   // Campos de las hojas
   let vTitulo = $state(''), vUrl = $state('');
   let fNombre = $state(''), fPagina = $state('');
+  let fTipo = $state<'faciles' | 'dificiles'>('faciles');
   let eCancion = $state(''), eLetra = $state(''), eTips = $state('');
   let eArchivo = $state<File | null>(null);
   let quitarAnim = $state(false);
@@ -69,13 +70,13 @@
     await guardar({ videos });
     avisos.mostrar('Video quitado');
   }
-  function abrirFacil() { fNombre = ''; fPagina = ''; nav.abrirHoja('facil'); }
-  async function agregarFacil() {
+  function abrirVariacion(tipo: 'faciles' | 'dificiles') { fTipo = tipo; fNombre = ''; fPagina = ''; nav.abrirHoja('facil'); }
+  async function agregarVariacion() {
     if (!fNombre.trim()) return;
-    await guardar({ faciles: [...(ficha.faciles ?? []), { n: fNombre.trim(), p: fPagina.trim() }] });
+    await guardar({ [fTipo]: [...(ficha[fTipo] ?? []), { n: fNombre.trim(), p: fPagina.trim() }] });
     nav.cerrar();
   }
-  async function quitarFacil(i: number) { await guardar({ faciles: (ficha.faciles ?? []).filter((_, j) => j !== i) }); }
+  async function quitarVariacion(tipo: 'faciles' | 'dificiles', i: number) { await guardar({ [tipo]: (ficha[tipo] ?? []).filter((_, j) => j !== i) }); }
 
   function abrirEditar() {
     eCancion = ficha.cancion ?? ''; eLetra = ficha.letra ?? ''; eTips = (ficha.tips ?? []).join('\n');
@@ -186,13 +187,15 @@
 
     <section class="fi-sec" id="fi-var">
       <h4>Variaciones</h4>
-      <div class="var">
-        <span class="var-h">Más fácil</span>
-        {#each ficha.faciles ?? [] as v, i (v.n + i)}
-          <div class="var-row"><span>{v.n}</span>{#if v.p}<small>{v.p}</small>{/if}<button class="quitar-mini" aria-label={'Quitar ' + v.n} onclick={() => quitarFacil(i)}>×</button></div>
-        {/each}
-        <button class="add" onclick={abrirFacil}>+ Agregar variación</button>
-      </div>
+      {#each [['faciles', 'Más fácil'], ['dificiles', 'Más difícil']] as const as [tipo, rotulo] (tipo)}
+        <div class="var">
+          <span class="var-h">{rotulo}</span>
+          {#each ficha[tipo] ?? [] as v, i (v.n + i)}
+            <div class="var-row"><span>{v.n}</span>{#if v.p}<small>{v.p}</small>{/if}<button class="quitar-mini" aria-label={'Quitar ' + v.n} onclick={() => quitarVariacion(tipo, i)}>×</button></div>
+          {/each}
+          <button class="add" aria-label={'Agregar variación ' + rotulo.toLowerCase()} onclick={() => abrirVariacion(tipo)}>+ Agregar variación</button>
+        </div>
+      {/each}
     </section>
   {:else if c}
     <p class="where">No encontré este ejercicio en tu programa.</p>
@@ -206,10 +209,10 @@
   </Hoja>
 {/if}
 {#if nav.hojaAbierta('facil')}
-  <Hoja titulo="Variación más fácil">
+  <Hoja titulo={fTipo === 'faciles' ? 'Variación más fácil' : 'Variación más difícil'}>
     <p class="seg-help">Escribe una que tú elijas. Si viene en tu libro, anota la página.</p>
     <div class="man"><label for="fa-n">Ejercicio</label><input id="fa-n" type="text" placeholder="Ej. Glute bridge con pies en el sillón" bind:value={fNombre} /><label for="fa-p">Página (opcional)</label><input id="fa-p" type="text" placeholder="Ej. p. 193" bind:value={fPagina} /></div>
-    <button class="start" disabled={!fNombre.trim()} onclick={agregarFacil}>Agregar</button>
+    <button class="start" disabled={!fNombre.trim()} onclick={agregarVariacion}>Agregar</button>
   </Hoja>
 {/if}
 {#if nav.hojaAbierta('editar')}

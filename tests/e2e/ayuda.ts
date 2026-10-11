@@ -8,7 +8,7 @@ export function contenidoDePrueba(): Buffer {
     programa: {
       alcance: 'calentamientos y semanas 1-2',
       semanas: [{ desde: 1, hasta: 2, rutinas: ['A', 'B', 'C'] }],
-      rutinas: { A: { pagina: 1, grupos: [{ tipo: 'superserie', ejercicios: [{ codigo: 'A1', clave: 'a', series: 3, rango: '10-20' }, { codigo: 'A2', clave: 'b', series: 3, rango: '8-12' }] }, { tipo: 'suelto', ejercicios: [{ codigo: '', clave: 'c', series: 1, rango: '10' }] }] } },
+      rutinas: { A: { pagina: 1, grupos: [{ tipo: 'superserie', ejercicios: [{ codigo: 'A1', clave: 'a', series: 3, rango: '10-20' }, { codigo: 'A2', clave: 'b', series: 3, rango: '8-12' }] }, { tipo: 'suelto', ejercicios: [{ codigo: '', clave: 'c', series: 1, rango: '10' }] }] }, B: { pagina: 5, grupos: [{ tipo: 'suelto', ejercicios: [{ codigo: '', clave: 'c', series: 1, rango: '10' }] }] } },
       ejercicios: { a: { nombre: 'Ejercicio A', pagina: 1, registro: ['peso', 'reps'], gym: false, anim: 'a-glute-bridge' }, b: { nombre: 'Ejercicio B', pagina: 2, registro: ['peso', 'repsIzq', 'repsDer'], gym: true, anim: 'b-front-lat-pulldown' }, c: { nombre: 'Ejercicio C', pagina: 3, registro: ['seg'], gym: false, anim: 'a-front-plank' } },
       calentamientos: [{ para: ['A'], paginas: '80-81', bloques: [{ nombre: 'Bloque uno', elementos: [{ nombre: 'Elemento 1', pagina: 10 }, { nombre: 'Elemento 2', pagina: 11 }] }, { nombre: 'Bloque dos', elementos: [{ nombre: 'Elemento 3', pagina: 12 }] }] }]
     },

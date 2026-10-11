@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import Dexie from 'dexie';
 import { BaseBienestar, usarBase, db } from '../../src/core/db';
 import { copiaAntesDeActualizar, ultimaCopia, volverACopia } from '../../src/core/respaldo';
-import { borrarSerie, calentadosDe, guardarSerie, iniciarSesion, marcarVarios, reabrirSesion, registrarDescanso, segundosDeDescanso, sesionAbierta, sesionesConSeries, terminarSesion } from '../../src/modules/entreno/datos';
+import { borrarCardio, borrarSerie, cardiosRecientes, guardarAjuste, guardarCardio, leerAjustes, ponerSaltado, saltadosDe, calentadosDe, guardarSerie, iniciarSesion, marcarVarios, reabrirSesion, registrarDescanso, segundosDeDescanso, sesionAbierta, sesionesConSeries, terminarSesion } from '../../src/modules/entreno/datos';
 import { cargarPrefs } from '../../src/modules/ajustes';
 
 let n = 0;
@@ -72,5 +72,37 @@ describe('actualizar la base', () => {
 
   it('sin base anterior no hace nada', async () => {
     expect(await copiaAntesDeActualizar('no-existe-' + n++, 2)).toBe(false);
+  });
+});
+
+describe('cardio, saltados y rutina elegida', () => {
+  it('el cardio cuenta como sesión, no abre sesión y se puede quitar', async () => {
+    const id = await guardarCardio('Caminata', 30, 'Con música', new Date(2026, 9, 6, 8, 0));
+    expect(await sesionAbierta()).toBeUndefined();
+    expect(await cardiosRecientes()).toEqual([{ sesion: id, fecha: '2026-10-06', nombre: 'Caminata', min: 30, nota: 'Con música' }]);
+    const [x] = await sesionesConSeries();
+    expect(x.sesion).toMatchObject({ tipo: 'cardio', abierta: 0 });
+    await borrarCardio(id);
+    expect(await cardiosRecientes()).toEqual([]);
+    expect(await db.series.count()).toBe(0);
+  });
+
+  it('los ejercicios saltados se guardan por sesión y se pueden volver a incluir', async () => {
+    await ponerSaltado(7, 'glute', true);
+    await ponerSaltado(7, 'hip', true);
+    expect(await saltadosDe(7)).toEqual(['glute', 'hip']);
+    expect(await saltadosDe(8)).toEqual([]);
+    await ponerSaltado(7, 'glute', false);
+    await ponerSaltado(7, 'hip', false);
+    expect(await saltadosDe(7)).toEqual([]);
+    expect(await db.entreno.count()).toBe(0);
+  });
+
+  it('la rutina elegida se guarda con su fecha y los saltados no se mezclan con los ajustes', async () => {
+    await guardarAjuste('elegida', { letra: 'B', fecha: '2026-10-11' });
+    await ponerSaltado(1, 'glute', true);
+    expect((await leerAjustes()).elegida).toEqual({ letra: 'B', fecha: '2026-10-11' });
+    await guardarAjuste('elegida', null);
+    expect((await leerAjustes()).elegida).toBeNull();
   });
 });

@@ -31,6 +31,13 @@ export function pasosDeGrupo(g: Grupo): { e: number; s: number }[] {
 }
 export const llave = (clave: string, n: number) => clave + '#' + n;
 
+/** Las series que ya no hay que hacer: las guardadas más todas las de los ejercicios saltados. */
+export function conSaltados(guardadas: string[], grupos: Grupo[], saltados: string[]): Set<string> {
+  const h = new Set(guardadas);
+  for (const g of grupos) for (const e of g.ejercicios) if (saltados.includes(e.clave)) for (let n = 0; n < e.series; n++) h.add(llave(e.clave, n));
+  return h;
+}
+
 /** El primer paso sin serie guardada; null si todo está hecho. */
 export function pasoActual(grupos: Grupo[], hechas: Set<string>): { g: number; i: number; paso: { e: number; s: number } } | null {
   for (let g = 0; g < grupos.length; g++) {

@@ -5,9 +5,9 @@
   import { avisos } from '../../core/aviso.svelte';
   import { mantenerEncendida } from '../../core/pantalla';
   import { prefs } from '../ajustes';
-  import { columnas, llave, pasosDeGrupo, pasoActual, reloj, textoSeries, ordenDeGrupos, armarPlan } from './calculos';
+  import { columnas, conSaltados, llave, pasosDeGrupo, pasoActual, reloj, textoSeries, ordenDeGrupos, armarPlan } from './calculos';
   import { cargarContexto, datosDeEjercicio, type Contexto } from './contexto';
-  import { borrarSerie, guardarSerie, guardarSustituto, ponerNota, quitarSustituto, terminarSesion } from './datos';
+  import { borrarSerie, guardarSerie, guardarSustituto, ponerNota, ponerSaltado, quitarSustituto, saltadosDe, terminarSesion } from './datos';
   import { borrador, limpiarBorrador, llaveBorrador } from './borrador.svelte';
   import type { CampoReg, Ejercicio, Grupo } from './programa';
   import type { Serie } from '../../core/db';
@@ -15,6 +15,7 @@
 
   let c = $state<Contexto | null>(null);
   let series = $state<Record<string, Serie>>({});
+  let saltados = $state<string[]>([]);
   let mostrado = $state(0);
   let ahora = $state(Date.now());
   let nota = $state('');
@@ -24,7 +25,8 @@
 
   const sesion = $derived(c?.hoy?.sesion);
   const grupos = $derived<Grupo[]>(c && sesion ? ordenDeGrupos(armarPlan(c.grupos, sesion.modo, sesion.primero)) : []);
-  const hechas = $derived(new Set(Object.keys(series)));
+  /** Lo que ya no hay que hacer: las series guardadas y las de los ejercicios que saltaste. */
+  const hechas = $derived(conSaltados(Object.keys(series), grupos, saltados));
   const oculto = $derived(prefs.ocultarEntreno);
   const unidad = $derived(prefs.unidad);
 
@@ -42,8 +44,9 @@
     nota = x.hoy!.sesion.nota;
     const propias = x.todas.find((t) => t.sesion.id === x.hoy!.sesion.id)?.series ?? [];
     series = Object.fromEntries(propias.map((s) => [llave(s.clave, s.n), s]));
+    saltados = await saltadosDe(x.hoy!.sesion.id!);
     const ord = ordenDeGrupos(armarPlan(x.grupos, x.hoy!.sesion.modo, x.hoy!.sesion.primero));
-    const sig = pasoActual(ord, new Set(Object.keys(series)));
+    const sig = pasoActual(ord, conSaltados(Object.keys(series), ord, saltados));
     mostrado = sig ? sig.g : Math.max(0, ord.length - 1);
   }
 
@@ -51,6 +54,8 @@
   const pasos = $derived(grupo ? pasosDeGrupo(grupo) : []);
   const indice = $derived(grupo ? pasos.findIndex((p) => !hechas.has(llave(grupo.ejercicios[p.e].clave, p.s))) : -1);
   const completo = $derived(!!grupo && indice < 0);
+  /** El paso que sigue al actual, sin contar los de ejercicios saltados. */
+  const siguientePaso = $derived(grupo && indice >= 0 ? pasos.slice(indice + 1).find((p) => !hechas.has(llave(grupo.ejercicios[p.e].clave, p.s))) ?? null : null);
   const paso = $derived(indice >= 0 ? pasos[indice] : null);
   const ultimoGrupo = $derived(mostrado >= grupos.length - 1);
 
@@ -88,9 +93,8 @@
   const boton = $derived.by(() => {
     if (!grupo) return '';
     if (completo) return ultimoGrupo ? 'Terminar sesión' : 'Seguir con ' + (grupos[mostrado + 1].tipo === 'superserie' ? (grupos[mostrado + 1].etiqueta ?? '').split(' · ')[0].toLowerCase().replace(/^./, (x) => x.toUpperCase()) : 'las series normales').replace('Superserie', 'la superserie');
-    const sigue = indice + 1 < pasos.length;
-    if (!sigue) return grupo.tipo === 'superserie' ? 'Guardar y terminar ' + titulo.toLowerCase() : 'Guardar y terminar';
-    const siguiente = pasos[indice + 1];
+    const siguiente = siguientePaso;
+    if (!siguiente) return grupo.tipo === 'superserie' ? 'Guardar y terminar ' + titulo.toLowerCase() : 'Guardar y terminar';
     if (grupo.tipo === 'superserie' && siguiente.e !== paso!.e && siguiente.s === paso!.s) return 'Guardar y pasar a ' + grupo.ejercicios[siguiente.e].codigo;
     return 'Guardar y descansar';
   });
@@ -118,7 +122,7 @@
     const p = paso!, e = grupo.ejercicios[p.e];
     if (falta(e)) { editando = e; nav.abrirHoja('sust'); return; }
     // Lo que sigue se calcula antes de guardar, porque al guardar el paso actual avanza.
-    const g = grupo, sig = indice + 1 < pasos.length ? pasos[indice + 1] : null;
+    const g = grupo, sig = siguientePaso;
     const cierraRonda = !!sig && (g.tipo === 'superserie' ? sig.s !== p.s : true);
     const v = leerCampos(e, p.s), sust = nombreSust(e), k = llave(e.clave, p.s);
     const id = await guardarSerie(sesion.id!, e.clave, p.s, v, sust);
@@ -131,6 +135,18 @@
       if (nav.pantalla?.id === 'descanso') nav.cerrar();
     });
     if (cierraRonda && sig) nav.abrir('descanso', { siguiente: etiquetaPaso(g, sig), automatico: true, sesion: sesion.id, despues: etiquetaPaso(g, p) });
+  }
+
+  async function saltar(e: Ejercicio) {
+    if (!sesion) return;
+    await ponerSaltado(sesion.id!, e.clave, true);
+    saltados = [...saltados, e.clave];
+    avisos.deshacer('Ejercicio saltado', () => incluir(e));
+  }
+  async function incluir(e: Ejercicio) {
+    if (!sesion) return;
+    await ponerSaltado(sesion.id!, e.clave, false);
+    saltados = saltados.filter((k) => k !== e.clave);
   }
 
   async function editarGuardada(e: Ejercicio, n: number) {
@@ -202,19 +218,26 @@
         {@const ahoraEj = !completo && paso!.e === ei}
         {@const sust = nombreSust(e)}
         {@const pr = previa(e)}
+        {@const saltado = saltados.includes(e.clave)}
+        {@const algunaHecha = [...Array(e.series).keys()].some((n) => !!series[llave(e.clave, n)])}
+        {@const pendiente = [...Array(e.series).keys()].some((n) => !hechas.has(llave(e.clave, n)))}
         <div class="card" class:now={ahoraEj}>
           <div class="card-top">
             <span class="code">{e.codigo}</span>
             <span class="nm">{sust ?? e.nombre}</span>
-            <span class="badge" class:wait={!ahoraEj}>{ahoraEj ? 'Ahora' : completo ? 'Lista' : 'Sigue'}</span>
+            <span class="badge" class:wait={!ahoraEj}>{saltado ? 'Saltado' : ahoraEj ? 'Ahora' : completo || !pendiente ? 'Lista' : 'Sigue'}</span>
           </div>
           <div class="card-sub">
             <span>{e.series} × {e.rango}{sust ? ' · en lugar de ' + e.nombre : ''}</span>
             <button onclick={() => nav.abrir('ficha', { clave: e.clave })}>Ver ficha</button>
           </div>
-          {#if falta(e)}
+          {#if saltado && !algunaHecha}
+            <div class="rec">Hoy no haces este ejercicio. No pasa nada.</div>
+            <button class="ghost" onclick={() => incluir(e)}>Incluirlo de nuevo</button>
+          {:else if falta(e)}
             <div class="rec">Elige tu sustituto en casa para {e.nombre}.</div>
             <button class="ghost" onclick={() => { editando = e; nav.abrirHoja('sust'); }}>Elegir sustituto</button>
+            <button class="ghost" onclick={() => saltar(e)}>Saltar este ejercicio</button>
           {:else}
             {#if pr.ultima}
               <div class="rec">{dia ? dia[0].toUpperCase() + dia.slice(1) : 'Antes'}: <b>{textoSeries(e.registro, pr.ultima.series, oculto)}</b>{#if pr.record} · Récord <b>{oculto ? pr.record.tapado : pr.record.texto}</b>{/if}</div>
@@ -244,6 +267,7 @@
                 {/each}
               </tbody>
             </table>
+            {#if pendiente}<button class="ghost" onclick={() => saltar(e)}>Saltar este ejercicio</button>{/if}
           {/if}
         </div>
       {/each}

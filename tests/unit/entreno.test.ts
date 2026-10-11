@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { armarPlan, columnas, dondeQuedaste, historialDe, llave, mejorMarca, ordenDeGrupos, pasoActual, pasosDeGrupo, resumenPR, textoSeries } from '../../src/modules/entreno/calculos';
+import { armarPlan, columnas, conSaltados, dondeQuedaste, historialDe, llave, mejorMarca, ordenDeGrupos, pasoActual, pasosDeGrupo, resumenPR, textoSeries } from '../../src/modules/entreno/calculos';
 import type { Ejercicio, Grupo } from '../../src/modules/entreno/programa';
 import type { Serie, Sesion } from '../../src/core/db';
 
@@ -114,5 +114,14 @@ describe('qué toca y la semana', () => {
     expect(ultimasMejor([m(1, 'mejor'), m(2, 'mejor')])).toBe(false);
     expect(ultimasMejor([m(1, 'mejor'), m(2, 'mejor'), m(3, 'mejor')])).toBe(true);
     expect(ultimasMejor([m(1, 'mejor'), m(2, 'igual'), m(3, 'mejor')])).toBe(false);
+  });
+});
+
+describe('ejercicios saltados', () => {
+  it('cuentan como hechos todas las series del ejercicio saltado y nada más', () => {
+    const grupos: Grupo[] = [{ tipo: 'suelto', ejercicios: [ej('a', { series: 3 })] }, { tipo: 'suelto', ejercicios: [ej('b', { series: 2 })] }];
+    const h = conSaltados([llave('b', 0)], grupos, ['a']);
+    expect([...h].sort()).toEqual([llave('a', 0), llave('a', 1), llave('a', 2), llave('b', 0)].sort());
+    expect(pasoActual(grupos, h)).toMatchObject({ g: 1 });
   });
 });
