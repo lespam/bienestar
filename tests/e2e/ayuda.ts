@@ -51,7 +51,7 @@ export async function revisarPantalla(page: Page) {
   expect(r.anchos, 'desborde horizontal').toEqual([]);
   expect(r.chicos, 'toques menores a 44 px').toEqual([]);
   expect(r.letra, 'texto menor a 12 px').toEqual([]);
-  const axe = await new AxeBuilder({ page }).analyze();
+  const axe = await new AxeBuilder({ page: page as never }).analyze();
   const graves = axe.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
   expect(graves.map((v) => v.id + ': ' + v.nodes.map((n) => n.target.join(' ')).join(', ')), 'accesibilidad').toEqual([]);
 }
