@@ -35,16 +35,35 @@ export async function sembrarRecetas(): Promise<number> {
   const pack = await parte<{ recetas?: Partial<Receta>[] }>('recetas');
   const lista = Array.isArray(pack) ? (pack as Partial<Receta>[]) : pack?.recetas;
   if (!lista?.length) return 0;
+  const imagenes = (await parte<Record<string, Blob>>('imagenes')) ?? {};
+  // En el archivo, img es una ruta; aquí pasa a ser la imagen guardada.
+  const conImagen = (x: Partial<Receta>): Partial<Receta> => {
+    const resto = limpio({ ...x, img: undefined });
+    const b = x.id ? imagenes[x.id] : undefined;
+    return b ? { ...resto, img: b } : resto;
+  };
   let n = 0;
   await db.transaction('rw', [db.recetas, db.comida], async () => {
     const hechas = new Set(((await db.comida.get('recetas-copiadas'))?.v as string[] | undefined) ?? []);
     const nuevas: Receta[] = [];
+    const completar: Receta[] = [];
+    const mias = new Map((await db.recetas.bulkGet(lista.filter((x) => x.id && hechas.has(x.id)).map((x) => x.id!))).filter(Boolean).map((r) => [r!.id, r!]));
     for (const x of lista) {
-      if (!x.id || !x.n || hechas.has(x.id)) continue;
+      if (!x.id || !x.n) continue;
+      if (hechas.has(x.id)) {
+        // Ya es tuya: solo se le agrega lo que le falta (foto y de dónde viene), nunca se pisa lo tuyo.
+        const mia = mias.get(x.id);
+        const c = conImagen(x);
+        if (mia && ((!mia.img && c.img) || (!mia.origen && c.origen))) {
+          completar.push({ ...mia, img: mia.img ?? c.img, img_tipo: mia.img_tipo ?? c.img_tipo, origen: mia.origen ?? c.origen });
+        }
+        continue;
+      }
       hechas.add(x.id);
-      nuevas.push({ cat: 'Comida', y: 1, t: '', src: '', u1: '', k: null, p: null, c: null, g: null, ing: [], steps: [], ...limpio(x) } as Receta);
+      nuevas.push({ cat: 'Comida', y: 1, t: '', src: '', u1: '', k: null, p: null, c: null, g: null, ing: [], steps: [], ...conImagen(x) } as Receta);
     }
     if (nuevas.length) { await db.recetas.bulkPut(nuevas); n = nuevas.length; }
+    if (completar.length) await db.recetas.bulkPut(completar);
     await db.comida.put({ k: 'recetas-copiadas', v: [...hechas] });
   });
   return n;

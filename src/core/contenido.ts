@@ -5,18 +5,28 @@ import { db } from './db';
 // No vive en el sitio público. Se carga una vez y queda en tus datos y en tus respaldos.
 // Cargar uno nuevo solo cambia sus propias partes; nunca toca tus registros.
 
-export const PARTES = ['programa', 'recetas', 'intercambios', 'marcas', 'fresh', 'letras'] as const;
+export const PARTES = ['programa', 'recetas', 'intercambios', 'marcas', 'fresh', 'letras', 'imagenes'] as const;
 export type Parte = (typeof PARTES)[number];
 
 export interface MetaContenido { version: number; fecha: string; cargado: number }
 interface Archivo { app: 'bienestar'; tipo: 'contenido-personal'; version: number; fecha: string; partes: Partial<Record<Parte, unknown>> }
 
+const TIPOS: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', svg: 'image/svg+xml' };
+
 export function leerContenido(bytes: Uint8Array): Archivo | null {
   try {
-    const f = unzipSync(bytes)['contenido.json'];
+    const zip = unzipSync(bytes);
+    const f = zip['contenido.json'];
     if (!f) return null;
     const a = JSON.parse(strFromU8(f)) as Archivo;
     if (a?.app !== 'bienestar' || a.tipo !== 'contenido-personal' || typeof a.partes !== 'object') return null;
+    // Las imágenes de las recetas viajan en imagenes/<id>.jpg|svg y se guardan como una parte más.
+    const imgs: Record<string, Blob> = {};
+    for (const [ruta, bytes] of Object.entries(zip)) {
+      const m = /^imagenes\/(.+)\.(jpg|jpeg|png|webp|svg)$/.exec(ruta);
+      if (m) imgs[m[1]] = new Blob([bytes as BlobPart], { type: TIPOS[m[2]] });
+    }
+    if (Object.keys(imgs).length) a.partes.imagenes = imgs;
     if (!PARTES.some((p) => p in a.partes)) return null;
     return a;
   } catch {

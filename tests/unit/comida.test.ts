@@ -141,6 +141,28 @@ describe('perfiles y recetas guardados', () => {
     expect((await db.recetas.get('b'))!.n).toBe('Bowl mío');
     expect((await db.recetas.get('b'))!.y).toBe(1);
   });
+  it('las imágenes del archivo se vuelven la foto de cada receta y completan las que ya tenías', async () => {
+    const pack = (recetas: unknown[]) => zipSync({
+      'contenido.json': strToU8(JSON.stringify({ app: 'bienestar', tipo: 'contenido-personal', version: 3, fecha: '2026-10-12', partes: { recetas: { recetas } } })),
+      'imagenes/a.jpg': new Uint8Array([1, 2, 3]), 'imagenes/b.svg': strToU8('<svg xmlns="http://www.w3.org/2000/svg"/>')
+    });
+    await cargarContenido(pack([{ id: 'a', n: 'Avena', cat: 'Desayuno', img: 'imagenes/a.jpg', img_tipo: 'foto del libro', origen: 'Libro' }]));
+    expect(await sembrarRecetas()).toBe(1);
+    const a = (await db.recetas.get('a'))!;
+    expect(a.img).toBeInstanceOf(Blob);
+    expect(a.img!.type).toBe('image/jpeg');
+    expect(a.origen).toBe('Libro');
+    // Una receta que ya era tuya sin foto la recibe en la versión nueva, y lo que cambiaste se queda
+    await db.recetas.put({ ...receta({ id: 'b', n: 'Mi bowl' }) });
+    await db.comida.put({ k: 'recetas-copiadas', v: ['a', 'b'] });
+    await cargarContenido(pack([{ id: 'a', n: 'Otro nombre', cat: 'Desayuno', img: 'imagenes/a.jpg', origen: 'Libro' }, { id: 'b', n: 'Bowl', cat: 'Comida', img: 'imagenes/b.svg', img_tipo: 'ilustración', origen: 'Libro 2' }]));
+    expect(await sembrarRecetas()).toBe(0);
+    const b = (await db.recetas.get('b'))!;
+    expect(b.n).toBe('Mi bowl');
+    expect(b.img!.type).toBe('image/svg+xml');
+    expect(b.origen).toBe('Libro 2');
+    expect((await db.recetas.get('a'))!.n).toBe('Avena');
+  });
   it('recetas y perfiles salen en el respaldo con su foto', async () => {
     await guardarReceta(receta({ img: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/jpeg' }) }));
     await guardarPerfil({ ...perfilInicial('les'), gustos: ['Tacos'] });

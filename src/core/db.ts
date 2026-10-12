@@ -136,6 +136,10 @@ export interface Receta {
   por?: { les?: number; jeff?: number };
   nts?: NotaReceta[];
   img?: Blob;
+  /** De dónde viene la foto: foto del libro o ilustración. */
+  img_tipo?: string;
+  /** De qué libro o recetario viene la receta. */
+  origen?: string;
   page?: Blob;
   /** La receta como estaba antes de aplicar cambios, para "Volver a la receta original". */
   orig?: string;
