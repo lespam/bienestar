@@ -116,3 +116,20 @@ export async function estimarDeFoto(clave: string, imagen: Imagen, contexto: str
   }, clave);
   return leerEstimados(t);
 }
+
+// ---------- Resumen de la semana de entrenamiento ----------
+export interface SesionResumen { cuando: 'esta semana' | 'la semana anterior'; dia: string; rutina: string; sintio?: string; ejercicios: { nombre: string; series: string }[] }
+/** Solo se envían las sesiones de entreno de dos semanas. Nada de peso corporal, medidas ni comida. */
+export async function resumenSemanal(clave: string, sesiones: SesionResumen[], sinCifras: boolean, ask: Pregunta = preguntar): Promise<string[]> {
+  const t = await ask({
+    modelo: MODELO_TEXTO, max: 900,
+    texto: 'Estas son las sesiones de fuerza de una persona, de esta semana y de la anterior:\n' + JSON.stringify(sesiones).slice(0, 6000) +
+      '\nEscribe un resumen cálido de 3 a 5 puntos cortos: (1) constancia (una sesión parcial también cuenta; no la compares con una meta ni la llames falta), ' +
+      '(2) fuerza: qué ejercicios subieron o se mantuvieron frente a la semana anterior, (3) algún patrón útil (por ejemplo cómo se sintió después de entrenar). ' +
+      (sinCifras ? 'No escribas números de pesos ni de repeticiones. ' : '') +
+      'Sin juicios, sin consejos médicos y sin hablar del cuerpo ni de bajar de peso. JSON: {"puntos": ["...", "..."]}'
+  }, clave);
+  const r = textos(extraerJson(t).puntos, 5);
+  if (!r.length) throw new ErrorIA('otro', 'sin resumen');
+  return r;
+}

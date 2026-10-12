@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { BaseBienestar, usarBase, db } from '../../src/core/db';
 import { ErrorIA, extraerJson, preguntar } from '../../src/modules/ia/api';
-import { estimarComida, estimarDeFoto, cambiosDeIngredientes, ideasDeMenu, leerRecetaDeFoto, ordenarPreparacion, tipsDeReceta } from '../../src/modules/ia/tareas';
+import { estimarComida, estimarDeFoto, resumenSemanal, cambiosDeIngredientes, ideasDeMenu, leerRecetaDeFoto, ordenarPreparacion, tipsDeReceta } from '../../src/modules/ia/tareas';
 import { cargarIA, claveValida, guardarClave, ia, leerClave, ponerFuncion, ponerUsarIA, quitarClave } from '../../src/modules/ia/estado.svelte';
 import { crearZip } from '../../src/core/respaldo';
 
@@ -53,6 +53,18 @@ describe('escáner', () => {
     expect(pedido?.texto).toContain('media porción');
     expect(r[0].k).toBe(3000);
     await expect(estimarDeFoto('k', { tipo: 'image/png', base64: 'AAA' }, '', async () => '{"items":[]}')).rejects.toThrow(ErrorIA);
+  });
+});
+
+describe('resumen semanal', () => {
+  it('limita los puntos, pide sin cifras si se oculta y no acepta vacío', async () => {
+    let texto = '';
+    const ses = [{ cuando: 'esta semana' as const, dia: 'lun 12 oct', rutina: 'A', ejercicios: [{ nombre: 'Puente', series: '3 x 10' }] }];
+    const r = await resumenSemanal('k', ses, true, async (p) => { texto = p.texto; return '{"puntos":["a","b","c","d","e","f"]}'; });
+    expect(r).toHaveLength(5);
+    expect(texto).toContain('No escribas números');
+    expect(texto).toContain('Puente');
+    await expect(resumenSemanal('k', ses, false, async () => '{"puntos":[]}')).rejects.toThrow(ErrorIA);
   });
 });
 

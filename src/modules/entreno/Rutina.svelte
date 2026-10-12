@@ -10,6 +10,8 @@
   import { cambiarModoSesion, guardarAjuste, guardarSustituto, iniciarSesion, quitarSustituto, terminarSesion, type Cuando } from './datos';
   import { fechaCorta3, lineaCuando, rutinasDelPrograma } from './semana';
   import { tieneGym, type Ejercicio, type Grupo, type Letra } from './programa';
+  import { AnfitrionIA, pedirIA, resumenSemanal } from '../ia';
+  import { sesionesParaResumen } from './resumen';
   import Animacion from './Animacion.svelte';
   import Rico from './Rico.svelte';
   import SustitutoHoja from './SustitutoHoja.svelte';
@@ -23,6 +25,17 @@
   let cuando = $state<Cuando>({ dias: [], hora: '19:00', lugar: '' });
   let botonInicio = $state<HTMLButtonElement>();
   let pegajoso = $state(false);
+
+  function resumirSemana() {
+    if (!c) return;
+    const ses = sesionesParaResumen(c, hoy);
+    if (!ses.length) { avisos.mostrar('Aún no hay sesiones de estas dos semanas'); return; }
+    const sinCifras = prefs.ocultarEntreno;
+    pedirIA({
+      fn: 'resumen', titulo: 'Resumen de la semana', envia: 'tus sesiones de entreno de las últimas dos semanas',
+      ejecutar: async (clave) => ({ intro: 'Así vi tu semana. Es un apoyo, no una calificación.', items: (await resumenSemanal(clave, ses, sinCifras)).map((t) => ({ t })) })
+    });
+  }
 
   async function leer() {
     c = await cargarContexto(hoy);
@@ -195,6 +208,7 @@
           </div>
         {/each}
       </div>
+      <button class="link-btn" onclick={resumirSemana}>Resumen de la semana con IA</button>
       <span class="week-note">Llevas {c.llevas} {c.llevas === 1 ? 'sesión' : 'sesiones'} desde que empezaste.</span>
     </section>
 
@@ -289,3 +303,5 @@
 {#if nav.hojaAbierta('sust') && editando}
   <SustitutoHoja nombreOriginal={editando.nombre} actual={c?.sustitutos[editando.clave]} alGuardar={guardarSust} alQuitar={quitarSust} />
 {/if}
+
+<AnfitrionIA />

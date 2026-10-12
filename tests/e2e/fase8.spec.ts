@@ -254,3 +254,27 @@ test('Comida: escanear un plato con contexto, revisar y agregar', async ({ page 
   await expect(page.getByText('Barra de granola')).toBeVisible();
   expect(errores).toEqual([]);
 });
+
+test('Rutina: resumen de la semana con IA envía solo entreno', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await prenderIA(page);
+  const hoy = new Date();
+  const f = (d: number) => { const x = new Date(hoy.getTime() - d * 86400000); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
+  await sembrar(page, 'sesiones', [{ id: 1, fecha: f(1), tipo: 'rutina', rutina: 'A', modo: 'casa', primero: 'casa', abierta: 0, inicio: hoy.getTime() - 86400000, fin: hoy.getTime() - 86000000, sintio: 'mejor', nota: 'NOTA-PRIVADA' }]);
+  await sembrar(page, 'series', [{ id: 1, sesion: 1, clave: 'a', n: 1, v: { peso: 20, reps: 12 }, unidad: 'lb', hora: hoy.getTime() - 86300000 }]);
+  await sembrar(page, 'pesos', [{ id: 1, fecha: f(1), valor: 61.5, unidad: 'kg' }]);
+  await page.reload();
+  const enviados = await simular(page, '{"puntos":["Entrenaste esta semana.","Tu puente se mantuvo firme."]}');
+  await page.getByRole('button', { name: 'Rutina', exact: true }).click();
+  await page.getByRole('button', { name: 'Resumen de la semana con IA' }).click();
+  await expect(page.getByText('tus sesiones de entreno de las últimas dos semanas', { exact: false }).first()).toBeVisible();
+  expect(enviados).toHaveLength(0);
+  await page.getByRole('button', { name: 'Enviar' }).click();
+  await expect(page.locator('.ai-body').getByText('Entrenaste esta semana.')).toBeVisible();
+  expect(enviados[0].body).toContain('Ejercicio A');
+  expect(enviados[0].body).not.toContain('61.5');
+  expect(enviados[0].body).not.toContain('NOTA-PRIVADA');
+  await revisarPantalla(page);
+  expect(errores).toEqual([]);
+});
