@@ -14,7 +14,7 @@ test('Comida: registrar, ver números, editar, quitar, copiar y moverse entre d�
   // Escribir un alimento en la cena
   await page.locator('.meal', { hasText: 'Cena' }).getByRole('button', { name: '+ Agregar' }).click();
   const hoja = page.getByRole('dialog', { name: 'Agregar a Cena' });
-  await hoja.getByRole('tab', { name: 'Escribir' }).click();
+  await hoja.getByRole('tab', { name: 'Escribir', exact: true }).click();
   await hoja.getByRole('button', { name: 'Agregar', exact: true }).click();
   await expect(page.getByText('Escribe el nombre del alimento')).toBeVisible();
   await hoja.getByLabel('Alimento').fill('Quesadilla de champiñones');

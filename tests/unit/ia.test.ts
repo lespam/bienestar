@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { BaseBienestar, usarBase, db } from '../../src/core/db';
 import { ErrorIA, extraerJson, preguntar } from '../../src/modules/ia/api';
-import { cambiosDeIngredientes, ideasDeMenu, leerRecetaDeFoto, ordenarPreparacion, tipsDeReceta } from '../../src/modules/ia/tareas';
+import { estimarComida, cambiosDeIngredientes, ideasDeMenu, leerRecetaDeFoto, ordenarPreparacion, tipsDeReceta } from '../../src/modules/ia/tareas';
 import { cargarIA, claveValida, guardarClave, ia, leerClave, ponerFuncion, ponerUsarIA, quitarClave } from '../../src/modules/ia/estado.svelte';
 import { crearZip } from '../../src/core/respaldo';
 
@@ -32,6 +32,16 @@ describe('respuestas de la IA', () => {
     const rs = [{ id: 'a', n: 'A' }, { id: 'b', n: 'B' }];
     expect(await ideasDeMenu('k', 'Cena', rs, [], responde('{"ids":["b","zzz","b","a"]}'))).toEqual(['b', 'a']);
     await expect(ideasDeMenu('k', 'Cena', rs, [], responde('{"ids":["zzz"]}'))).rejects.toThrow(ErrorIA);
+  });
+});
+
+describe('comida escrita', () => {
+  it('separa alimentos, limita los números y no acepta respuestas sin comida', async () => {
+    const r = await estimarComida('k', '2 quesadillas y un yogur', responde('{"items":[{"n":"Quesadilla","por":"2 piezas","k":420.4,"p":18,"c":40,"g":20},{"n":"  ","k":1},{"n":"Yogur","k":-5,"p":"x"}]}'));
+    expect(r).toEqual([{ n: 'Quesadilla', por: '2 piezas', k: 420, p: 18, c: 40, g: 20 }, { n: 'Yogur', por: '1 porción', k: 0, p: 0, c: 0, g: 0 }]);
+    const enorme = await estimarComida('k', 'x', responde('{"items":[{"n":"A","k":99999}]}'));
+    expect(enorme[0].k).toBe(3000);
+    await expect(estimarComida('k', 'hola', responde('{"items":[]}'))).rejects.toThrow(ErrorIA);
   });
 });
 

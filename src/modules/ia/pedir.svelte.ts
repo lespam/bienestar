@@ -3,7 +3,7 @@ import type { FnIA } from './estado.svelte';
 
 // Quien quiere ayuda de la IA describe el pedido; la hoja se encarga del aviso, los controles y la respuesta.
 export interface ItemIA { t: string; sub?: string; act?: string; aplicar?: () => void | Promise<void> }
-export interface ResultadoIA { intro: string; items: ItemIA[]; /** Cierra la hoja al terminar (por ejemplo, cuando ya llenó un formulario). */ cerrar?: boolean }
+export interface ResultadoIA { intro: string; items: ItemIA[]; /** Un solo botón que aplica todos los items. */ todos?: { act: string; aplicar: () => void | Promise<void> }; /** Cierra la hoja al terminar (por ejemplo, cuando ya llenó un formulario). */ cerrar?: boolean }
 export interface PedidoIA {
   fn: FnIA;
   titulo: string;

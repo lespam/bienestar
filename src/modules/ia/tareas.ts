@@ -77,3 +77,25 @@ export async function ideasDeMenu(clave: string, comida: string, recetas: Receta
   if (!ids.length) throw new ErrorIA('otro', 'sin ideas');
   return ids;
 }
+
+// ---------- Registrar comida escrita ----------
+export interface AlimentoEstimado { n: string; por: string; k: number; p: number; c: number; g: number }
+const redondea = (v: unknown, tope: number): number => { const n = numero(v); return n == null ? 0 : Math.round(Math.min(n, tope) * 10) / 10; };
+/** Solo se envía el texto que se escribió. Los números que vuelven son estimaciones y se revisan antes de guardar. */
+export async function estimarComida(clave: string, texto: string, ask: Pregunta = preguntar): Promise<AlimentoEstimado[]> {
+  const t = await ask({
+    modelo: MODELO_TEXTO, max: 1200,
+    texto: 'Una persona describió lo que comió: «' + texto.trim().slice(0, 600) + '»\nSepara cada alimento y estima la porción más probable y sus valores aproximados. ' +
+      'JSON: {"items": [{"n": "nombre", "por": "porción en palabras, por ejemplo 2 piezas", "k": kcal, "p": proteína g, "c": carbohidratos g, "g": grasa g}]}. ' +
+      'Son estimaciones, sin juicios sobre si es mucho o poco. Si el texto no habla de comida, devuelve {"items": []}.'
+  }, clave);
+  const lista = Array.isArray(extraerJson(t).items) ? (extraerJson(t).items as unknown[]) : [];
+  const r: AlimentoEstimado[] = [];
+  for (const x of lista.slice(0, 8)) {
+    const o = x as Record<string, unknown>;
+    if (typeof o?.n !== 'string' || !o.n.trim()) continue;
+    r.push({ n: o.n.trim(), por: typeof o.por === 'string' && o.por.trim() ? o.por.trim() : '1 porción', k: Math.round(redondea(o.k, 3000)), p: redondea(o.p, 300), c: redondea(o.c, 500), g: redondea(o.g, 300) });
+  }
+  if (!r.length) throw new ErrorIA('otro', 'sin alimentos');
+  return r;
+}

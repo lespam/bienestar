@@ -4,6 +4,8 @@
   import { avisos } from '../../core/aviso.svelte';
   import { nav } from '../../core/nav.svelte';
   import { guardar, prefs } from '../ajustes';
+  import { AnfitrionIA, estimarComida, pedirIA } from '../ia';
+  import type { AlimentoEstimado } from '../ia';
   import { COMIDAS, DIAS_ATRAS, barra, diaBreve, etiquetaDia, fechaDe, fmtN, fraseDia, kRango, macroLinea, porTxt, porcionDe, r1, recientes, sinRepetir, sumas, type Plato } from './calculos';
   import { agregarAlimentos, alimentosDe, guardarAlimento, leerPerfiles, flexibleDe, leerPrep, listarRecetas, menuDe, quitarAlimento, reponerDia, sembrarRecetas, ultimosRegistrados } from './datos';
   import { filaDeTanda } from './preparacion';
@@ -108,7 +110,8 @@
 
   // ---------- Agregar ----------
   let cual = $state<0 | 1 | 2 | 3>(3);
-  let pestaña = $state<'rec' | 'rcp' | 'man'>('rec');
+  let pestaña = $state<'rec' | 'rcp' | 'man' | 'ia'>('rec');
+  let descripcion = $state('');
   let ultimos = $state<Alimento[]>([]);
   let recetas = $state<Receta[]>([]);
   let manual = $state<Record<'n' | 'por' | 'k' | 'p' | 'c' | 'g', string | number>>({ n: '', por: '', k: '', p: '', c: '', g: '' });
@@ -134,6 +137,26 @@
     nav.cerrar();
     await cargar();
     avisos.mostrar('Agregado a ' + COMIDAS[c]);
+  }
+  /** Describir lo que comiste (IA opcional): se revisa cada alimento antes de agregarlo. */
+  function describirConIA() {
+    const texto = descripcion.trim();
+    if (!texto) { document.getElementById('ia-desc')?.focus(); avisos.mostrar('Cuéntame primero qué comiste'); return; }
+    const c = cual, f = fecha;
+    const fila = (a: AlimentoEstimado) => ({ fecha: f, comida: c, n: a.n, por: a.por + ' · estimado con IA', k: a.k, p: a.p, c: a.c, g: a.g });
+    const poner1 = async (a: AlimentoEstimado) => { await agregarAlimentos([fila(a)]); await cargar(); };
+    pedirIA({
+      fn: 'comida', titulo: 'Registrar con IA', envia: 'solo el texto que escribiste sobre lo que comiste',
+      manual: { texto: 'Escribirlo yo', hacer: () => (pestaña = 'man') },
+      ejecutar: async (clave) => {
+        const lista = await estimarComida(clave, texto);
+        return {
+          intro: 'Esto entendí. Son estimaciones: cámbialas después si quieres.',
+          todos: { act: 'Agregar todo a ' + COMIDAS[c].toLowerCase(), aplicar: async () => { await agregarAlimentos(lista.map(fila)); await cargar(); avisos.mostrar('Agregado a ' + COMIDAS[c]); } },
+          items: lista.map((a) => ({ t: a.n, sub: a.por + (ver ? ' · ' + a.k + ' kcal aprox. · P ' + a.p + ' · C ' + a.c + ' · G ' + a.g : ''), act: 'Agregar a ' + COMIDAS[c].toLowerCase(), aplicar: async () => { await poner1(a); avisos.mostrar('Agregado a ' + COMIDAS[c]); } }))
+        };
+      }
+    });
   }
   async function agregarManual() {
     const n = String(manual.n).trim();
@@ -332,12 +355,13 @@
   <p class="tool-note">Las referencias de tu perfil las defines tú o con tu nutrióloga. La app no da consejos médicos.</p>
 </div>
 
-{#if nav.hojaAbierta('fd-add')}
+{#if nav.hojaEnPila('fd-add')}
   <Hoja titulo={'Agregar a ' + COMIDAS[cual]}>
     <div class="seg" role="tablist">
       <button class:on={pestaña === 'rec'} role="tab" aria-selected={pestaña === 'rec'} onclick={() => (pestaña = 'rec')}>Recientes</button>
       <button class:on={pestaña === 'rcp'} role="tab" aria-selected={pestaña === 'rcp'} onclick={() => (pestaña = 'rcp')}>Recetas</button>
       <button class:on={pestaña === 'man'} role="tab" aria-selected={pestaña === 'man'} onclick={() => (pestaña = 'man')}>Escribir</button>
+      <button class:on={pestaña === 'ia'} role="tab" aria-selected={pestaña === 'ia'} onclick={() => (pestaña = 'ia')}>Describir</button>
     </div>
     <div class="hide-nums-scope" class:hide-nums={!ver}>
       {#if pestaña === 'rec'}
@@ -361,6 +385,15 @@
             <p class="tool-note left">Todavía no hay recetas.</p>
           {/each}
           <button class="add" onclick={() => { nav.cerrar(); nav.abrir('recetas'); }}>Abrir recetario</button>
+        </div>
+      {:else if pestaña === 'ia'}
+        <div class="sh-panel">
+          <div class="man">
+            <label for="ia-desc">¿Qué comiste?</label>
+            <textarea id="ia-desc" rows="3" placeholder="Ej. dos quesadillas de champiñón y un yogur con fruta" bind:value={descripcion}></textarea>
+            <p class="tool-note left">La IA (opcional, con tu clave) separa los alimentos y estima porciones y números. Se envía solo lo que escribes aquí. Tú revisas todo antes de agregarlo, y puedes cambiarlo después.</p>
+            <button class="start" onclick={describirConIA}>Estimar con IA</button>
+          </div>
         </div>
       {:else}
         <div class="sh-panel">
@@ -421,3 +454,4 @@
     <button class="start" disabled={!destinos.length} onclick={copiar}>{destinos.length ? 'Copiar a ' + destinos.length + (destinos.length === 1 ? ' día' : ' días') : 'Copiar'}</button>
   </Hoja>
 {/if}
+<AnfitrionIA />

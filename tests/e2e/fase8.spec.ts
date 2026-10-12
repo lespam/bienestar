@@ -200,3 +200,31 @@ test('Menú, preparación y tips: ideas y orden con IA, con Deshacer', async ({ 
   expect(enviados[0].body).not.toContain('Tinga');
   expect(errores).toEqual([]);
 });
+
+test('Comida: describir lo que comiste con IA, revisar y agregar', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await prenderIA(page);
+  const enviados = await simular(page, '{"items":[{"n":"Quesadilla de champiñón","por":"2 piezas","k":420,"p":18,"c":40,"g":20},{"n":"Yogur con fruta","por":"1 taza","k":180,"p":10,"c":25,"g":4}]}');
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: '+ Agregar', exact: true }).last().click();
+  await page.getByRole('tab', { name: 'Describir' }).click();
+  await page.getByRole('button', { name: 'Estimar con IA' }).click();
+  await expect(page.getByText('Cuéntame primero qué comiste')).toBeVisible();
+  await page.getByLabel('¿Qué comiste?').fill('dos quesadillas de champiñón y un yogur con fruta');
+  await revisarPantalla(page);
+  await page.getByRole('button', { name: 'Estimar con IA' }).click();
+  await expect(page.getByText('solo el texto que escribiste sobre lo que comiste', { exact: false }).first()).toBeVisible();
+  expect(enviados).toHaveLength(0);
+  await page.getByRole('button', { name: 'Enviar' }).click();
+  await expect(page.getByText('Esto entendí.', { exact: false })).toBeVisible();
+  // Con los números ocultos, la revisión no los muestra
+  await expect(page.locator('.ai-it').first()).not.toContainText('kcal');
+  expect(enviados[0].body).toContain('dos quesadillas de champiñón');
+  expect(enviados[0].body).not.toContain('Tinga');
+  await revisarPantalla(page);
+  await page.getByRole('button', { name: /^Agregar todo a/ }).click();
+  await expect(page.getByText('Quesadilla de champiñón')).toBeVisible();
+  await expect(page.getByText('Yogur con fruta')).toBeVisible();
+  expect(errores).toEqual([]);
+});
