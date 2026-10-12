@@ -228,3 +228,29 @@ test('Comida: describir lo que comiste con IA, revisar y agregar', async ({ page
   await expect(page.getByText('Yogur con fruta')).toBeVisible();
   expect(errores).toEqual([]);
 });
+
+test('Comida: escanear un plato con contexto, revisar y agregar', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await prenderIA(page);
+  const enviados = await simular(page, '{"items":[{"n":"Barra de granola","por":"media barra","k":90,"p":2,"c":14,"g":3}]}');
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: '+ Agregar', exact: true }).last().click();
+  await page.getByRole('tab', { name: 'Escanear' }).click();
+  await expect(page.getByRole('button', { name: 'Estimar con IA' })).toBeDisabled();
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  await page.locator('.to-pick input').nth(1).setInputFiles({ name: 'plato.png', mimeType: 'image/png', buffer: PNG });
+  await page.getByLabel('Contexto (opcional)').fill('media porción');
+  await revisarPantalla(page);
+  await page.getByRole('button', { name: 'Estimar con IA' }).click();
+  await expect(page.getByText('la foto del plato o la etiqueta', { exact: false }).first()).toBeVisible();
+  expect(enviados).toHaveLength(0);
+  await page.getByRole('button', { name: 'Enviar' }).click();
+  await expect(page.getByText('Esto entendí.', { exact: false })).toBeVisible();
+  expect(enviados[0].body).toContain('"type":"image"');
+  expect(enviados[0].body).toContain('media porción');
+  expect(enviados[0].body).not.toContain('Tinga');
+  await page.getByRole('button', { name: /^Agregar a/ }).click();
+  await expect(page.getByText('Barra de granola')).toBeVisible();
+  expect(errores).toEqual([]);
+});

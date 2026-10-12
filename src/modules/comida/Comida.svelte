@@ -4,7 +4,8 @@
   import { avisos } from '../../core/aviso.svelte';
   import { nav } from '../../core/nav.svelte';
   import { guardar, prefs } from '../ajustes';
-  import { AnfitrionIA, estimarComida, pedirIA } from '../ia';
+  import { aBase64, AnfitrionIA, estimarComida, estimarDeFoto, pedirIA } from '../ia';
+  import { reducirFoto } from '../../core/imagen';
   import type { AlimentoEstimado } from '../ia';
   import { COMIDAS, DIAS_ATRAS, barra, diaBreve, etiquetaDia, fechaDe, fmtN, fraseDia, kRango, macroLinea, porTxt, porcionDe, r1, recientes, sinRepetir, sumas, type Plato } from './calculos';
   import { agregarAlimentos, alimentosDe, guardarAlimento, leerPerfiles, flexibleDe, leerPrep, listarRecetas, menuDe, quitarAlimento, reponerDia, sembrarRecetas, ultimosRegistrados } from './datos';
@@ -110,7 +111,7 @@
 
   // ---------- Agregar ----------
   let cual = $state<0 | 1 | 2 | 3>(3);
-  let pestaña = $state<'rec' | 'rcp' | 'man' | 'ia'>('rec');
+  let pestaña = $state<'rec' | 'rcp' | 'man' | 'ia' | 'esc'>('rec');
   let descripcion = $state('');
   let ultimos = $state<Alimento[]>([]);
   let recetas = $state<Receta[]>([]);
@@ -138,24 +139,50 @@
     await cargar();
     avisos.mostrar('Agregado a ' + COMIDAS[c]);
   }
-  /** Describir lo que comiste (IA opcional): se revisa cada alimento antes de agregarlo. */
-  function describirConIA() {
-    const texto = descripcion.trim();
-    if (!texto) { document.getElementById('ia-desc')?.focus(); avisos.mostrar('Cuéntame primero qué comiste'); return; }
+  /** Estimaciones de la IA (texto o foto): se revisa cada alimento antes de agregarlo. */
+  function revisarEstimados(fn: 'comida' | 'escaner', titulo: string, envia: string, obtener: (clave: string) => Promise<AlimentoEstimado[]>) {
     const c = cual, f = fecha;
     const fila = (a: AlimentoEstimado) => ({ fecha: f, comida: c, n: a.n, por: a.por + ' · estimado con IA', k: a.k, p: a.p, c: a.c, g: a.g });
     const poner1 = async (a: AlimentoEstimado) => { await agregarAlimentos([fila(a)]); await cargar(); };
     pedirIA({
-      fn: 'comida', titulo: 'Registrar con IA', envia: 'solo el texto que escribiste sobre lo que comiste',
+      fn, titulo, envia,
       manual: { texto: 'Escribirlo yo', hacer: () => (pestaña = 'man') },
       ejecutar: async (clave) => {
-        const lista = await estimarComida(clave, texto);
+        const lista = await obtener(clave);
         return {
           intro: 'Esto entendí. Son estimaciones: cámbialas después si quieres.',
           todos: { act: 'Agregar todo a ' + COMIDAS[c].toLowerCase(), aplicar: async () => { await agregarAlimentos(lista.map(fila)); await cargar(); avisos.mostrar('Agregado a ' + COMIDAS[c]); } },
           items: lista.map((a) => ({ t: a.n, sub: a.por + (ver ? ' · ' + a.k + ' kcal aprox. · P ' + a.p + ' · C ' + a.c + ' · G ' + a.g : ''), act: 'Agregar a ' + COMIDAS[c].toLowerCase(), aplicar: async () => { await poner1(a); avisos.mostrar('Agregado a ' + COMIDAS[c]); } }))
         };
       }
+    });
+  }
+  function describirConIA() {
+    const texto = descripcion.trim();
+    if (!texto) { document.getElementById('ia-desc')?.focus(); avisos.mostrar('Cuéntame primero qué comiste'); return; }
+    revisarEstimados('comida', 'Registrar con IA', 'solo el texto que escribiste sobre lo que comiste', (clave) => estimarComida(clave, texto));
+  }
+
+  // ---------- Escáner (IA opcional): la foto no se guarda ----------
+  let fotoEscaner = $state<File | null>(null);
+  let fotoEscanerUrl = $state('');
+  let contexto = $state('');
+  function elegirFotoEscaner(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const f = input.files?.[0];
+    input.value = '';
+    if (!f) return;
+    if (fotoEscanerUrl) URL.revokeObjectURL(fotoEscanerUrl);
+    fotoEscaner = f; fotoEscanerUrl = URL.createObjectURL(f);
+  }
+  function otraFotoEscaner() { if (fotoEscanerUrl) URL.revokeObjectURL(fotoEscanerUrl); fotoEscaner = null; fotoEscanerUrl = ''; }
+  function escanearConIA() {
+    const foto = fotoEscaner, ctx = contexto;
+    if (!foto) return;
+    revisarEstimados('escaner', 'Escáner con IA', 'la foto del plato o la etiqueta y el contexto que escribiste', async (clave) => {
+      const b = await reducirFoto(foto, 1280);
+      const tipo = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(b.type) ? b.type : 'image/jpeg';
+      return estimarDeFoto(clave, { tipo, base64: await aBase64(b) }, ctx);
     });
   }
   async function agregarManual() {
@@ -362,6 +389,7 @@
       <button class:on={pestaña === 'rcp'} role="tab" aria-selected={pestaña === 'rcp'} onclick={() => (pestaña = 'rcp')}>Recetas</button>
       <button class:on={pestaña === 'man'} role="tab" aria-selected={pestaña === 'man'} onclick={() => (pestaña = 'man')}>Escribir</button>
       <button class:on={pestaña === 'ia'} role="tab" aria-selected={pestaña === 'ia'} onclick={() => (pestaña = 'ia')}>Describir</button>
+      <button class:on={pestaña === 'esc'} role="tab" aria-selected={pestaña === 'esc'} onclick={() => (pestaña = 'esc')}>Escanear</button>
     </div>
     <div class="hide-nums-scope" class:hide-nums={!ver}>
       {#if pestaña === 'rec'}
@@ -393,6 +421,23 @@
             <textarea id="ia-desc" rows="3" placeholder="Ej. dos quesadillas de champiñón y un yogur con fruta" bind:value={descripcion}></textarea>
             <p class="tool-note left">La IA (opcional, con tu clave) separa los alimentos y estima porciones y números. Se envía solo lo que escribes aquí. Tú revisas todo antes de agregarlo, y puedes cambiarlo después.</p>
             <button class="start" onclick={describirConIA}>Estimar con IA</button>
+          </div>
+        </div>
+      {:else if pestaña === 'esc'}
+        <div class="sh-panel">
+          <div class="man">
+            {#if !fotoEscaner}
+              <div class="to-pick">
+                <label><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></svg>Tomar foto<input type="file" accept="image/*" capture="environment" onchange={elegirFotoEscaner} /></label>
+                <label><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3" /><circle cx="9" cy="10" r="2" /><path d="M21 16l-5-5-8 8" /></svg>Elegir de la galería<input type="file" accept="image/*" onchange={elegirFotoEscaner} /></label>
+              </div>
+            {:else}
+              <div class="rs-prev"><img src={fotoEscanerUrl} alt="Foto de tu plato o etiqueta" /><button class="link-btn" onclick={otraFotoEscaner}>Tomar otra foto</button></div>
+            {/if}
+            <label for="esc-ctx">Contexto (opcional)</label>
+            <input id="esc-ctx" type="text" placeholder='Ej. "media porción", "sin aderezo"' bind:value={contexto} />
+            <p class="tool-note left">Toma la foto de una etiqueta o de un plato. La IA (opcional, con tu clave) estima calorías y macros aproximados. Se envía la foto y el contexto; la foto no se guarda en la app. Tú revisas todo antes de agregarlo.</p>
+            <button class="start" disabled={!fotoEscaner} onclick={escanearConIA}>Estimar con IA</button>
           </div>
         </div>
       {:else}

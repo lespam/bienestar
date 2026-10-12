@@ -89,7 +89,11 @@ export async function estimarComida(clave: string, texto: string, ask: Pregunta 
       'JSON: {"items": [{"n": "nombre", "por": "porción en palabras, por ejemplo 2 piezas", "k": kcal, "p": proteína g, "c": carbohidratos g, "g": grasa g}]}. ' +
       'Son estimaciones, sin juicios sobre si es mucho o poco. Si el texto no habla de comida, devuelve {"items": []}.'
   }, clave);
-  const lista = Array.isArray(extraerJson(t).items) ? (extraerJson(t).items as unknown[]) : [];
+  return leerEstimados(t);
+}
+function leerEstimados(t: string): AlimentoEstimado[] {
+  const j = extraerJson(t);
+  const lista = Array.isArray(j.items) ? (j.items as unknown[]) : [];
   const r: AlimentoEstimado[] = [];
   for (const x of lista.slice(0, 8)) {
     const o = x as Record<string, unknown>;
@@ -98,4 +102,17 @@ export async function estimarComida(clave: string, texto: string, ask: Pregunta 
   }
   if (!r.length) throw new ErrorIA('otro', 'sin alimentos');
   return r;
+}
+
+// ---------- Escáner: foto de una etiqueta o de un plato ----------
+/** Se envía la foto del plato o la etiqueta y el contexto escrito. La foto no se guarda en la app. */
+export async function estimarDeFoto(clave: string, imagen: Imagen, contexto: string, ask: Pregunta = preguntar): Promise<AlimentoEstimado[]> {
+  const t = await ask({
+    modelo: MODELO_FOTO, imagen, max: 1200,
+    texto: 'La imagen es una etiqueta nutrimental o un plato de comida.' + (contexto.trim() ? ' Contexto de la persona: «' + contexto.trim().slice(0, 300) + '».' : '') +
+      ' Identifica lo que se ve y estima la porción y sus valores aproximados; si es una etiqueta, usa sus números y ajústalos a la porción que indique el contexto. ' +
+      'JSON: {"items": [{"n": "nombre", "por": "porción en palabras", "k": kcal, "p": proteína g, "c": carbohidratos g, "g": grasa g}]}. ' +
+      'Son estimaciones, sin juicios. Si no se ve comida ni etiqueta, devuelve {"items": []}.'
+  }, clave);
+  return leerEstimados(t);
 }

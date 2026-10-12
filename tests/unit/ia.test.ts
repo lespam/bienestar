@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { BaseBienestar, usarBase, db } from '../../src/core/db';
 import { ErrorIA, extraerJson, preguntar } from '../../src/modules/ia/api';
-import { estimarComida, cambiosDeIngredientes, ideasDeMenu, leerRecetaDeFoto, ordenarPreparacion, tipsDeReceta } from '../../src/modules/ia/tareas';
+import { estimarComida, estimarDeFoto, cambiosDeIngredientes, ideasDeMenu, leerRecetaDeFoto, ordenarPreparacion, tipsDeReceta } from '../../src/modules/ia/tareas';
 import { cargarIA, claveValida, guardarClave, ia, leerClave, ponerFuncion, ponerUsarIA, quitarClave } from '../../src/modules/ia/estado.svelte';
 import { crearZip } from '../../src/core/respaldo';
 
@@ -42,6 +42,17 @@ describe('comida escrita', () => {
     const enorme = await estimarComida('k', 'x', responde('{"items":[{"n":"A","k":99999}]}'));
     expect(enorme[0].k).toBe(3000);
     await expect(estimarComida('k', 'hola', responde('{"items":[]}'))).rejects.toThrow(ErrorIA);
+  });
+});
+
+describe('escáner', () => {
+  it('manda la imagen y el contexto, y limita los números', async () => {
+    let pedido: { imagen?: unknown; texto: string } | undefined;
+    const r = await estimarDeFoto('k', { tipo: 'image/png', base64: 'AAA' }, 'media porción', async (p) => { pedido = p as never; return '{"items":[{"n":"Barra","por":"1/2 barra","k":99999,"p":5,"c":10,"g":3}]}'; });
+    expect(pedido?.imagen).toBeTruthy();
+    expect(pedido?.texto).toContain('media porción');
+    expect(r[0].k).toBe(3000);
+    await expect(estimarDeFoto('k', { tipo: 'image/png', base64: 'AAA' }, '', async () => '{"items":[]}')).rejects.toThrow(ErrorIA);
   });
 });
 
