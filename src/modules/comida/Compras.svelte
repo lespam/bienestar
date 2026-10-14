@@ -135,7 +135,7 @@
   <section class="cq" aria-label="Falta o se acaba">
     <label for="cq-n"><b>Falta o se acaba</b></label>
     <div class="cq-row">
-      <input id="cq-n" type="text" placeholder="Ej. paper towels, leche, Treats" autocomplete="off" bind:value={nombre} onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (agregar(nombre)) nombre = ''; } }} />
+      <input id="cq-n" type="text" placeholder="Ej. leche, Treats" autocomplete="off" bind:value={nombre} onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (agregar(nombre)) nombre = ''; } }} />
       <button class="start" onclick={() => { if (agregar(nombre)) nombre = ''; }}>Agregar</button>
     </div>
     <div class="m-chips" role="radiogroup" aria-label="Qué tan pronto">

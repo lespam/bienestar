@@ -1056,8 +1056,8 @@ h4 { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-t
 /* v41: Compras con destino */
 .cq { background: var(--panel); border-radius: 20px; padding: 14px; display: grid; gap: 10px; }
 .cq-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
-.cq-row input { min-width: 0; }
-#cp-tabs { position: sticky; top: -24px; z-index: 5; box-shadow: 0 -30px 0 0 var(--bg), 0 8px 0 0 var(--bg); }
+.cq-row input { min-width: 0; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font: inherit; font-size: 15px; padding: 0 12px; }
+#cp-tabs { position: sticky; top: -24px; z-index: 5; box-shadow: 0 -18px 0 0 var(--bg), 0 8px 0 0 var(--bg); }
 #cp-tabs button { font-size: 12px; padding: 10px 2px; white-space: nowrap; }
 .cp-row .wu-it small { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .cp-row .wu-it span { min-width: 0; overflow-wrap: anywhere; }
