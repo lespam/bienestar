@@ -67,3 +67,28 @@ test('Cronómetro y Temporizador de Rutina abren Herramientas', async ({ page })
   await page.getByRole('button', { name: 'Temporizador' }).click();
   await expect(page.getByRole('tab', { name: 'Temporizador', selected: true })).toBeVisible();
 });
+
+test('Descanso: si el teléfono se duerme, solo cuenta lo que duró el descanso', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await page.clock.install();
+  await entrarConContenido(page);
+  await page.getByRole('button', { name: 'Rutina', exact: true }).click();
+  await page.getByRole('button', { name: 'Descanso', exact: true }).click();
+  await page.getByRole('radio', { name: '1 min' }).click();
+  await page.getByRole('button', { name: 'Iniciar', exact: true }).click();
+  await page.clock.fastForward('02:00:00'); // dos horas con la pantalla apagada
+  await expect(page.getByText('listo', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Volver' }).click();
+  await page.waitForTimeout(300);
+  const segs = await page.evaluate(() => new Promise<number[]>((ok, mal) => {
+    const a = indexedDB.open('bienestar');
+    a.onerror = () => mal(a.error);
+    a.onsuccess = () => {
+      const r = a.result.transaction('descansos').objectStore('descansos').getAll();
+      r.onsuccess = () => { a.result.close(); ok((r.result as { seg: number }[]).map((x) => x.seg)); };
+    };
+  }));
+  expect(segs.length).toBe(1);
+  expect(segs[0]).toBeLessThanOrEqual(61);
+  expect(errores).toEqual([]);
+});

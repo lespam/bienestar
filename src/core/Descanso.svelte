@@ -36,7 +36,8 @@
 
   function parar() {
     if (!corriendo) return;
-    medido += (Date.now() - desde) / 1000;
+    // Si el teléfono estuvo dormido, el descanso ya había terminado: no cuenta más allá de su fin.
+    medido += (Math.min(Date.now(), fin) - desde) / 1000;
     corriendo = false;
   }
   function tic() {
