@@ -135,7 +135,8 @@
                 <div class="ses-meta"><span>{MODOS[s.modo]}</span><span>{s.abierta ? minutos(Date.now() - s.inicio) + ' min hasta ahora' : minutos((s.fin ?? s.inicio) - s.inicio) + ' min'}</span>{#if oculto}<span>Números ocultos</span>{/if}</div>
                 {#each detalle(x) as r (r.k)}<div class="ses-row"><span>{r.nombre}</span><span>{r.texto}</span></div>{/each}
                 {#if s.nota}<p class="ses-note">“{s.nota}”</p>{/if}
-                {#if s.abierta}<button class="start" onclick={() => nav.reemplazar('curso')}>Seguir con esta sesión</button>{/if}
+                {#if s.abierta}<button class="start" onclick={() => nav.reemplazar('curso')}>Seguir con esta sesión</button>
+                {:else if s.tipo === 'rutina' && s.rutina}<button class="ghost" onclick={() => nav.abrir('curso', { revisar: s.id })}>Editar series y PR</button>{/if}
               </div>
             {/if}
           </div>

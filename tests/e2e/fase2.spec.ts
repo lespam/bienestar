@@ -121,6 +121,20 @@ test('sesión completa: guardar series, descanso, retomar, ficha, fin, PR', asyn
   await expect(page.getByText('“Me sentí bien”')).toBeVisible();
   await revisarPantalla(page);
 
+  // Editar una sesión terminada: no se reabre ni abre el descanso, y sigue terminada
+  await page.getByRole('button', { name: 'Editar series y PR' }).click();
+  await expect(page.getByText('Estás editando una sesión que ya terminó.', { exact: false })).toBeVisible();
+  const rev = page.locator('.card.now tr.cur input');
+  await rev.nth(0).fill('0');
+  await rev.nth(1).fill('25');
+  await page.getByRole('button', { name: 'Guardar y pasar a A2' }).click();
+  await expect(page.getByText('Serie guardada')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Descanso' })).toHaveCount(0);
+  await page.getByRole('button', { name: /Volver a Rutina/ }).click();
+  await page.getByRole('tab', { name: 'Sesiones' }).click();
+  await expect(page.getByText('Terminada')).toBeVisible();
+  await expect(page.getByText('Abierta', { exact: true })).toHaveCount(0);
+
   // Inicio ya muestra la sesión de hoy guardada
   await page.getByRole('button', { name: 'Volver' }).click();
   await page.getByRole('button', { name: 'Inicio' }).click();

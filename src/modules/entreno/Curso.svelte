@@ -9,10 +9,12 @@
   import { cargarContexto, datosDeEjercicio, type Contexto } from './contexto';
   import { borrarSerie, guardarSerie, guardarSustituto, ponerNota, ponerSaltado, quitarSustituto, saltadosDe, terminarSesion } from './datos';
   import { borrador, limpiarBorrador, llaveBorrador } from './borrador.svelte';
-  import type { CampoReg, Ejercicio, Grupo } from './programa';
+  import { gruposDeRutina, type CampoReg, type Ejercicio, type Grupo, type Letra } from './programa';
   import type { Serie } from '../../core/db';
   import SustitutoHoja from './SustitutoHoja.svelte';
 
+  /** Una sesión que ya terminó y se abre para agregar o corregir series. No se reabre: sigue terminada. */
+  const revisar = typeof nav.pantalla?.datos?.revisar === 'number' ? (nav.pantalla.datos.revisar as number) : null;
   let c = $state<Contexto | null>(null);
   let series = $state<Record<string, Serie>>({});
   let saltados = $state<string[]>([]);
@@ -38,8 +40,13 @@
   });
 
   async function leer() {
-    const x = await cargarContexto();
-    if (!x?.hoy || x.hoy.estado !== 'abierta') { nav.cerrar(); return; }
+    let x = await cargarContexto();
+    if (revisar != null) {
+      const r = x?.todas.find((t) => t.sesion.id === revisar)?.sesion;
+      if (!x || !r || r.abierta || !r.rutina) { nav.cerrar(); return; }
+      const letra = r.rutina as Letra;
+      x = { ...x, hoy: { sesion: r, estado: 'hecha' }, letra, grupos: gruposDeRutina(x.p, letra) };
+    } else if (!x?.hoy || x.hoy.estado !== 'abierta') { nav.cerrar(); return; }
     c = x;
     nota = x.hoy!.sesion.nota;
     const propias = x.todas.find((t) => t.sesion.id === x.hoy!.sesion.id)?.series ?? [];
@@ -134,7 +141,7 @@
       for (const [campo, val] of Object.entries(v)) if (val != null) borrador.v[llaveBorrador(e.clave, p.s, campo)] = String(val);
       if (nav.pantalla?.id === 'descanso') nav.cerrar();
     });
-    if (cierraRonda && sig) nav.abrir('descanso', { siguiente: etiquetaPaso(g, sig), automatico: true, sesion: sesion.id, despues: etiquetaPaso(g, p) });
+    if (cierraRonda && sig && revisar == null) nav.abrir('descanso', { siguiente: etiquetaPaso(g, sig), automatico: true, sesion: sesion.id, despues: etiquetaPaso(g, p) });
   }
 
   async function saltar(e: Ejercicio) {
@@ -162,7 +169,7 @@
     if (!sesion) return;
     clearTimeout(temporizador);
     await ponerNota(sesion.id!, nota);
-    await terminarSesion(sesion.id!);
+    if (revisar == null) await terminarSesion(sesion.id!);
     nav.reemplazar('fin', { sesion: sesion.id });
   }
 
@@ -193,7 +200,7 @@
     if (oculto || a == null || pv == null) return { t: '', sube: false };
     return a > pv ? { t: `+${Math.round((a - pv) * 10) / 10} vs. ${dia}`, sube: true } : a === pv ? { t: 'igual', sube: false } : { t: '', sube: false };
   }
-  const reloj_ = $derived(sesion ? reloj(Math.max(0, Math.floor((ahora - sesion.inicio) / 1000))) : '0:00');
+  const reloj_ = $derived(sesion ? reloj(Math.max(0, Math.floor(((sesion.fin ?? ahora) - sesion.inicio) / 1000))) : '0:00');
 </script>
 
 <header class="cur-head">
@@ -204,6 +211,7 @@
 
 <div class="screen">
   {#if grupo && c}
+    {#if revisar != null}<p class="seg-help">Estás editando una sesión que ya terminó. Lo que guardes se suma a esa sesión y su duración no cambia.</p>{/if}
     <div class="ss-head">
       <div>
         <h2 tabindex="-1">{titulo}</h2>

@@ -5,7 +5,7 @@
   import { prefs } from '../ajustes';
   import { ejerciciosEmpezados, historialDe, llave, logros, minutos } from './calculos';
   import { cargarContexto, excluir, type Contexto } from './contexto';
-  import { reabrirSesion, segundosDeDescanso, sentirse } from './datos';
+  import { segundosDeDescanso, sentirse } from './datos';
   import { aFecha, fechaDia } from './semana';
   import type { Sesion } from '../../core/db';
   import Rico from './Rico.svelte';
@@ -49,7 +49,7 @@
 
   const MENSAJE: Record<string, string> = { mejor: 'Anotado. Lo verás antes de tu próxima sesión.', igual: 'Anotado.', peor: 'Anotado. Algunos días cuestan más.' };
   async function sentir(v: 'mejor' | 'igual' | 'peor') { sintio = v; await sentirse(id, v); }
-  async function volver() { await reabrirSesion(id); nav.reemplazar('curso'); }
+  function volver() { nav.reemplazar('curso', { revisar: id }); }
   const fecha = $derived(s ? fechaLarga(aFecha(s.fecha)) : '');
   const llevas = $derived(c?.llevas ?? 0);
 </script>
@@ -84,7 +84,7 @@
     <div class="fin-acts">
       <button class="start" onclick={() => nav.irTab('inicio')}>Ir a Inicio</button>
       <button class="ghost" onclick={() => nav.abrir('pr')}>Ver en Registro de PR</button>
-      <button class="link-btn" onclick={volver}>Volver a la sesión</button>
+      <button class="link-btn" onclick={volver}>Editar esta sesión</button>
     </div>
   {:else if c}
     <p class="seg-help">No encontré esta sesión.</p>
