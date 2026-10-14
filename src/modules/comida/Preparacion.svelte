@@ -6,7 +6,7 @@
   import { cap, fechaDe } from './calculos';
   import { AnfitrionIA, ordenarPreparacion, pedirIA } from '../ia';
   import { guardarPrep, leerPrep } from './datos';
-  import { cuandoTxt, diaTanda, estTxt, hechas, horaTxt, idTanda, minutosPendientes, preparoTxt, sumarDias, tandasDeSemana, ultimoDia } from './preparacion';
+  import { cuandoTxt, diaTanda, estTxt, hechas, horaTxt, idTanda, minutosPendientes, ponerEnOrden, preparoTxt, sumarDias, tandasDeSemana, ultimoDia } from './preparacion';
   import { fechasDeSemana, LETRA_DIA, numeroDia, etiquetaFecha, rangoSemana } from './semana';
 
   const semana = (nav.pantalla?.datos as { k?: number } | undefined)?.k ?? 0;
@@ -38,7 +38,7 @@
     let creada = false;
     if (!hoyT) { todas.push({ id: idTanda(), fecha: hoy, hora: '', items: [] }); hoyT = todas[todas.length - 1]; creada = true; }
     const [item] = desde.items.splice(pos, 1);
-    hoyT.items.push(item);
+    ponerEnOrden(hoyT.items, item);
     guardar();
     const idHoy = hoyT.id;
     avisos.deshacer('Pasó a hoy', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ItemMenu, Tanda } from '../../src/core/db';
-import { aLaHora, cuandoTxt, estTxt, filaDeTanda, horaTxt, platosDe, sincronizar, sumarDias, tandasDeSemana, ultimoDia } from '../../src/modules/comida/preparacion';
+import { porDiaYUrgencia, ponerEnOrden, aLaHora, cuandoTxt, estTxt, filaDeTanda, horaTxt, platosDe, sincronizar, sumarDias, tandasDeSemana, ultimoDia } from '../../src/modules/comida/preparacion';
 
 const HOY = '2026-10-11'; // domingo
 let n = 0;
@@ -69,6 +69,17 @@ describe('plan de preparación', () => {
     const mk = (fecha: string): Tanda => ({ id: fecha, fecha, hora: '', items: [] });
     const dias = ['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17', '2026-10-18'];
     expect(tandasDeSemana([mk('2026-10-19'), mk('2026-10-18'), mk('2026-10-11'), mk('2026-10-10')], dias).map((x) => x.fecha)).toEqual(['2026-10-11', '2026-10-18']);
+  });
+  it('en el mismo día va primero lo que se come antes, y lo que pasas a hoy se acomoda en su lugar', () => {
+    const it = (fm: string, t = 'x'): Tanda['items'][number] => ({ t, f: '', ok: false, fm });
+    const miercoles: Tanda = { id: 'a', fecha: '2026-10-13', hora: '20:00', items: [it('2026-10-14:c')] };
+    const movida: Tanda = { id: 'b', fecha: '2026-10-13', hora: '20:00', items: [it('2026-10-13:c')] };
+    expect([miercoles, movida].sort(porDiaYUrgencia).map((x) => x.id)).toEqual(['b', 'a']);
+    const items = [it('2026-10-14:c', 'miércoles'), { t: 'Lavar lechuga', f: '', ok: false }];
+    ponerEnOrden(items, it('2026-10-13:n', 'martes noche'));
+    expect(items.map((x) => x.t)).toEqual(['martes noche', 'miércoles', 'Lavar lechuga']);
+    ponerEnOrden(items, it('2026-10-13:d', 'martes desayuno'));
+    expect(items.map((x) => x.t)).toEqual(['martes desayuno', 'martes noche', 'miércoles', 'Lavar lechuga']);
   });
   it('textos', () => {
     expect(horaTxt('20:00')).toBe('8 pm');

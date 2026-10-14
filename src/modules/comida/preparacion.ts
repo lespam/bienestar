@@ -24,6 +24,21 @@ export const idTanda = () => 't' + Date.now().toString(36) + (contador++).toStri
 export const minutosPendientes = (t: Tanda) => t.items.reduce((a, it) => (it.ok ? a : a + (it.m ?? 0)), 0);
 export const hechas = (t: Tanda) => t.items.filter((it) => it.ok).length;
 
+/** La comida como se ordena: por fecha y, ese día, desayuno, comida, cena. */
+const clave = (fm: string) => { const [f, l] = fm.split(':'); return f + ':' + 'dcn'.indexOf(l); };
+
+/** Agrega un item a la tanda delante de lo que se come después; lo que escribiste tú (sin comida) no se mueve. */
+export function ponerEnOrden(items: ItemPrep[], item: ItemPrep) {
+  const i = item.fm ? items.findIndex((x) => !x.ok && x.fm && clave(x.fm) > clave(item.fm!)) : -1;
+  if (i < 0) items.push(item); else items.splice(i, 0, item);
+}
+
+/** La comida más cercana que sigue pendiente en la tanda (sin fecha si no hay nada pendiente). */
+const primeraComida = (t: Tanda) => t.items.filter((it) => !it.ok && it.fm).map((it) => clave(it.fm!)).sort()[0] ?? '9999';
+/** Primero el día; en el mismo día, la tanda de lo que se come antes; después, la hora. */
+export const porDiaYUrgencia = (a: Tanda, b: Tanda) =>
+  a.fecha !== b.fecha ? (a.fecha < b.fecha ? -1 : 1) : primeraComida(a) !== primeraComida(b) ? (primeraComida(a) < primeraComida(b) ? -1 : 1) : (a.hora || '99') < (b.hora || '99') ? -1 : (a.hora || '99') > (b.hora || '99') ? 1 : 0;
+
 /**
  * Deja la preparación de esos días como la pide el menú: quita lo que se había agregado para esas comidas
  * (si no está hecho) y agrega lo de las comidas nuevas en la tanda del día anterior.
@@ -45,10 +60,10 @@ export function sincronizar(tandas: Tanda[], menu: ItemMenu[], fechas: string[],
     for (const n of platos) {
       const titulo = 'Preparar ' + lc(n);
       if (t.items.some((it) => it.fm === fm && it.t === titulo)) continue;
-      t.items.push({ t: titulo, f: 'Para ' + articulo(m.lugar) + lc(NOMBRE_LUGAR[m.lugar]) + ' del ' + lc(nombreDia(m.fecha)), m: MIN_POR_PLATO, ok: false, fm });
+      ponerEnOrden(t.items, { t: titulo, f: 'Para ' + articulo(m.lugar) + lc(NOMBRE_LUGAR[m.lugar]) + ' del ' + lc(nombreDia(m.fecha)), m: MIN_POR_PLATO, ok: false, fm });
     }
   }
-  return vivas.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0));
+  return vivas.sort(porDiaYUrgencia);
 }
 
 /** El último día en que esta tanda llega a tiempo: la víspera de la primera comida que sigue pendiente. */
@@ -63,7 +78,7 @@ export function ultimoDia(t: Tanda, hoy: string, desde = hoy): string {
 /** Las tandas que se ven en la semana del menú: desde el domingo anterior hasta el domingo. */
 export const tandasDeSemana = (tandas: Tanda[], dias: string[]) => {
   const desde = sumarDias(dias[0], -1), hasta = dias[6];
-  return tandas.filter((t) => t.fecha >= desde && t.fecha <= hasta).sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0));
+  return tandas.filter((t) => t.fecha >= desde && t.fecha <= hasta).sort(porDiaYUrgencia);
 };
 
 // ---------- Textos ----------
