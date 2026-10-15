@@ -109,10 +109,14 @@
   const previa = (e: Ejercicio) => datosDeEjercicio(c!, e, nombreSust(e));
   const valorPrevio = (e: Ejercicio, n: number, campo: CampoReg) => previa(e).ultima?.series.find((s) => s.n === n)?.v[campo] ?? null;
 
-  function leerCampos(e: Ejercicio, n: number): Serie['v'] {
+  /** `base` son los valores ya guardados de una serie que se está corrigiendo: lo que no tocaste se queda como estaba. */
+  function leerCampos(e: Ejercicio, n: number, base?: Serie['v']): Serie['v'] {
     const v: Serie['v'] = {};
     for (const { campo } of columnas(e.registro, unidad)) {
-      const txt = (borrador.v[llaveBorrador(e.clave, n, campo)] ?? '').trim().replace(',', '.');
+      const escrito = borrador.v[llaveBorrador(e.clave, n, campo)];
+      if (base && escrito === undefined) { v[campo] = base[campo] ?? null; continue; }
+      const txt = (escrito ?? '').trim().replace(',', '.');
+      if (base) { v[campo] = txt !== '' && Number.isFinite(Number(txt)) ? Number(txt) : null; continue; }
       v[campo] = txt !== '' && Number.isFinite(Number(txt)) ? Number(txt) : valorPrevio(e, n, campo);
     }
     return v;
@@ -159,7 +163,7 @@
   async function editarGuardada(e: Ejercicio, n: number) {
     const k = llave(e.clave, n), previaS = series[k];
     if (!previaS || !sesion) return;
-    const v = leerCampos(e, n);
+    const v = leerCampos(e, n, previaS.v);
     const id = await guardarSerie(sesion.id!, e.clave, n, v, previaS.sust);
     series[k] = { ...previaS, id, v, hora: Date.now() };
     limpiarBorrador(e.clave, n);

@@ -72,6 +72,12 @@ test('sesión completa: guardar series, descanso, retomar, ficha, fin, PR', asyn
   await revisarPantalla(page);
   await page.getByRole('button', { name: 'Terminar descanso' }).click();
   await expect(page.getByText('Ronda 2 de 3')).toBeVisible();
+  // Corregir IZQ de una serie guardada no borra DER ni el peso
+  const izq = page.getByRole('spinbutton', { name: 'Serie 1 Izq', exact: true });
+  await izq.fill('12');
+  await izq.blur();
+  await expect(page.getByRole('spinbutton', { name: 'Serie 1 Der', exact: true })).toHaveValue('11');
+  await expect(page.getByRole('spinbutton', { name: 'Serie 1 Peso (lb)', exact: true }).last()).toHaveValue('15');
 
   // Cerrar a la mitad: la sesión sigue abierta y lo guardado ahí está
   await page.reload();
