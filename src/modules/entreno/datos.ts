@@ -1,4 +1,4 @@
-import { db, type FichaPropia, type Serie, type Sesion, type Sustituto } from '../../core/db';
+import { db, type Descanso, type FichaPropia, type Serie, type Sesion, type Sustituto } from '../../core/db';
 import { iso } from '../../core/fechas';
 import { prefs, registroNuevo } from '../ajustes';
 import type { Modo, SesionConSeries } from './calculos';
@@ -114,6 +114,32 @@ export async function ponerSaltado(sesion: number, clave: string, saltado: boole
   if (saltado) ahora.add(clave); else ahora.delete(clave);
   if (ahora.size) await db.entreno.put({ k: claveSaltados(sesion), v: [...ahora] });
   else await db.entreno.delete(claveSaltados(sesion));
+}
+
+// ---------- Borrar una sesión ----------
+export interface SesionBorrada { sesion: Sesion; series: Serie[]; descansos: Descanso[]; saltados: string[] }
+/** Quita la sesión con sus series, descansos y ejercicios saltados. Devuelve lo que quitó, para Deshacer. */
+export async function borrarSesion(id: number): Promise<SesionBorrada | null> {
+  return db.transaction('rw', [db.sesiones, db.series, db.descansos, db.entreno], async () => {
+    const sesion = await db.sesiones.get(id);
+    if (!sesion) return null;
+    const series = await db.series.where('sesion').equals(id).toArray();
+    const descansos = await db.descansos.where('sesion').equals(id).toArray();
+    const saltados = await saltadosDe(id);
+    await db.series.where('sesion').equals(id).delete();
+    await db.descansos.where('sesion').equals(id).delete();
+    await db.entreno.delete(claveSaltados(id));
+    await db.sesiones.delete(id);
+    return { sesion, series, descansos, saltados };
+  });
+}
+export async function reponerSesion(b: SesionBorrada) {
+  await db.transaction('rw', [db.sesiones, db.series, db.descansos, db.entreno], async () => {
+    await db.sesiones.put(b.sesion);
+    await db.series.bulkPut(b.series);
+    await db.descansos.bulkPut(b.descansos);
+    if (b.saltados.length) await db.entreno.put({ k: claveSaltados(b.sesion.id!), v: b.saltados });
+  });
 }
 
 // ---------- Cardio ----------

@@ -4,7 +4,9 @@
   import { iso } from '../../core/fechas';
   import { prefs } from '../ajustes';
   import { historialDe, resumenPR, textoSeries, minutos, type Historial } from './calculos';
+  import { avisos } from '../../core/aviso.svelte';
   import { cargarContexto, type Contexto } from './contexto';
+  import { borrarSesion, reponerSesion } from './datos';
   import { gruposDeRutina, type Ejercicio, type Letra } from './programa';
   import { aFecha, fechaMini } from './semana';
 
@@ -46,6 +48,14 @@
   });
 
   const cuando = (f: string, id: number, abierta?: boolean) => (abierta ? 'Hoy (en curso)' : f === hoyIso ? 'Hoy' : fechaMini(f).replace(/^./, (x) => x.toUpperCase()));
+
+  async function quitarSesion(id: number) {
+    const b = await borrarSesion(id);
+    if (!b) return;
+    abiertaSes = -1;
+    c = await cargarContexto();
+    avisos.deshacer('Sesión borrada', async () => { await reponerSesion(b); c = await cargarContexto(); });
+  }
 
   const sesiones = $derived(
     c ? c.todas.filter((x) => x.sesion.tipo === 'rutina').map((x) => x).sort((a, b) => b.sesion.inicio - a.sesion.inicio) : []
@@ -137,6 +147,7 @@
                 {#if s.nota}<p class="ses-note">“{s.nota}”</p>{/if}
                 {#if s.abierta}<button class="start" onclick={() => nav.reemplazar('curso')}>Seguir con esta sesión</button>
                 {:else if s.tipo === 'rutina' && s.rutina}<button class="ghost" onclick={() => nav.abrir('curso', { revisar: s.id })}>Editar series y PR</button>{/if}
+                <button class="link-btn" onclick={() => quitarSesion(s.id!)}>Borrar esta sesión</button>
               </div>
             {/if}
           </div>

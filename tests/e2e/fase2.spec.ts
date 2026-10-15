@@ -134,6 +134,12 @@ test('sesión completa: guardar series, descanso, retomar, ficha, fin, PR', asyn
   await page.getByRole('tab', { name: 'Sesiones' }).click();
   await expect(page.getByText('Terminada')).toBeVisible();
   await expect(page.getByText('Abierta', { exact: true })).toHaveCount(0);
+  // Borrar la sesión y Deshacer
+  await page.getByRole('button', { name: /Rutina A/ }).click();
+  await page.getByRole('button', { name: 'Borrar esta sesión' }).click();
+  await expect(page.getByText('Todavía no hay sesiones.')).toBeVisible();
+  await page.getByRole('button', { name: 'Deshacer' }).click();
+  await expect(page.getByText('Terminada')).toBeVisible();
 
   // Inicio ya muestra la sesión de hoy guardada
   await page.getByRole('button', { name: 'Volver' }).click();

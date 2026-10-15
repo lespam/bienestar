@@ -2,13 +2,34 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import Dexie from 'dexie';
 import { BaseBienestar, usarBase, db } from '../../src/core/db';
 import { copiaAntesDeActualizar, ultimaCopia, volverACopia } from '../../src/core/respaldo';
-import { borrarCardio, borrarSerie, cardiosRecientes, guardarAjuste, guardarCardio, leerAjustes, ponerSaltado, saltadosDe, calentadosDe, guardarSerie, iniciarSesion, marcarVarios, reabrirSesion, registrarDescanso, segundosDeDescanso, sesionAbierta, sesionesConSeries, terminarSesion } from '../../src/modules/entreno/datos';
+import { borrarSesion, reponerSesion, borrarCardio, borrarSerie, cardiosRecientes, guardarAjuste, guardarCardio, leerAjustes, ponerSaltado, saltadosDe, calentadosDe, guardarSerie, iniciarSesion, marcarVarios, reabrirSesion, registrarDescanso, segundosDeDescanso, sesionAbierta, sesionesConSeries, terminarSesion } from '../../src/modules/entreno/datos';
 import { cargarPrefs } from '../../src/modules/ajustes';
 
 let n = 0;
 beforeEach(async () => { usarBase(new BaseBienestar('entreno-' + n++)); await cargarPrefs(); });
 
 describe('sesiones y series', () => {
+  it('borrar una sesión quita sus series, descansos y saltados, y Deshacer los devuelve', async () => {
+    const a = await iniciarSesion('A', 'mixto', 'gym', new Date(2026, 9, 5, 18, 0));
+    await guardarSerie(a.id!, 'glute', 0, { peso: 0, reps: 20 });
+    await registrarDescanso(a.id, 'x', 60);
+    await ponerSaltado(a.id!, 'glute', true);
+    await terminarSesion(a.id!);
+    const b = await iniciarSesion('B', 'mixto', 'gym', new Date(2026, 9, 6, 18, 0));
+    await guardarSerie(b.id!, 'glute', 0, { peso: 0, reps: 10 });
+    const quitada = await borrarSesion(a.id!);
+    expect(quitada?.series).toHaveLength(1);
+    expect((await sesionesConSeries()).map((x) => x.sesion.id)).toEqual([b.id]);
+    expect(await segundosDeDescanso(a.id!)).toBe(0);
+    expect(await saltadosDe(a.id!)).toEqual([]);
+    await reponerSesion(quitada!);
+    const todas = await sesionesConSeries();
+    expect(todas.map((x) => x.sesion.id).sort()).toEqual([a.id, b.id].sort());
+    expect(todas.find((x) => x.sesion.id === a.id)!.series).toHaveLength(1);
+    expect(await segundosDeDescanso(a.id!)).toBe(60);
+    expect(await saltadosDe(a.id!)).toEqual(['glute']);
+    expect(await borrarSesion(999)).toBeNull();
+  });
   it('una sesión queda abierta hasta que la termines y las series se guardan al marcarlas', async () => {
     const s = await iniciarSesion('A', 'mixto', 'gym', new Date(2026, 9, 5, 18, 0));
     expect(s.abierta).toBe(1);
