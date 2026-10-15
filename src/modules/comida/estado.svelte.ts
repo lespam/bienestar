@@ -21,6 +21,7 @@ export interface Eleccion { fecha: string; lugar: LugarMenu; modo: 'dos' | 'les'
 export const eleccion = $state<{ actual: Eleccion | null }>({ actual: null });
 
 /** Elegir con tarjetas: lo que llevas elegido se queda mientras no cierres la app. */
-export interface EstadoTarjetas { cat: string; liked: string[]; passed: string[]; hist: { id: string; dir: 'yes' | 'no' }[]; fotos: boolean; sel: string | null }
-export const tarjetas = $state<EstadoTarjetas>({ cat: 'todo', liked: [], passed: [], hist: [], fotos: true, sel: null });
-export function reiniciarTarjetas() { tarjetas.cat = 'todo'; tarjetas.liked = []; tarjetas.passed = []; tarjetas.hist = []; tarjetas.fotos = true; tarjetas.sel = null; }
+/** destino: viniste de «Agregar» en un tiempo de comida; `desde` = cuántas elegidas había antes. */
+export interface EstadoTarjetas { cat: string; liked: string[]; passed: string[]; hist: { id: string; dir: 'yes' | 'no' }[]; fotos: boolean; sel: string | null; destino: { l: LugarMenu; f: string; desde: number } | null }
+export const tarjetas = $state<EstadoTarjetas>({ cat: 'todo', liked: [], passed: [], hist: [], fotos: true, sel: null, destino: null });
+export function reiniciarTarjetas() { tarjetas.cat = 'todo'; tarjetas.liked = []; tarjetas.passed = []; tarjetas.hist = []; tarjetas.fotos = true; tarjetas.sel = null; tarjetas.destino = null; }

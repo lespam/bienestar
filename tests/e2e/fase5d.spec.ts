@@ -212,7 +212,7 @@ test('Tarjetas: deslizar, botones, deshacer y acomodar en la semana', async ({ p
   await page.getByRole('button', { name: /Elegir con tarjetas/ }).click();
   await expect(page.getByRole('heading', { name: 'Elegir con tarjetas', level: 2 })).toBeVisible();
   await expect(page.getByText('Sí 0 · No 0 · Quedan 2')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Acomodar mis elegidas', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Acomodar mis elegidas', exact: true })).toBeEnabled();
   await revisarPantalla(page);
 
   // Botón Sí en la primera, deslizar a la izquierda la segunda
@@ -244,7 +244,7 @@ test('Tarjetas: deslizar, botones, deshacer y acomodar en la semana', async ({ p
   const comida = page.locator(`.tj-cell[data-f="${hoy}"][data-l="c"]`);
   await expect(cena).toHaveAttribute('aria-label', /cena: libre$/);
   await cena.click();
-  await expect(page.getByText('Primero toca una tarjeta')).toBeVisible();
+  await expect(page.getByText('Toca «Agregar» o primero una de tus elegidas')).toBeVisible();
   await page.getByRole('button', { name: /Tacos de champiñón/ }).click();
   await expect(page.getByText('Toca el lugar para «Tacos de champiñón».')).toBeVisible();
   await cena.click();
@@ -254,6 +254,7 @@ test('Tarjetas: deslizar, botones, deshacer y acomodar en la semana', async ({ p
 
   // Arrastrar la otra tarjeta a la comida de hoy
   const chip = page.getByRole('button', { name: /Tinga de pollo/ });
+  await page.locator('.tj-pool').evaluate((e) => e.scrollIntoView({ block: 'end' }));
   const c1 = (await chip.boundingBox())!, c2 = (await comida.boundingBox())!;
   await page.mouse.move(c1.x + c1.width / 2, c1.y + c1.height / 2);
   await page.mouse.down();
@@ -263,7 +264,7 @@ test('Tarjetas: deslizar, botones, deshacer y acomodar en la semana', async ({ p
   await page.waitForTimeout(500);
 
   // Volver al mazo con "Volver", y de ahí al Recetario
-  await page.getByRole('button', { name: 'Volver' }).click();
+  await page.getByRole('button', { name: 'Volver', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Elegir con tarjetas', level: 2 })).toBeVisible();
   await page.getByRole('button', { name: 'Acomodar mis elegidas (2)' }).click();
   await page.getByRole('button', { name: 'Ver el menú de la semana' }).click();

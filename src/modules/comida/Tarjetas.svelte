@@ -4,9 +4,9 @@
   import { avisos } from '../../core/aviso.svelte';
   import { nav } from '../../core/nav.svelte';
   import { CAT_COLOR, fechaDe, pasaFiltros, type UsoReceta } from './calculos';
-  import { leerPerfiles, listarRecetas, menuDe, ponerEnMenu, reponerMenu, sembrarRecetas, usoDeRecetas } from './datos';
+  import { leerPerfiles, listarRecetas, menuDe, ponerEnMenu, ponerVariosEnMenu, reponerMenu, sembrarRecetas, usoDeRecetas } from './datos';
   import { filtros, numerosVisibles, tarjetas } from './estado.svelte';
-  import { LETRA_DIA, NOMBRE_LUGAR, fechasDeSemana, indexar, itemDos, llave, nombreDia, numeroDia, platoTxt } from './semana';
+  import { LETRA_DIA, NOMBRE_LUGAR, etiquetaFecha, fechasDeSemana, indexar, itemDos, llave, nombreDia, numeroDia, platoTxt } from './semana';
   import { CATS_TARJETA, cuentaTarjetas, elegidasTxt, mazoDe } from './tarjetas';
   import FiltrosRecetas from './FiltrosRecetas.svelte';
   import Plato from './Plato.svelte';
@@ -15,7 +15,6 @@
   // 0: esta semana. -1: la próxima (así cuenta fechasDeSemana).
   let semanaK = $state(nav.pantalla?.datos?.k === -1 ? -1 : 0);
   const dias = $derived(fechasDeSemana(semanaK));
-  const filasSemana: { l: LugarMenu; rot: string }[] = [{ l: 'd', rot: 'Des' }, { l: 'c', rot: 'Com' }, { l: 'n', rot: 'Cen' }];
   const BOWL = 'M4 11h16a8 8 0 0 1-16 0zM9 4v4M12 3v5M15 4v4';
 
   let recetas = $state<Receta[]>([]);
@@ -51,9 +50,15 @@
 
   // ---------- El mazo ----------
   const sinMovimiento = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Mientras la carta sale volando, un segundo toque no decide dos veces la misma.
+  let decidiendo = false;
   async function decidir(dir: 'yes' | 'no') {
     const r = mazo[0];
-    if (!r) return;
+    if (!r || decidiendo) return;
+    decidiendo = true;
+    try { await decidirUna(r, dir); } finally { decidiendo = false; }
+  }
+  async function decidirUna(r: Receta, dir: 'yes' | 'no') {
     const carta = document.querySelector<HTMLElement>('.tj-card[data-pos="0"]');
     if (carta && !sinMovimiento()) {
       carta.style.transition = 'transform .22s ease-out, opacity .22s';
@@ -111,6 +116,18 @@
   }
 
   // ---------- Acomodar en la semana ----------
+  // Un día a la vez, con sus tiempos de comida como en el registro. Cada tiempo tiene «Agregar»:
+  // vuelve a las tarjetas y lo que digas que sí va a ese tiempo, del día elegido en adelante.
+  const LUGARES: LugarMenu[] = ['d', 'a', 'c', 'p', 'n'];
+  const lugares = $derived(semanaK < 0 ? LUGARES.filter((l) => l !== 'a' && l !== 'p') : LUGARES);
+  const primerDia = (ds: string[]) => ds.find((f) => f >= hoy) ?? ds[0];
+  let dia = $state('');
+  $effect(() => { if (!dias.includes(dia)) dia = primerDia(dias); });
+  const pasado = $derived(dia < hoy);
+  const delDia = $derived(items.filter((m) => m.fecha === dia));
+  /** Un plato ya puesto que tocaste para moverlo a otro lugar o a otro día. */
+  let moviendo = $state<{ f: string; l: LugarMenu } | null>(null);
+
   async function colocar(id: string, f: string, l: LugarMenu) {
     const r = porId.get(id);
     if (!r || f < hoy) return;
@@ -120,9 +137,60 @@
     tarjetas.sel = null;
     avisos.deshacer(r.n + ': ' + nombreDia(f).toLowerCase() + ', ' + NOMBRE_LUGAR[l].toLowerCase(), async () => { await reponerMenu([f], antes); await cargarMenu(); });
   }
+  /** Mueve un plato puesto; si el lugar de destino tiene algo, se intercambian. */
+  async function mover(de: { f: string; l: LugarMenu }, f: string, l: LugarMenu) {
+    moviendo = null;
+    if (f < hoy || de.f < hoy || (de.f === f && de.l === l)) return;
+    const m = indice.get(llave(de.f, de.l));
+    if (!m) return;
+    const fechas = [...new Set([de.f, f])];
+    const antes = structuredClone($state.snapshot(items.filter((x) => fechas.includes(x.fecha)))) as ItemMenu[];
+    const otro = indice.get(llave(f, l));
+    const quedan = antes.filter((x) => !(x.fecha === de.f && x.lugar === de.l) && !(x.fecha === f && x.lugar === l));
+    const nuevos = [...quedan, { ...structuredClone($state.snapshot(m)), fecha: f, lugar: l } as ItemMenu];
+    if (otro) nuevos.push({ ...structuredClone($state.snapshot(otro)), fecha: de.f, lugar: de.l } as ItemMenu);
+    await reponerMenu(fechas, nuevos);
+    await cargarMenu();
+    avisos.deshacer(platoTxt(m) + ': ' + nombreDia(f).toLowerCase() + ', ' + NOMBRE_LUGAR[l].toLowerCase(), async () => { await reponerMenu(fechas, antes); await cargarMenu(); });
+  }
   function tocaCelda(f: string, l: LugarMenu) {
-    if (!tarjetas.sel) { avisos.mostrar('Primero toca una tarjeta'); return; }
-    colocar(tarjetas.sel, f, l);
+    if (moviendo) { mover(moviendo, f, l); return; }
+    if (tarjetas.sel) { colocar(tarjetas.sel, f, l); return; }
+    if (indice.get(llave(f, l))) { moviendo = { f, l }; return; }
+    avisos.mostrar('Toca «Agregar» o primero una de tus elegidas');
+  }
+  async function reiniciarDia() {
+    const f = dia;
+    const antes = structuredClone($state.snapshot(items.filter((m) => m.fecha === f))) as ItemMenu[];
+    if (!antes.length || f < hoy) return;
+    moviendo = null;
+    await reponerMenu([f], []);
+    await cargarMenu();
+    avisos.deshacer(nombreDia(f) + ' quedó libre para planear', async () => { await reponerMenu([f], antes); await cargarMenu(); });
+  }
+  /** «Agregar» en un tiempo de comida: vuelve a las tarjetas de ese tipo. */
+  function agregar(l: LugarMenu) {
+    tarjetas.destino = { l, f: dia, desde: tarjetas.liked.length };
+    tarjetas.cat = l === 'd' ? 'Desayuno' : l === 'c' ? 'Comida' : l === 'n' ? 'Cena' : 'todo';
+    tarjetas.sel = null; moviendo = null;
+    nav.cerrar();
+  }
+  const nuevasDestino = $derived(tarjetas.destino ? tarjetas.liked.slice(tarjetas.destino.desde).map((id) => porId.get(id)).filter((r): r is Receta => !!r) : []);
+  /** Pone las que dijiste que sí en ese tiempo de comida, en los días libres desde el elegido. */
+  async function ponerDestino() {
+    const d = tarjetas.destino, nuevas = nuevasDestino;
+    if (!d) return;
+    tarjetas.destino = null;
+    const libres = dias.filter((f) => f >= d.f && f >= hoy && !indice.get(llave(f, d.l)));
+    const filas = nuevas.slice(0, libres.length).map((r, i) => itemDos(libres[i], d.l, r));
+    const antes = structuredClone($state.snapshot(items)) as ItemMenu[];
+    if (filas.length) await ponerVariosEnMenu(filas);
+    await cargarMenu();
+    dia = d.f;
+    nav.abrirHoja('tj-acomodar');
+    const sobran = nuevas.length - filas.length;
+    if (filas.length) avisos.deshacer(filas.length + (filas.length === 1 ? ' receta puesta en ' : ' recetas puestas en ') + NOMBRE_LUGAR[d.l].toLowerCase() + (sobran ? '. ' + sobran + ' quedaron en tus elegidas' : ''), async () => { await reponerMenu(dias, antes.filter((m) => dias.includes(m.fecha))); await cargarMenu(); });
+    else avisos.mostrar('No hay ' + NOMBRE_LUGAR[d.l].toLowerCase() + ' libre desde ese día. Quedaron en tus elegidas.');
   }
   const colorDe = (m: ItemMenu | undefined) => {
     if (!m) return '';
@@ -131,18 +199,22 @@
     return r ? CAT_COLOR[r.cat] : 'var(--muted)';
   };
 
-  // Arrastrar una tarjeta a su lugar (con dedo o ratón); sin arrastre, un toque la selecciona
-  let st: { x: number; y: number; id: string; chip: HTMLElement; movido: boolean } | null = null;
+  // Arrastrar (con dedo o ratón) una elegida a un lugar, o un plato puesto a otro lugar o a otro día.
+  // Sin arrastre, un toque selecciona.
+  let st: { x: number; y: number; id?: string; de?: { f: string; l: LugarMenu }; chip: HTMLElement; movido: boolean } | null = null;
   let fantasma: HTMLElement | null = null;
   let caliente: Element | null = null;
-  const celdaEn = (x: number, y: number) => {
-    const c = document.elementFromPoint(x, y)?.closest('.tj-cell') as HTMLButtonElement | null;
-    return c && !c.disabled ? c : null;
+  const destinoEn = (x: number, y: number) => {
+    const c = document.elementFromPoint(x, y)?.closest('.tj-cell, .tj-dia') as HTMLButtonElement | null;
+    if (!c || c.disabled) return null;
+    if (c.classList.contains('tj-dia') && !st?.de) return null;
+    return c;
   };
   function chipAbajo(e: PointerEvent) {
-    const chip = (e.target as HTMLElement).closest<HTMLElement>('.tj-chip');
+    const chip = (e.target as HTMLElement).closest<HTMLElement>('.tj-chip, .tj-asa');
     if (!chip) return;
-    st = { x: e.clientX, y: e.clientY, id: chip.dataset.id!, chip, movido: false };
+    const de = chip.dataset.mf ? { f: chip.dataset.mf, l: chip.dataset.ml as LugarMenu } : undefined;
+    st = { x: e.clientX, y: e.clientY, id: chip.dataset.id, de, chip, movido: false };
     chip.setPointerCapture(e.pointerId);
   }
   function chipMueve(e: PointerEvent) {
@@ -151,14 +223,14 @@
       st.movido = true;
       fantasma = document.createElement('div');
       fantasma.className = 'tj-ghost';
-      fantasma.textContent = st.chip.textContent;
+      fantasma.textContent = st.chip.dataset.n ?? st.chip.textContent;
       fantasma.style.setProperty('--c', st.chip.style.getPropertyValue('--c'));
       document.body.appendChild(fantasma);
     }
     if (!st.movido || !fantasma) return;
     fantasma.style.left = e.clientX + 'px';
     fantasma.style.top = e.clientY + 'px';
-    const c = celdaEn(e.clientX, e.clientY);
+    const c = destinoEn(e.clientX, e.clientY);
     if (caliente && caliente !== c) caliente.classList.remove('hot');
     caliente = c;
     c?.classList.add('hot');
@@ -166,17 +238,20 @@
   function chipSuelta(e: PointerEvent) {
     if (!st) return;
     const s = st;
+    const c = s.movido ? destinoEn(e.clientX, e.clientY) : null;
     st = null;
     fantasma?.remove(); fantasma = null;
-    caliente?.classList.remove('hot');
+    caliente?.classList.remove('hot'); caliente = null;
     if (s.movido) {
-      const c = celdaEn(e.clientX, e.clientY);
-      caliente = null;
-      if (c) colocar(s.id, c.dataset.f!, c.dataset.l as LugarMenu);
-    } else alternar(s.id);
+      if (!c) return;
+      if (s.de) mover(s.de, c.dataset.f!, (c.dataset.l as LugarMenu) ?? s.de.l);
+      else if (s.id) colocar(s.id, c.dataset.f!, c.dataset.l as LugarMenu);
+    } else if (s.de) moviendo = moviendo && moviendo.f === s.de.f && moviendo.l === s.de.l ? null : s.de;
+    else if (s.id) alternar(s.id);
   }
   function chipCancela() { st = null; fantasma?.remove(); fantasma = null; caliente?.classList.remove('hot'); }
   async function alternar(id: string) {
+    moviendo = null;
     tarjetas.sel = tarjetas.sel === id ? null : id;
     await tick();
     document.querySelector<HTMLElement>('.tj-chip[data-id="' + id + '"]')?.focus();
@@ -188,6 +263,12 @@
     e.preventDefault();
     alternar(chip.dataset.id!);
   }
+  function tocaDia(f: string) { dia = f; }
+  const ayudaAcomodar = $derived(
+    moviendo ? 'Toca otro lugar o cambia de día para mover «' + platoTxt(indice.get(llave(moviendo.f, moviendo.l))!) + '».'
+    : sel ? 'Toca el lugar para «' + sel.n + '».'
+    : 'Toca «Agregar» en un tiempo de comida para elegir con tarjetas. Arrastra un plato por ⠿ para moverlo de lugar o de día.'
+  );
 
   const ingTxt = (r: Receta) => r.ing.slice(0, 3).map((x) => x[2]).join(', ');
   const metaTxt = (r: Receta) => r.y + (r.y > 1 ? ' porciones' : ' porción') + (r.t ? ' · ' + r.t : '') + (ver && r.k != null ? ' · ' + Math.round(r.k) + ' kcal aprox.' : '');
@@ -206,6 +287,9 @@
       <h2 tabindex="-1">Elegir con tarjetas</h2>
       <p class="seg-help">Derecha: sí. Izquierda: no. También hay botones.</p>
     </div>
+    {#if tarjetas.destino}
+      <div class="rc-pick"><span><small>Eliges para</small><b>{NOMBRE_LUGAR[tarjetas.destino.l]} · desde el {nombreDia(tarjetas.destino.f).toLowerCase()} {numeroDia(tarjetas.destino.f)}</b><em>Lo que digas que sí va a ese tiempo, en los días libres.</em></span><button onclick={() => (tarjetas.destino = null)}>Cancelar</button></div>
+    {/if}
     <div class="m-chips tj-cats" aria-label="Tipo de receta">
       {#each [['todo', 'Todas'], ...CATS_TARJETA.map((c) => [c, c === 'Base' ? 'Bases' : c])] as [k, t] (k)}
         <button class:on={tarjetas.cat === k} aria-pressed={tarjetas.cat === k} onclick={() => (tarjetas.cat = k)}>{t}</button>
@@ -256,39 +340,54 @@
       <button class="link-btn" disabled={!tarjetas.hist.length} onclick={deshacerUna}>Deshacer</button>
       <button class="tj-b yes" disabled={!mazo.length} onclick={() => decidir('yes')}>Sí</button>
     </div>
-    <button class="ghost" disabled={!tarjetas.liked.length} onclick={() => nav.abrirHoja('tj-acomodar')}>{elegidasTxt(tarjetas.liked.length)}</button>
+    {#if tarjetas.destino}
+      <button class="start" onclick={ponerDestino}>{nuevasDestino.length ? 'Poner en ' + NOMBRE_LUGAR[tarjetas.destino.l].toLowerCase() + ' (' + nuevasDestino.length + ')' : 'Volver sin agregar'}</button>
+    {:else}
+      <button class="ghost" onclick={() => nav.abrirHoja('tj-acomodar')}>{elegidasTxt(tarjetas.liked.length)}</button>
+    {/if}
     <p class="tool-note">El tipo es opcional: unas quesadillas de cena también pueden ser desayuno. Con «Todas» ves todo. Elegir una receta aquí no cambia el menú hasta que la acomodas.</p>
   </div>
 {:else}
-  <div class="screen">
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="screen" onpointerdown={chipAbajo} onpointermove={chipMueve} onpointerup={chipSuelta} onpointercancel={chipCancela} onkeydown={chipTecla}>
     <div class="tl-head">
       <h2 tabindex="-1">Acomoda la semana</h2>
       <div class="m-chips" role="radiogroup" aria-label="Qué semana">
         {#each [[0, 'Esta semana'], [-1, 'Próxima semana']] as const as [k, t] (k)}<button role="radio" aria-checked={semanaK === k} class:on={semanaK === k} onclick={() => cambiarSemana(k)}>{t}</button>{/each}
       </div>
-      <p class="seg-help" aria-live="polite">{sel ? 'Toca el lugar para «' + sel.n + '».' : elegidas.length ? 'Arrastra una tarjeta a su lugar, o tócala y luego toca el lugar. Cada tipo de receta puede ir en cualquier comida.' : 'Elige tarjetas primero.'}</p>
+      <p class="seg-help" aria-live="polite">{ayudaAcomodar}</p>
     </div>
-    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <div class="tj-pool" role="group" aria-label="Tus tarjetas elegidas" onpointerdown={chipAbajo} onpointermove={chipMueve} onpointerup={chipSuelta} onpointercancel={chipCancela} onkeydown={chipTecla}>
+    <div class="tj-dias" role="radiogroup" aria-label="Día">
+      {#each dias as f, i (f)}
+        {@const n = items.filter((m) => m.fecha === f).length}
+        <button class="tj-dia" role="radio" aria-checked={dia === f} class:on={dia === f} class:past={f < hoy} data-f={f} aria-label={nombreDia(f) + ' ' + numeroDia(f) + (n ? ', ' + n + (n === 1 ? ' comida' : ' comidas') : ', libre')} onclick={() => tocaDia(f)}>{LETRA_DIA[i]}<b>{numeroDia(f)}</b><i class:f={n > 0}></i></button>
+      {/each}
+    </div>
+    <h3 class="tj-dia-t">{etiquetaFecha(dia)}{dia === hoy ? ' · hoy' : ''}</h3>
+    <div class="group tj-dia-lista">
+      {#each lugares as l (l)}
+        {@const m = indice.get(llave(dia, l))}
+        {@const mov = !!moviendo && moviendo.f === dia && moviendo.l === l}
+        <div class="tj-slot" style:--c={colorDe(m)}>
+          <span class="tj-lug">{NOMBRE_LUGAR[l]}</span>
+          <div class="tj-slot-r">
+            {#if m && !pasado}<span class="tj-asa" data-mf={dia} data-ml={l} data-n={platoTxt(m)} style:--c={colorDe(m)} aria-hidden="true">⠿</span>{/if}
+            <button class="tj-cell" class:f={!!m} class:on={mov} data-f={dia} data-l={l} disabled={pasado} aria-pressed={m ? mov : undefined} aria-label={nombreDia(dia) + ' ' + numeroDia(dia) + ', ' + NOMBRE_LUGAR[l].toLowerCase() + ': ' + (m ? platoTxt(m) : 'libre')} onclick={() => tocaCelda(dia, l)}><i></i><span>{m ? platoTxt(m) : 'Libre'}</span></button>
+            {#if !pasado}<button class="tj-add" aria-label={'Agregar a ' + NOMBRE_LUGAR[l].toLowerCase() + ' con tarjetas'} onclick={() => agregar(l)}>Agregar</button>{/if}
+          </div>
+        </div>
+      {/each}
+    </div>
+    {#if delDia.length && !pasado}<button class="link-btn" onclick={reiniciarDia}>Volver a planear el {nombreDia(dia).toLowerCase()}</button>{/if}
+    <h4 class="pat-sub">Tus elegidas</h4>
+    <div class="tj-pool" role="group" aria-label="Tus tarjetas elegidas">
       {#each elegidas as r (r.id)}
         {@const on = tarjetas.sel === r.id}
         <button class="tj-chip" class:on data-id={r.id} aria-pressed={on} style:--c={CAT_COLOR[r.cat]}><i></i>{r.n}</button>
       {:else}
-        <p class="seg-help">Aún no elegiste ninguna.</p>
+        <p class="seg-help">Aún no elegiste ninguna. Toca «Agregar» en un tiempo de comida.</p>
       {/each}
     </div>
-    <div class="wk-grid tj-grid" aria-label="Semana: toca o suelta una tarjeta en un lugar">
-      <span></span>
-      {#each dias as f, i (f)}<span class="tj-dh" class:past={f < hoy}>{LETRA_DIA[i]}<b>{numeroDia(f)}</b></span>{/each}
-      {#each filasSemana as r (r.l)}
-        <span class="wl" aria-hidden="true">{r.rot}</span>
-        {#each dias as f (f)}
-          {@const m = indice.get(llave(f, r.l))}
-          <button class="tj-cell" class:f={!!m} data-f={f} data-l={r.l} disabled={f < hoy} style:--c={colorDe(m)} aria-label={nombreDia(f) + ' ' + numeroDia(f) + ', ' + NOMBRE_LUGAR[r.l].toLowerCase() + ': ' + (m ? platoTxt(m) : 'libre')} onclick={() => tocaCelda(f, r.l)}><i></i></button>
-        {/each}
-      {/each}
-    </div>
-    <div class="wk-key"><span><i class="wk-dot f"></i>Ya hay algo</span><span><i class="wk-dot"></i>Libre</span></div>
     {#if noElegidas.length}
       <h4 class="pat-sub">Las que dijiste que no</h4>
       <div class="group">
