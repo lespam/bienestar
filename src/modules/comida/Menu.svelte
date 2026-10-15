@@ -189,18 +189,8 @@
     if (k !== -1) irSemana(-1); else await cargar();
     avisos.deshacer(libres.length + ' comidas quedan por decidir', async () => { await reponerMenu(ds, antes); await cargar(); });
   }
-  /** Sin tarjetas: baja al día elegido para cambiar sus comidas una por una. */
-  function editarDias() {
-    if (nav.hojaAbierta('mn-pl')) nav.cerrar();
-    if (sel < hoyIso && k === 0) sel = hoyIso;
-    requestAnimationFrame(() => {
-      const h = document.getElementById('mn-dia');
-      h?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-      h?.focus({ preventScroll: true });
-    });
-  }
   function irProxima() { nav.cerrar(); irSemana(-1); }
-  function irTarjetas() { nav.cerrar(); irSemana(0); nav.abrir('tarjetas'); }
+  function irTarjetas(n = 0) { nav.cerrar(); irSemana(n); nav.abrir('tarjetas', n ? { k: n } : undefined); }
   function abrirRepetir() { modoRepetir = 'libres'; if (nav.hojaAbierta('mn-pl')) nav.cerrar(); nav.abrirHoja('mn-rp'); }
   async function repetir() {
     const cs = cambiosRep;
@@ -246,7 +236,7 @@
 <div class="screen">
   <div class="tl-head">
     <h2 tabindex="-1">Menú de la semana</h2>
-    <p class="seg-help">Toca un día para ver o cambiar sus comidas. No necesitas las tarjetas para editar.</p>
+    <p class="seg-help">Toca un día para ver o cambiar sus comidas.</p>
   </div>
   <div class="fd-date mw-nav">
     <button class="cal-nav" aria-label="Semana anterior" disabled={k >= SEMANAS_ATRAS} onclick={() => irSemana(k + 1)}>‹</button>
@@ -283,7 +273,6 @@
   {#if !pasadaVista}
     <div class="mn-plan">
       <button class="start" onclick={abrirPlanear}>Empezar a planear</button>
-      <button class="ghost" onclick={editarDias}>Editar día por día</button>
       {#if !proxima}<button class="ghost" onclick={abrirRepetir}>Repetir semana pasada</button>{/if}
     </div>
     {#if planeadasLibres}
@@ -460,13 +449,13 @@
     </div>
     <div class="pl-acts">
       {#if planear === 'esta'}
-        <button class="start" onclick={irTarjetas}>Elegir con tarjetas</button>
-        <button class="ghost" onclick={editarDias}>Editar día por día, sin tarjetas</button>
+        <button class="start" onclick={() => irTarjetas(0)}>Elegir con tarjetas</button>
         <button class="ghost" onclick={abrirRepetir}>Repetir semana pasada</button>
         <button class="ghost" onclick={dejarLibresPorDecidir}>Dejar lo libre por decidir</button>
         <p class="note">Planea desde hoy. Los días que ya pasaron no se tocan.</p>
       {:else}
-        <button class="start" onclick={irProxima}>Elegir comida por comida</button>
+        <button class="start" onclick={() => irTarjetas(-1)}>Elegir con tarjetas</button>
+        <button class="ghost" onclick={irProxima}>Elegir comida por comida</button>
         <button class="ghost" onclick={todoPorDecidir}>Dejar todo por decidir</button>
         <p class="note">Sirve para planear antes del domingo. El lunes pasa a ser tu semana actual.</p>
       {/if}

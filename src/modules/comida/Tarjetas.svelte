@@ -13,7 +13,7 @@
 
   const hoy = fechaDe(0);
   // 0: esta semana. -1: la próxima (así cuenta fechasDeSemana).
-  let semanaK = $state(0);
+  let semanaK = $state(nav.pantalla?.datos?.k === -1 ? -1 : 0);
   const dias = $derived(fechasDeSemana(semanaK));
   const filasSemana: { l: LugarMenu; rot: string }[] = [{ l: 'd', rot: 'Des' }, { l: 'c', rot: 'Com' }, { l: 'n', rot: 'Cen' }];
   const BOWL = 'M4 11h16a8 8 0 0 1-16 0zM9 4v4M12 3v5M15 4v4';

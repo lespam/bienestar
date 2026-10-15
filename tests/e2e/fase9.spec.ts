@@ -35,22 +35,20 @@ test('Recetario: saltar a una letra sin scroll eterno', async ({ page }) => {
   expect(errores).toEqual([]);
 });
 
-test('Menú: editar día por día sin pasar por las tarjetas', async ({ page }) => {
+test('Menú: tarjetas también para la próxima semana, sin «Editar día por día»', async ({ page }) => {
   const errores = vigilarConsola(page);
   await entrarConContenido(page);
   await page.getByRole('button', { name: 'Comida', exact: true }).click();
   await page.getByRole('button', { name: 'Menú', exact: true }).first().click();
-  await page.getByRole('button', { name: 'Editar día por día' }).click();
-  await expect(page.locator('#mn-dia')).toBeFocused();
+  await expect(page.getByRole('button', { name: /Editar día por día/ })).toHaveCount(0);
   await page.getByRole('button', { name: 'Empezar a planear' }).click();
-  await page.getByRole('button', { name: 'Editar día por día, sin tarjetas' }).click();
-  await expect(page.getByRole('dialog', { name: 'Empezar a planear' })).toHaveCount(0);
-  await expect(page.locator('#mn-dia')).toBeFocused();
+  await page.getByRole('radio', { name: 'Próxima semana' }).click();
   await revisarPantalla(page);
-  // La comida de hoy se elige directo del recetario
-  await page.locator('.ml', { hasText: 'Comida' }).getByRole('button', { name: 'Sí, lo mismo' }).click();
-  await expect(page.getByRole('heading', { name: 'Recetario' })).toBeVisible();
-  await page.getByRole('button', { name: /Tinga de pollo/ }).click();
+  await page.getByRole('button', { name: 'Elegir con tarjetas' }).click();
+  await expect(page.getByRole('heading', { name: 'Elegir con tarjetas', level: 2 })).toBeVisible();
+  await page.getByRole('button', { name: 'Sí', exact: true }).click();
+  await page.getByRole('button', { name: 'Acomodar mis elegidas (1)' }).click();
+  await expect(page.getByRole('radio', { name: 'Próxima semana' })).toHaveAttribute('aria-checked', 'true');
   expect(errores).toEqual([]);
 });
 
