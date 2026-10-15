@@ -96,7 +96,16 @@ export function armarLista(items: ItemMenu[], recetas: Receta[]): FilaCompra[] {
       if (!a.para.includes(r.n)) a.para.push(r.n);
     }
   }
-  const filas: FilaCompra[] = [...acc.values()].map((a) => ({ n: mayus(a.n), q: cantidadCompra(a.q, a.u), para: a.para, sec: seccionDe(a.n), ...(a.crudo ? { crudo: true } : {}) }));
+  // Un mismo alimento con distintas unidades (aceite en cditas y en cdas) es una sola fila: se marca una vez.
+  const filas: FilaCompra[] = [];
+  for (const a of acc.values()) {
+    const q = cantidadCompra(a.q, a.u);
+    const hay = filas.find((f) => norm(f.n) === norm(a.n));
+    if (!hay) { filas.push({ n: mayus(a.n), q, para: a.para, sec: seccionDe(a.n), ...(a.crudo ? { crudo: true } : {}) }); continue; }
+    if (q) hay.q = hay.q ? hay.q + ' + ' + q : q;
+    for (const p of a.para) if (!hay.para.includes(p)) hay.para.push(p);
+    if (a.crudo) hay.crudo = true;
+  }
 
   // Colaciones: cada parte suma 1 colación. Si ya estaba en la lista, se junta ahí.
   const cuenta = new Map<string, number>();

@@ -299,3 +299,36 @@ test('Menú: Inspiración se abre y se cierra, y los accesos de después de plan
   await expect(page.getByRole('button', { name: 'Lista de compras' })).toHaveCount(0);
   expect(errores).toEqual([]);
 });
+
+test('Lista de compras: un alimento en varias recetas con distintas unidades sale una sola vez y lo agregado a mano se ve', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  const hoy = new Date();
+  const f = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+  const rec = (id: string, n: string, ing: unknown[]) => ({ id, n, cat: 'Comida', y: 4, t: '', src: '', u1: '', k: null, p: null, c: null, g: null, ing, steps: [] });
+  await page.evaluate(({ f, filas, menu }) => new Promise<void>((ok, mal) => {
+    const abrir = indexedDB.open('bienestar');
+    abrir.onerror = () => mal(abrir.error);
+    abrir.onsuccess = () => {
+      const bd = abrir.result, tx = bd.transaction(['recetas', 'menu'], 'readwrite');
+      for (const r of filas) tx.objectStore('recetas').put(r);
+      for (const m of menu) tx.objectStore('menu').put({ ...m, fecha: f });
+      tx.oncomplete = () => { bd.close(); ok(); };
+      tx.onerror = () => mal(tx.error);
+    };
+  }), {
+    f,
+    filas: [rec('x1', 'Sopa uno', [[1, 'cdita', 'Aceite'], [2, 'pieza', 'Jitomate']]), rec('x2', 'Sopa dos', [[2, 'cda', 'Aceite']]), rec('x3', 'Sopa tres', [[1, 'taza', 'Aceite']])],
+    menu: [{ lugar: 'd', t: 'dos', n: 'Sopa uno', r: 'x1' }, { lugar: 'c', t: 'dos', n: 'Sopa dos', r: 'x2' }, { lugar: 'n', t: 'dos', n: 'Sopa tres', r: 'x3' }]
+  });
+  await page.reload();
+  await abrirCompras(page);
+  await page.getByRole('radio', { name: /^Todo/ }).click();
+  await page.locator('#cq-n').fill('Dog Treats');
+  await page.getByRole('button', { name: 'Agregar', exact: true }).first().click();
+  const aceite = page.locator('.cp-row', { hasText: 'Aceite' });
+  await expect(aceite).toHaveCount(1);
+  const treats = page.locator('.cp-row', { hasText: 'Dog Treats' });
+  await expect(treats.getByRole('checkbox')).toBeVisible();
+  expect(errores).toEqual([]);
+});

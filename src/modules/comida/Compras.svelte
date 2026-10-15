@@ -162,7 +162,7 @@
       {#if rows.length}
         <section class="cp-sec">
           <h3>{sec}</h3>
-          {#each rows as f (f.n)}
+          {#each rows as f (f.n + '|' + (f.extra ? 'x' : 'm'))}
             {@const otra = f.dest === 'walmart' ? 'Enfrente' : 'Walmart+'}
             {@const hecho = marcada(estado, f)}
             <div class="cp-row">

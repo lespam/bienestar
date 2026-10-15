@@ -19,6 +19,15 @@ describe('lista de compras', () => {
     expect(cantidadCompra(3.2, 'pieza')).toBe('4 piezas');
     expect(cantidadCompra(null, '')).toBe('');
   });
+  it('un alimento con distintas unidades es una sola fila, para que se marque una vez', () => {
+    const rs = [receta('a', 'Tinga', 4, [[1, 'cdita', 'Aceite'], [1, 'pieza', 'Jitomate']]), receta('b', 'Bowl', 4, [[2, 'cda', 'aceite']])];
+    const filas = armarLista([dos('a'), dos('b', 'n')], rs);
+    const aceite = filas.filter((f) => f.n === 'Aceite');
+    expect(aceite).toHaveLength(1);
+    expect(aceite[0].q).toBe('1 cdita + 2 cdas');
+    expect(aceite[0].para).toEqual(['Tinga', 'Bowl']);
+    expect(new Set(filas.map((f) => f.n)).size).toBe(filas.length);
+  });
   it('suma por tandas y compra la proteína cruda: cocida × 1.3', () => {
     const rs = [receta('a', 'Tinga', 2, [[300, 'g', 'Pechuga de pollo'], [2, 'pieza', 'Jitomate'], [100, 'g', 'Queso panela']])];
     // los dos comen 2 veces: 4 porciones, 2 tandas
