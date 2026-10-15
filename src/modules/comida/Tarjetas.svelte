@@ -12,7 +12,9 @@
   import Plato from './Plato.svelte';
 
   const hoy = fechaDe(0);
-  const dias = fechasDeSemana(0);
+  // 0: esta semana. -1: la próxima (así cuenta fechasDeSemana).
+  let semanaK = $state(0);
+  const dias = $derived(fechasDeSemana(semanaK));
   const filasSemana: { l: LugarMenu; rot: string }[] = [{ l: 'd', rot: 'Des' }, { l: 'c', rot: 'Com' }, { l: 'n', rot: 'Cen' }];
   const BOWL = 'M4 11h16a8 8 0 0 1-16 0zM9 4v4M12 3v5M15 4v4';
 
@@ -23,6 +25,7 @@
   let perfiles = $state<Record<'les' | 'jeff', Pick<PerfilComida, 'no'>>>({ les: { no: [] }, jeff: { no: [] } });
 
   const cargarMenu = async () => { items = await menuDe(dias); };
+  async function cambiarSemana(k: number) { semanaK = k; await cargarMenu(); }
   (async () => {
     await sembrarRecetas();
     [recetas, perfiles, uso] = await Promise.all([listarRecetas(), leerPerfiles(), usoDeRecetas(), cargarMenu()]);
@@ -30,7 +33,7 @@
   })();
 
   const porId = $derived(new Map(recetas.map((r) => [r.id, r])));
-  const mazo = $derived(mazoDe(recetas.filter((r) => pasaFiltros(r, filtros, perfiles, uso)), tarjetas.liked, tarjetas.passed, tarjetas.cat, uso));
+  const mazo = $derived(mazoDe(recetas.filter((r) => pasaFiltros(r, { ...filtros, foto: 'todo' }, perfiles, uso)), tarjetas.liked, tarjetas.passed, tarjetas.cat, uso));
   const visibles = $derived(mazo.slice(0, 3));
   const indice = $derived(indexar(items));
   const ver = $derived(numerosVisibles());
@@ -43,7 +46,7 @@
   function atras() { tarjetas.sel = null; nav.cerrar(); }
   function verMenu() {
     if (nav.pila.some((c) => c.tipo === 'pantalla' && c.id === 'menu')) nav.cerrarHasta('menu');
-    else { nav.cerrar(); nav.reemplazar('menu'); }
+    else { nav.cerrar(); nav.reemplazar('menu', semanaK ? { k: semanaK } : undefined); }
   }
 
   // ---------- El mazo ----------
@@ -204,7 +207,7 @@
       <p class="seg-help">Derecha: sí. Izquierda: no. También hay botones.</p>
     </div>
     <div class="m-chips tj-cats" aria-label="Tipo de receta">
-      {#each [['todo', 'Todas'], ...CATS_TARJETA.map((c) => [c, c])] as [k, t] (k)}
+      {#each [['todo', 'Todas'], ...CATS_TARJETA.map((c) => [c, c === 'Base' ? 'Bases' : c])] as [k, t] (k)}
         <button class:on={tarjetas.cat === k} aria-pressed={tarjetas.cat === k} onclick={() => (tarjetas.cat = k)}>{t}</button>
       {/each}
     </div>
@@ -212,7 +215,7 @@
     <div class="tj-stack">
       {#if listo && !mazo.length}
         <div class="tj-empty">
-          <b>No quedan tarjetas{tarjetas.cat === 'todo' && filtros.origen === 'todo' && !filtros.sinLes && !filtros.sinJeff && filtros.uso === 'todo' && filtros.foto === 'todo' ? '' : ' con estos filtros'}.</b>
+          <b>No quedan tarjetas{tarjetas.cat === 'todo' && filtros.origen === 'todo' && !filtros.sinLes && !filtros.sinJeff && filtros.uso === 'todo' ? '' : ' con estos filtros'}.</b>
           <p>{tarjetas.liked.length ? 'Ya puedes acomodar las que elegiste en la semana.' : 'Puedes cambiar los filtros o volver a ver las que dijiste que no.'}</p>
         </div>
       {/if}
@@ -260,6 +263,9 @@
   <div class="screen">
     <div class="tl-head">
       <h2 tabindex="-1">Acomoda la semana</h2>
+      <div class="m-chips" role="radiogroup" aria-label="Qué semana">
+        {#each [[0, 'Esta semana'], [-1, 'Próxima semana']] as const as [k, t] (k)}<button role="radio" aria-checked={semanaK === k} class:on={semanaK === k} onclick={() => cambiarSemana(k)}>{t}</button>{/each}
+      </div>
       <p class="seg-help" aria-live="polite">{sel ? 'Toca el lugar para «' + sel.n + '».' : elegidas.length ? 'Arrastra una tarjeta a su lugar, o tócala y luego toca el lugar. Cada tipo de receta puede ir en cualquier comida.' : 'Elige tarjetas primero.'}</p>
     </div>
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
@@ -291,6 +297,6 @@
         {/each}
       </div>
     {/if}
-    <button class="ghost" onclick={verMenu}>Ver el menú de la semana</button>
+    <button class="ghost" onclick={verMenu}>Ver el menú de {semanaK ? 'la próxima semana' : 'la semana'}</button>
   </div>
 {/if}

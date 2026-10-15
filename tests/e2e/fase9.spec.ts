@@ -152,3 +152,28 @@ test('Rutina: Cardio en "Hacer hoy" y registrar el cardio de ayer', async ({ pag
   await expect(page.locator('.cardio-lista')).toContainText(dia + ' ' + ayer.getDate());
   expect(errores).toEqual([]);
 });
+
+test('Tarjetas: un solo filtro de uso, sin foto, con Bases y para la próxima semana', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await sembrar(page, 'recetas', [receta('b1', 'Salsa base', 'Base')]);
+  await sembrar(page, 'perfiles', [{ quien: 'les', no: ['Cilantro'] }, { quien: 'jeff', no: ['Huevo'] }]);
+  await page.reload();
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Recetario' }).click();
+  await expect(page.locator('.rc-fuente > span').getByText('Uso', { exact: true })).toHaveCount(1);
+  await expect(page.locator('.rc-fuente > span').getByText('Foto', { exact: true })).toHaveCount(1);
+  await page.getByRole('button', { name: /Elegir con tarjetas/ }).click();
+  await expect(page.locator('.rc-fuente > span').getByText('Uso', { exact: true })).toHaveCount(1);
+  await expect(page.locator('.rc-fuente > span').getByText('Foto', { exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Bases', exact: true }).click();
+  await expect(page.locator('.tj-card[data-pos="0"]')).toContainText('Salsa base');
+  await page.getByRole('button', { name: 'Sí', exact: true }).click();
+  await page.getByRole('button', { name: 'Acomodar mis elegidas (1)' }).click();
+  await page.getByRole('radio', { name: 'Próxima semana' }).click();
+  const lunes = new Date(); lunes.setDate(lunes.getDate() - ((lunes.getDay() + 6) % 7) + 7);
+  await expect(page.locator('.tj-dh').first()).toContainText(String(lunes.getDate()));
+  await expect(page.locator('.tj-cell').first()).toBeEnabled();
+  await revisarPantalla(page);
+  expect(errores).toEqual([]);
+});

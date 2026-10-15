@@ -111,7 +111,7 @@
       <button class:on aria-pressed={on} onclick={() => (vista.cat = c)}>{CAT_PLURAL[c]} · {recetas.filter((r) => r.cat === c).length}</button>
     {/each}
   </div>
-  <FiltrosRecetas {recetas} {perfiles} />
+  <FiltrosRecetas {recetas} {perfiles} foto />
   {#if conLetras}
     <nav class="fi-jump rc-abc" aria-label="Ir a la letra">
       {#each Object.keys(primeras) as l (l)}<button onclick={() => saltar(l)} aria-label={'Recetas con ' + l}>{l}</button>{/each}

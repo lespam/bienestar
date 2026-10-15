@@ -2,8 +2,8 @@ import type { Receta } from '../../core/db';
 import { vecesUsada, type UsoReceta } from './calculos';
 
 // Elegir con tarjetas: derecha es sí, izquierda es no. Las que dices que sí se acomodan en la semana.
-// Solo salen desayunos, comidas y cenas: las colaciones y las bases se arman aparte.
-export const CATS_TARJETA = ['Desayuno', 'Comida', 'Cena'] as const;
+// Salen desayunos, comidas, cenas y bases (Les las pidió de vuelta, 2026-10-15); las colaciones se arman aparte.
+export const CATS_TARJETA = ['Desayuno', 'Comida', 'Cena', 'Base'] as const;
 
 /**
  * Primero lo que ya sabes cocinar (lo más usado arriba) y, cada cuarta tarjeta, una que casi no usas,

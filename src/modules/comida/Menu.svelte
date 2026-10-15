@@ -15,7 +15,7 @@
   // Al llegar al menú ya no estás eligiendo receta.
   eleccion.actual = null;
   const hoyIso = fechaDe(0);
-  let k = $state(0);
+  let k = $state(typeof nav.pantalla?.datos?.k === 'number' ? (nav.pantalla.datos.k as number) : 0);
   let sel = $state(hoyIso);
   let abierto = $state<LugarMenu | ''>('c');
   let items = $state<ItemMenu[]>([]);
