@@ -156,7 +156,8 @@ export async function reponerSesion(b: SesionBorrada) {
 // ---------- Cardio ----------
 export interface Cardio { sesion: number; fecha: string; nombre: string; min: number; nota: string }
 /** Cardio terminado: una sesión de tipo cardio con una sola serie (los minutos). No usa el reloj de Rutina. */
-export async function guardarCardio(nombre: string, min: number, nota: string, ahora = new Date()): Promise<number> {
+export async function guardarCardio(nombre: string, min: number, nota: string, ahora = new Date(), diasAtras = 0): Promise<number> {
+  if (diasAtras) ahora = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() - diasAtras, ahora.getHours(), ahora.getMinutes());
   const fin = ahora.getTime();
   const id = await db.sesiones.add({ fecha: iso(ahora), tipo: 'cardio', modo: 'libro', primero: 'casa', abierta: 0, inicio: fin - min * 60000, fin, nota });
   await db.series.add({ sesion: id, clave: 'cardio', sust: nombre, n: 0, v: { min }, unidad: prefs.unidad, hora: fin });

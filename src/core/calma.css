@@ -1169,7 +1169,7 @@ a.mus-btn { text-decoration: none; color: var(--fg); }
 .rc-row, .rc-card { scroll-margin-top: 64px; }
 .rc-fuente { display: flex; align-items: center; gap: 10px; margin: 10px 0 6px; font-size: 13px; font-weight: 700; color: var(--muted); }
 .rc-fuente select { flex: 1; min-width: 0; min-height: 44px; border-radius: 12px; border: 1px solid var(--soft); background: var(--panel); color: var(--fg); font: inherit; font-size: 14px; padding: 0 10px; }
-.day .ses svg { width: 16px; height: 16px; }
+.day .ses svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .rc-dos { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
 .rc-dos .rc-fuente { margin: 0 0 6px; flex-direction: column; align-items: stretch; gap: 4px; }
 .rc-dos select { width: 100%; }

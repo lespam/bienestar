@@ -64,7 +64,7 @@ export function armarSemana(hoy: Date, sesiones: Pick<Sesion, 'fecha' | 'tipo' |
     const hecha = delDia.find((s) => !s.abierta);
     if (hecha) return { ...base, ses: hecha.rutina!, estado: f === hoyIso ? 'hoy' : 'hecha', texto: f === hoyIso ? 'hoy, hecha' : 'hecha' } as DiaSemana;
     const esCardio = cardio[(dow + 6) % 7] && !delDia.length;
-    if (sesiones.some((s) => s.fecha === f && s.tipo === 'cardio') && (esCardio || f < hoyIso)) return { ...base, ses: 'cardio', estado: f === hoyIso ? 'hoy' : 'hecha', texto: f === hoyIso ? 'hoy, cardio hecho' : 'cardio hecho' } as DiaSemana;
+    if (sesiones.some((s) => s.fecha === f && s.tipo === 'cardio') && !delDia.length) return { ...base, ses: 'cardio', estado: f === hoyIso ? 'hoy' : 'hecha', texto: f === hoyIso ? 'hoy, cardio hecho' : 'cardio hecho' } as DiaSemana;
     if (esCardio && f >= hoyIso) return { ...base, ses: 'cardio', estado: f === hoyIso ? 'hoy' : 'luego', texto: f === hoyIso ? 'hoy, cardio' : 'cardio' } as DiaSemana;
     if (f === hoyIso) { const l = delDia[0]?.rutina ?? seguidas[k++]; return { ...base, ses: l ?? '–', estado: 'hoy', texto: 'hoy' } as DiaSemana; }
     if (f > hoyIso && dias[(dow + 6) % 7] && seguidas[k]) return { ...base, ses: seguidas[k++], estado: 'luego', texto: '' } as DiaSemana;

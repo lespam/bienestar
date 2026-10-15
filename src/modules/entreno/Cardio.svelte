@@ -10,6 +10,9 @@
   let otro = $state('');
   let min = $state<number | null>(null);
   let nota = $state('');
+  // Si lo hiciste ayer o antier y no lo anotaste, también cuenta: va a ese día de la semana.
+  const DIAS: [number, string][] = [[0, 'Hoy'], [1, 'Ayer'], [2, 'Antier']];
+  let atras = $state(0);
   let recientes = $state<Cardio[]>([]);
 
   async function leer() { recientes = await cardiosRecientes(); }
@@ -21,8 +24,8 @@
 
   async function guardar() {
     if (!valido) return;
-    const id = await guardarCardio(nombre, Math.round(minutos), nota.trim());
-    min = null; nota = ''; otro = '';
+    const id = await guardarCardio(nombre, Math.round(minutos), nota.trim(), new Date(), atras);
+    min = null; nota = ''; otro = ''; atras = 0;
     await leer();
     avisos.deshacer('Cardio guardado', async () => { await borrarCardio(id); await leer(); });
   }
@@ -44,6 +47,12 @@
     <h4>¿Qué hiciste?</h4>
     <div class="cardio-tipos" role="radiogroup" aria-label="Tipo de cardio">
       {#each TIPOS as t (t)}<button role="radio" aria-checked={tipo === t} class:on={tipo === t} onclick={() => (tipo = t)}>{t}</button>{/each}
+    </div>
+  </section>
+  <section class="notes">
+    <h4>¿Cuándo?</h4>
+    <div class="cardio-tipos" role="radiogroup" aria-label="Qué día hiciste cardio">
+      {#each DIAS as [n, t] (n)}<button role="radio" aria-checked={atras === n} class:on={atras === n} onclick={() => (atras = n)}>{t}</button>{/each}
     </div>
   </section>
   <div class="man">

@@ -112,6 +112,9 @@ describe('qué toca y la semana', () => {
     expect(s.map((d) => d.ses)).toEqual(['A', '–', 'cardio', 'B', 'cardio', 'C', '–']);
     expect(s[2].texto).toBe('cardio hecho');
     expect(s[4].estado).toBe('luego');
+    // Cardio en un día que no era de cardio: también se ve, y la rutina pasa al siguiente día.
+    const t = armarSemana(hoy, [{ fecha: '2026-10-01', tipo: 'cardio', abierta: 0 }], ['B', 'C'], DIAS_INICIALES);
+    expect(t.map((d) => d.ses).slice(3, 6)).toEqual(['cardio', 'B', 'C']);
     expect(lineaCuando({ dias, cardio, hora: '19:00', lugar: '' }, new Date(2026, 9, 2))).toBe('Hoy toca cardio');
   });
   it('la línea de cuándo y dónde', () => {

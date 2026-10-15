@@ -137,3 +137,18 @@ test('Recetario: cuántas veces usaste cada receta y filtro de nunca usadas', as
   await revisarPantalla(page);
   expect(errores).toEqual([]);
 });
+
+test('Rutina: Cardio en "Hacer hoy" y registrar el cardio de ayer', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await page.getByRole('button', { name: 'Rutina', exact: true }).click();
+  await page.locator('.mini').getByRole('button', { name: 'Cardio' }).click();
+  await page.getByRole('radio', { name: 'Ayer' }).click();
+  await page.getByLabel('Minutos').fill('30');
+  await revisarPantalla(page);
+  await page.getByRole('button', { name: 'Guardar cardio' }).click();
+  const ayer = new Date(); ayer.setDate(ayer.getDate() - 1);
+  const dia = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'][ayer.getDay()];
+  await expect(page.locator('.cardio-lista')).toContainText(dia + ' ' + ayer.getDate());
+  expect(errores).toEqual([]);
+});

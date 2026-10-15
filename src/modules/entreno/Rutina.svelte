@@ -235,6 +235,7 @@
       {#if estado === 'nueva' && ciclo.length > 1}
         <div class="mini"><span>Hacer hoy:</span>
           {#each ciclo as l (l)}<button class="l" class:on={c.letra === l} aria-pressed={c.letra === l} aria-label={'Rutina ' + l + (l === c.tocaPorCiclo ? ', la que toca' : '')} onclick={() => elegirRutina(l)}>{l}</button>{/each}
+          <button class="l" onclick={() => nav.abrir('cardio')}>Cardio</button>
         </div>
       {/if}
       <div class="when-row"><Icono nombre="reloj" /><span>{lineaCuando(c.aj.cuando, hoy)}</span><button class="when-btn" onclick={abrirCuando}>Cambiar</button></div>
