@@ -46,6 +46,22 @@
       .sort((a, b) => a.n.localeCompare(b.n, 'es'))
   );
 
+  // Saltar a una letra: la lista es larga (cientos de recetas).
+  const letraDe = (r: Receta) => { const l = norm(r.n).charAt(0).toUpperCase(); return /[A-Z]/.test(l) ? l : '#'; };
+  const primeras = $derived.by(() => {
+    const m = new Map<string, string>();
+    for (const r of filas) { const l = letraDe(r); if (!m.has(l)) m.set(l, r.id); }
+    return m;
+  });
+  const conLetras = $derived(filas.length > 20 && primeras.size > 1);
+  function saltar(l: string) {
+    const id = primeras.get(l);
+    const el = id ? document.getElementById('rc-' + id) : null;
+    if (!el) return;
+    el.scrollIntoView({ block: 'start' });
+    el.focus({ preventScroll: true });
+  }
+
   const meta = (r: Receta) => r.cat + ' · ' + r.y + (r.y > 1 ? ' porciones' : ' porción') + (r.t ? ' · ' + r.t : '');
   const notas = (r: Receta) => (r.nts?.length ? ' · ' + r.nts.length + (r.nts.length === 1 ? ' nota' : ' notas y tips') : '');
 
@@ -92,16 +108,21 @@
       <button class:on aria-pressed={on} onclick={() => (vista.cat = c)}>{CAT_PLURAL[c]} · {recetas.filter((r) => r.cat === c).length}</button>
     {/each}
   </div>
+  {#if conLetras}
+    <nav class="fi-jump rc-abc" aria-label="Ir a la letra">
+      {#each [...primeras.keys()] as l (l)}<button onclick={() => saltar(l)} aria-label={'Recetas con ' + l}>{l}</button>{/each}
+    </nav>
+  {/if}
   <div class="group" class:rc-grid={vista.vin}>
     {#each filas as r (r.id)}
       {@const aviso = avisoConflicto(r, perfiles)}
       {#if vista.vin}
-        <button class="rc-card" onclick={() => nav.abrir('receta', { id: r.id })}>
+        <button class="rc-card" id={'rc-' + r.id} onclick={() => nav.abrir('receta', { id: r.id })}>
           <span class="rc-ph"><Plato receta={r} /></span>
           <span class="rc-tx"><b>{r.n}</b><small>{meta(r)}{notas(r)}</small>{#if ver && r.k != null}<small>{Math.round(r.k)} kcal aprox. por porción</small>{/if}{#if aviso}<em>{aviso}</em>{/if}</span>
         </button>
       {:else}
-        <button class="rc-row" onclick={() => nav.abrir('receta', { id: r.id })}>
+        <button class="rc-row" id={'rc-' + r.id} onclick={() => nav.abrir('receta', { id: r.id })}>
           <span class="rc-th" style:--c={CAT_COLOR[r.cat]}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={BOWL} /></svg></span>
           <span><b>{r.n}</b><small>{meta(r)}{notas(r)}</small>{#if ver && r.k != null}<small>{Math.round(r.k)} kcal aprox. por porción</small>{/if}{#if aviso}<em>{aviso}</em>{/if}</span>
           <i aria-hidden="true">›</i>
