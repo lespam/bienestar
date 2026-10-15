@@ -49,13 +49,13 @@
   // Saltar a una letra: la lista es larga (cientos de recetas).
   const letraDe = (r: Receta) => { const l = norm(r.n).charAt(0).toUpperCase(); return /[A-Z]/.test(l) ? l : '#'; };
   const primeras = $derived.by(() => {
-    const m = new Map<string, string>();
-    for (const r of filas) { const l = letraDe(r); if (!m.has(l)) m.set(l, r.id); }
+    const m: Record<string, string> = {};
+    for (const r of filas) { const l = letraDe(r); if (!(l in m)) m[l] = r.id; }
     return m;
   });
-  const conLetras = $derived(filas.length > 20 && primeras.size > 1);
+  const conLetras = $derived(filas.length > 20 && Object.keys(primeras).length > 1);
   function saltar(l: string) {
-    const id = primeras.get(l);
+    const id = primeras[l];
     const el = id ? document.getElementById('rc-' + id) : null;
     if (!el) return;
     el.scrollIntoView({ block: 'start' });
@@ -110,7 +110,7 @@
   </div>
   {#if conLetras}
     <nav class="fi-jump rc-abc" aria-label="Ir a la letra">
-      {#each [...primeras.keys()] as l (l)}<button onclick={() => saltar(l)} aria-label={'Recetas con ' + l}>{l}</button>{/each}
+      {#each Object.keys(primeras) as l (l)}<button onclick={() => saltar(l)} aria-label={'Recetas con ' + l}>{l}</button>{/each}
     </nav>
   {/if}
   <div class="group" class:rc-grid={vista.vin}>
