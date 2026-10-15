@@ -12,8 +12,10 @@ import type { Letra } from './programa';
 export interface Cuando { dias: boolean[]; cardio?: boolean[]; hora: string; lugar: string }
 /** La rutina que elegiste para un día, distinta a la que toca por el ciclo. Solo vale ese día. */
 export interface RutinaElegida { letra: Letra; fecha: string }
-export interface AjustesEntreno { modo: Modo; primero: 'gym' | 'casa'; cuando: Cuando; elegida: RutinaElegida | null }
-const INICIALES: AjustesEntreno = { modo: 'mixto', primero: 'gym', elegida: null, cuando: { dias: DIAS_INICIALES, hora: '19:00', lugar: 'en la sala' } };
+/** Lo que elegiste hacer hoy en «Hacer hoy»: cardio (si) o rutina en un día de cardio (no). Solo vale ese día. */
+export interface CardioHoy { fecha: string; si: boolean }
+export interface AjustesEntreno { modo: Modo; primero: 'gym' | 'casa'; cuando: Cuando; elegida: RutinaElegida | null; cardioHoy: CardioHoy | null }
+const INICIALES: AjustesEntreno = { modo: 'mixto', primero: 'gym', elegida: null, cardioHoy: null, cuando: { dias: DIAS_INICIALES, hora: '19:00', lugar: 'en la sala' } };
 
 export async function leerAjustes(): Promise<AjustesEntreno> {
   const filas = await db.entreno.toArray();

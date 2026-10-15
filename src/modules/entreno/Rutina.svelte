@@ -72,6 +72,12 @@
   async function elegirRutina(l: Letra) {
     if (!c || estado !== 'nueva') return;
     await guardarAjuste('elegida', l === c.tocaPorCiclo ? null : { letra: l, fecha: iso(hoy) });
+    await guardarAjuste('cardioHoy', c.cardioHoy || c.aj.cuando.cardio?.[(hoy.getDay() + 6) % 7] ? { fecha: iso(hoy), si: false } : null);
+    await leer();
+  }
+  async function elegirCardio() {
+    if (!c || estado !== 'nueva') return;
+    await guardarAjuste('cardioHoy', { fecha: iso(hoy), si: true });
     await leer();
   }
   async function elegirPrimero(p: 'gym' | 'casa') {
@@ -220,7 +226,7 @@
       <div class="week-head"><h4>Esta semana</h4><span>{c.p.nombre ?? 'Programa'} · Semana {c.semanaN}</span></div>
       <div class="days">
         {#each c.semana as d (d.iso)}
-          <div class="day" class:done={d.estado === 'hecha' || d.texto === 'hoy, hecha'} class:today={d.estado === 'hoy'} class:rest={d.estado === 'libre'}>
+          <div class="day" class:done={d.estado === 'hecha' || d.texto === 'hoy, hecha' || d.texto === 'hoy, cardio hecho'} class:today={d.estado === 'hoy'} class:rest={d.estado === 'libre'}>
             <span class="dn">{d.inicial}</span><span class="num">{d.num}</span>{#if d.ses === 'cardio'}<span class="ses"><Icono nombre="pulso" /></span>{:else}<span class="ses">{d.ses}</span>{/if}{#if d.texto}<span class="sr">{d.texto}</span>{/if}
           </div>
         {/each}
@@ -228,20 +234,29 @@
       <button class="link-btn" onclick={resumirSemana}>Resumen de la semana con IA</button>
       <span class="week-note">Llevas {c.llevas} {c.llevas === 1 ? 'sesión' : 'sesiones'} desde que empezaste.</span>
     </section>
-
     <section class="today">
-      <h3>Rutina {c.letra}</h3>
-      <p>{todos.length} ejercicios · {nSuper} {nSuper === 1 ? 'superserie' : 'superseries'} (p. {c.p.rutinas[c.letra].pagina})</p>
-      {#if estado === 'nueva' && ciclo.length > 1}
+      {#if c.cardioHoy}
+        <h3>Cardio</h3>
+        <p>{c.cardioHoy === 'hecho' ? 'Ya registraste cardio hoy.' : 'Registra lo que hagas: caminata, bici u otro. Cuenta como una sesión.'}</p>
+      {:else}
+        <h3>Rutina {c.letra}</h3>
+        <p>{todos.length} ejercicios · {nSuper} {nSuper === 1 ? 'superserie' : 'superseries'} (p. {c.p.rutinas[c.letra].pagina})</p>
+      {/if}
+      {#if estado === 'nueva' && c.cardioHoy !== 'hecho'}
         <div class="mini"><span>Hacer hoy:</span>
-          {#each ciclo as l (l)}<button class="l" class:on={c.letra === l} aria-pressed={c.letra === l} aria-label={'Rutina ' + l + (l === c.tocaPorCiclo ? ', la que toca' : '')} onclick={() => elegirRutina(l)}>{l}</button>{/each}
-          <button class="l" onclick={() => nav.abrir('cardio')}>Cardio</button>
+          {#each ciclo as l (l)}{@const on = !c.cardioHoy && c.letra === l}<button class="l" class:on aria-pressed={on} aria-label={'Rutina ' + l + (l === c.tocaPorCiclo ? ', la que toca' : '')} onclick={() => elegirRutina(l)}>{l}</button>{/each}
+          <button class="l" class:on={c.cardioHoy === 'planeado'} aria-pressed={c.cardioHoy === 'planeado'} onclick={elegirCardio}>Cardio</button>
         </div>
       {/if}
       <div class="when-row"><Icono nombre="reloj" /><span>{lineaCuando(c.aj.cuando, hoy)}</span><button class="when-btn" onclick={abrirCuando}>Cambiar</button></div>
-      {#if c.aj.cuando.cardio?.[(hoy.getDay() + 6) % 7] && estado === 'nueva'}<button class="link-btn" onclick={() => nav.abrir('cardio')}>Registrar el cardio de hoy</button>{/if}
     </section>
 
+    {#if c.cardioHoy}
+      <div class="r-acts">
+        <button class="start" onclick={() => nav.abrir('cardio')}>{c.cardioHoy === 'hecho' ? 'Ver tu cardio' : 'Registrar cardio'}</button>
+        {#if c.cardioHoy === 'hecho'}<button class="ghost" onclick={() => elegirRutina(c!.letra)}>También hacer Rutina {c.letra}</button>{/if}
+      </div>
+    {:else}
     <VistaPrevia programa={c.p} letra={c.letra} />
     <button class="link-btn" onclick={tipsDeRutina}>Tips de la Rutina {c.letra} con IA</button>
 
@@ -281,6 +296,7 @@
         {/each}
       </div>
     </section>
+    {/if}
 
     <section class="tools">
       <h4>Para entrenar</h4>

@@ -25,6 +25,8 @@ export interface Contexto {
   anterior: string | null;
   donde: DondeEstas;
   mejor: boolean;
+  /** Hoy toca cardio (planeado en la semana o elegido en «Hacer hoy») y no hay rutina empezada. */
+  cardioHoy: 'planeado' | 'hecho' | null;
 }
 
 export const planDe = (c: Pick<Contexto, 'grupos'>, modo: Modo, primero: 'gym' | 'casa'): Parte[] => armarPlan(c.grupos, modo, primero);
@@ -51,12 +53,19 @@ export async function cargarContexto(ahora = new Date()): Promise<Contexto | nul
   const previos = grupos.flatMap((g) => g.ejercicios).map((e) => ({ e, series: historialDe(excluir(todas, hoy?.sesion.id), e.clave)[0]?.series ?? [] }));
   const donde = dondeEstas(letra, nth, anterior, '', previos);
 
+  const dow = (ahora.getDay() + 6) % 7;
+  const quiereCardio = aj.cardioHoy?.fecha === hoyIso ? aj.cardioHoy.si : !elegida && !!aj.cuando.cardio?.[dow];
+  const cardioHecho = sesiones.some((s) => s.tipo === 'cardio' && s.fecha === hoyIso);
+  const eligioRutina = aj.cardioHoy?.fecha === hoyIso && !aj.cardioHoy.si;
+  const cardioHoy = hoy || eligioRutina ? null : cardioHecho ? 'hecho' : quiereCardio ? 'planeado' : null;
+  const cardio = [...(aj.cuando.cardio ?? [false, false, false, false, false, false, false])];
+  cardio[dow] = quiereCardio;
   const seguidas = proximasLetras(p, letra, 8);
-  const semana = armarSemana(ahora, sesiones, seguidas, aj.cuando.dias, aj.cuando.cardio);
+  const semana = armarSemana(ahora, sesiones, seguidas, aj.cuando.dias, cardio);
   const terminadas = sesiones.filter((s) => !s.abierta);
   return {
     p, aj, todas, tocaPorCiclo: letraQueToca(p, sesiones)!, sustitutos: Object.fromEntries(susts.map((s) => [s.clave, s])), hoy, letra, grupos, semana,
-    semanaN: semanaDelPrograma(sesiones, ahora.getTime()), llevas: terminadas.length, nth, anterior, donde, mejor: ultimasMejor(sesiones)
+    semanaN: semanaDelPrograma(sesiones, ahora.getTime()), llevas: terminadas.length, nth, anterior, donde, mejor: ultimasMejor(sesiones), cardioHoy
   };
 }
 

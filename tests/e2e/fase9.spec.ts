@@ -115,7 +115,8 @@ test('Rutina: marcar un día de cardio y que la rutina pase al siguiente día', 
   await hoja.getByRole('button', { name: 'Guardar' }).click();
   await expect(page.getByText('Hoy toca cardio')).toBeVisible();
   await expect(page.locator('.day.today .sr')).toHaveText('hoy, cardio');
-  await page.getByRole('button', { name: 'Registrar el cardio de hoy' }).click();
+  await expect(page.getByRole('heading', { name: 'Cardio', level: 3 })).toBeVisible();
+  await page.getByRole('button', { name: 'Registrar cardio' }).click();
   await expect(page.getByRole('button', { name: 'Guardar cardio' })).toBeVisible();
   expect(errores).toEqual([]);
 });
@@ -143,6 +144,15 @@ test('Rutina: Cardio en "Hacer hoy" y registrar el cardio de ayer', async ({ pag
   await entrarConContenido(page);
   await page.getByRole('button', { name: 'Rutina', exact: true }).click();
   await page.locator('.mini').getByRole('button', { name: 'Cardio' }).click();
+  // Queda planeado como una rutina: se ve en la semana y en «Hoy»
+  await expect(page.getByRole('heading', { name: 'Cardio', level: 3 })).toBeVisible();
+  await expect(page.locator('.day.today .sr')).toHaveText('hoy, cardio');
+  await expect(page.locator('.mini').getByRole('button', { name: 'Cardio' })).toHaveAttribute('aria-pressed', 'true');
+  await revisarPantalla(page);
+  await page.getByRole('button', { name: 'Rutina A, la que toca' }).click();
+  await expect(page.getByRole('heading', { name: 'Rutina A', level: 3 })).toBeVisible();
+  await page.locator('.mini').getByRole('button', { name: 'Cardio' }).click();
+  await page.getByRole('button', { name: 'Registrar cardio' }).click();
   await page.getByRole('radio', { name: 'Ayer' }).click();
   await page.getByLabel('Minutos').fill('30');
   await revisarPantalla(page);
