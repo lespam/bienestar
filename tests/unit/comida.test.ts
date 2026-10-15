@@ -3,7 +3,8 @@ import { BaseBienestar, usarBase, db } from '../../src/core/db';
 import { cargarContenido } from '../../src/core/contenido';
 import { crearZip, leerZip } from '../../src/core/respaldo';
 import { strToU8, zipSync } from 'fflate';
-import { aplicarCambio, ajustar, barra, partes, diaBreve, etiquetaDia, fechaDe, recientes, sinRepetir, sumas, alcanzaTxt, avisoConflicto, calBaja, calculadoraLibro, cantidadTxt, fmtQ, leerIngrediente, leerReceta, lineaIng, notaConflictos, pasaFiltros, porTxt, porcionDe } from '../../src/modules/comida/calculos';
+import { aplicarCambio, ajustar, barra, partes, diaBreve, etiquetaDia, fechaDe, recientes, sinRepetir, sumas, alcanzaTxt, avisoConflicto, calBaja, calculadoraLibro, cantidadTxt, fmtQ, leerIngrediente, leerReceta, lineaIng, notaConflictos, pasaFiltros, usoTxt, porTxt, porcionDe } from '../../src/modules/comida/calculos';
+import { mazoDe } from '../../src/modules/comida/tarjetas';
 import { itemDeMenu, menuDe, ponerEnMenu, ponerVariosEnMenu, quitarDelMenu, reponerMenu, agregarAlimentos, alimentosDe, quitarAlimento, reponerDia, ultimosRegistrados, guardarPerfil, guardarReceta, leerPerfiles, listarRecetas, perfilInicial, quitarReceta, sembrarRecetas } from '../../src/modules/comida/datos';
 import { cargarPrefs } from '../../src/modules/ajustes';
 import type { ItemMenu, Receta } from '../../src/core/db';
@@ -285,18 +286,43 @@ describe('filtros de recetas', () => {
   const perf = { les: { no: [] as string[] }, jeff: { no: ['Huevo'] } };
   const f = { origen: 'todo', sinLes: false, sinJeff: true };
   it('quita la receta si lo que no le gusta se nota en el plato', () => {
-    expect(pasaFiltros({ n: 'Tacos de huevo' }, f, perf)).toBe(false);
-    expect(pasaFiltros({ n: 'Huevos rancheros' }, f, perf)).toBe(false);
+    expect(pasaFiltros({ id: 'x', n: 'Tacos de huevo' }, f, perf)).toBe(false);
+    expect(pasaFiltros({ id: 'x', n: 'Huevos rancheros' }, f, perf)).toBe(false);
   });
   it('deja las que lo llevan escondido o tienen otra versión', () => {
-    expect(pasaFiltros({ n: 'Crepas de avena' }, f, perf)).toBe(true);
-    expect(pasaFiltros({ n: 'Galletas de avena' }, f, perf)).toBe(true);
-    expect(pasaFiltros({ n: 'Tacos de huevo', alt: { w: 'jeff', x: 'huevo', by: 'tofu' } }, f, perf)).toBe(true);
-    expect(pasaFiltros({ n: 'Tacos de huevo' }, { ...f, sinJeff: false }, perf)).toBe(true);
+    expect(pasaFiltros({ id: 'x', n: 'Crepas de avena' }, f, perf)).toBe(true);
+    expect(pasaFiltros({ id: 'x', n: 'Galletas de avena' }, f, perf)).toBe(true);
+    expect(pasaFiltros({ id: 'x', n: 'Tacos de huevo', alt: { w: 'jeff', x: 'huevo', by: 'tofu' } }, f, perf)).toBe(true);
+    expect(pasaFiltros({ id: 'x', n: 'Tacos de huevo' }, { ...f, sinJeff: false }, perf)).toBe(true);
   });
   it('filtra por fuente', () => {
-    expect(pasaFiltros({ n: 'Sopa', origen: 'Familia' }, { ...f, origen: 'Familia' }, perf)).toBe(true);
-    expect(pasaFiltros({ n: 'Sopa', origen: 'Tastemade' }, { ...f, origen: 'Familia' }, perf)).toBe(false);
-    expect(pasaFiltros({ n: 'Sopa' }, { ...f, origen: 'Mías' }, perf)).toBe(true);
+    expect(pasaFiltros({ id: 'x', n: 'Sopa', origen: 'Familia' }, { ...f, origen: 'Familia' }, perf)).toBe(true);
+    expect(pasaFiltros({ id: 'x', n: 'Sopa', origen: 'Tastemade' }, { ...f, origen: 'Familia' }, perf)).toBe(false);
+    expect(pasaFiltros({ id: 'x', n: 'Sopa' }, { ...f, origen: 'Mías' }, perf)).toBe(true);
+  });
+});
+
+describe('uso de cada receta', () => {
+  const perf = { les: { no: [] as string[] }, jeff: { no: [] as string[] } };
+  const base = { origen: 'todo', sinLes: false, sinJeff: false };
+  it('dice cuántas veces la usaste', () => {
+    expect(usoTxt(undefined)).toBe('Aún no la usas');
+    expect(usoTxt({ e: 3, r: 1 })).toBe('En el menú 3 veces · Registrada 1 vez');
+    expect(usoTxt({ e: 0, r: 2 })).toBe('Registrada 2 veces');
+  });
+  it('filtra nunca usadas, ya usadas y con foto', () => {
+    const uso = { a: { e: 1, r: 0 } };
+    expect(pasaFiltros({ id: 'a', n: 'Sopa' }, { ...base, uso: 'nunca' }, perf, uso)).toBe(false);
+    expect(pasaFiltros({ id: 'b', n: 'Sopa' }, { ...base, uso: 'nunca' }, perf, uso)).toBe(true);
+    expect(pasaFiltros({ id: 'b', n: 'Sopa' }, { ...base, uso: 'usadas' }, perf, uso)).toBe(false);
+    expect(pasaFiltros({ id: 'b', n: 'Sopa' }, { ...base, foto: 'con' }, perf, uso)).toBe(false);
+    expect(pasaFiltros({ id: 'b', n: 'Sopa', img: new Blob() }, { ...base, foto: 'con' }, perf, uso)).toBe(true);
+  });
+  it('las tarjetas ponen lo conocido primero y cada cuarta una nueva', () => {
+    const r = (id: string) => ({ id, n: id, cat: 'Comida' }) as never;
+    const todas = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(r);
+    const uso = { e: { e: 5, r: 0 }, f: { e: 3, r: 1 }, g: { e: 2, r: 0 }, d: { e: 2, r: 2 } };
+    expect(mazoDe(todas, [], [], 'todo', uso).map((x: { id: string }) => x.id)).toEqual(['e', 'd', 'f', 'a', 'g', 'b', 'c']);
+    expect(mazoDe(todas, [], [], 'todo').map((x: { id: string }) => x.id)).toEqual(['a', 'b', 'c', 'd', 'e', 'f', 'g']);
   });
 });

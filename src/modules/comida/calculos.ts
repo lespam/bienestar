@@ -59,9 +59,21 @@ export function noLeGustaPrincipal(r: Pick<Receta, 'n' | 'alt'>, no: string[], w
     return !!sx && nombre.split(/[^a-z0-9]+/).some((p) => raiz(p) === sx || (sx.includes(' ') && nombre.includes(sx))) && !(r.alt && r.alt.w === w && raiz(r.alt.x) === sx);
   });
 }
-export interface FiltrosReceta { origen: string; sinLes: boolean; sinJeff: boolean }
-export function pasaFiltros(r: Pick<Receta, 'n' | 'alt' | 'origen'>, f: FiltrosReceta, perfiles: Record<'les' | 'jeff', Pick<PerfilComida, 'no'>>): boolean {
+/** e: veces que la elegiste en el menú. r: días que la registraste. */
+export interface UsoReceta { e: number; r: number }
+export const vecesUsada = (u?: UsoReceta) => (u ? u.e + u.r : 0);
+export function usoTxt(u?: UsoReceta): string {
+  if (!vecesUsada(u)) return 'Aún no la usas';
+  const vez = (n: number) => n + (n === 1 ? ' vez' : ' veces');
+  return [u!.e ? 'En el menú ' + vez(u!.e) : '', u!.r ? 'Registrada ' + vez(u!.r) : ''].filter(Boolean).join(' · ');
+}
+export interface FiltrosReceta { origen: string; sinLes: boolean; sinJeff: boolean; uso?: 'todo' | 'nunca' | 'usadas'; foto?: 'todo' | 'con' | 'sin' }
+export function pasaFiltros(r: Pick<Receta, 'id' | 'n' | 'alt' | 'origen' | 'img'>, f: FiltrosReceta, perfiles: Record<'les' | 'jeff', Pick<PerfilComida, 'no'>>, uso: Record<string, UsoReceta> = {}): boolean {
   if (f.origen !== 'todo' && (r.origen ?? 'Mías') !== f.origen) return false;
+  if (f.uso === 'nunca' && vecesUsada(uso[r.id])) return false;
+  if (f.uso === 'usadas' && !vecesUsada(uso[r.id])) return false;
+  if (f.foto === 'con' && !r.img) return false;
+  if (f.foto === 'sin' && r.img) return false;
   if (f.sinLes && noLeGustaPrincipal(r, perfiles.les.no, 'les')) return false;
   if (f.sinJeff && noLeGustaPrincipal(r, perfiles.jeff.no, 'jeff')) return false;
   return true;

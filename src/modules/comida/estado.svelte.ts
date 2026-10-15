@@ -1,12 +1,13 @@
 import { prefs } from '../ajustes';
 import type { LugarMenu } from '../../core/db';
+import type { FiltrosReceta } from './calculos';
 
 // Lo que Perfiles y Recetario comparten mientras estás en Comida: los números que mostraste con "Mostrar"
 // (solo hasta salir de Comida) y los filtros de la lista de recetas.
 export const vista = $state({ ver: false, cat: 'todo', q: '', vin: false, cambio: 0 });
 
 /** Filtros de fuente y de lo que no le gusta a alguien: los mismos en el Recetario y en las Tarjetas. */
-export const filtros = $state({ origen: 'todo', sinLes: false, sinJeff: false });
+export const filtros = $state<FiltrosReceta>({ origen: 'todo', sinLes: false, sinJeff: false, uso: 'todo', foto: 'todo' });
 
 export const numerosVisibles = () => !prefs.ocultarComida || vista.ver;
 

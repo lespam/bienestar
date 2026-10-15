@@ -119,3 +119,21 @@ test('Rutina: marcar un día de cardio y que la rutina pase al siguiente día', 
   await expect(page.getByRole('button', { name: 'Guardar cardio' })).toBeVisible();
   expect(errores).toEqual([]);
 });
+
+test('Recetario: cuántas veces usaste cada receta y filtro de nunca usadas', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await sembrar(page, 'recetas', [receta('u1', 'Pollo usado'), receta('u2', 'Pozole nuevo')]);
+  await sembrar(page, 'menu', [{ fecha: '2026-01-05', lugar: 'c', t: 'dos', n: 'Pollo usado', r: 'u1' }, { fecha: '2026-01-06', lugar: 'c', t: 'dos', n: 'Pollo usado', r: 'u1' }]);
+  await sembrar(page, 'registro', [{ fecha: '2026-01-05', comida: 1, n: 'Pollo usado', por: '1', k: 300, p: 1, c: 1, g: 1, receta: 'u1' }]);
+  await page.reload();
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Recetario' }).click();
+  await expect(page.getByRole('button', { name: /^Pollo usado.*En el menú 2 veces · Registrada 1 vez/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Pozole nuevo.*Aún no la usas/ })).toBeVisible();
+  await page.getByLabel('Uso').selectOption('nunca');
+  await expect(page.getByRole('button', { name: /^Pollo usado/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Pozole nuevo/ })).toBeVisible();
+  await revisarPantalla(page);
+  expect(errores).toEqual([]);
+});

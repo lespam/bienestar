@@ -2,8 +2,8 @@
   import type { PerfilComida, Receta } from '../../core/db';
   import { avisos } from '../../core/aviso.svelte';
   import { nav } from '../../core/nav.svelte';
-  import { CATEGORIAS, CAT_COLOR, CAT_PLURAL, avisoConflicto, norm, pasaFiltros } from './calculos';
-  import { guardarReceta, leerPerfiles, listarRecetas, quitarReceta, sembrarRecetas } from './datos';
+  import { CATEGORIAS, CAT_COLOR, CAT_PLURAL, avisoConflicto, norm, pasaFiltros, usoTxt, type UsoReceta } from './calculos';
+  import { guardarReceta, leerPerfiles, listarRecetas, quitarReceta, sembrarRecetas, usoDeRecetas } from './datos';
   import { eleccion, filtros, numerosVisibles, vista } from './estado.svelte';
   import { NOMBRE_LUGAR, nombreDia, platoTxt } from './semana';
   import { itemDeMenu } from './datos';
@@ -15,7 +15,8 @@
   let perfiles = $state<Record<'les' | 'jeff', Pick<PerfilComida, 'no'>>>({ les: { no: [] }, jeff: { no: [] } });
   let listo = $state(false);
 
-  async function cargar() { recetas = await listarRecetas(); }
+  let uso = $state<Record<string, UsoReceta>>({});
+  async function cargar() { [recetas, uso] = await Promise.all([listarRecetas(), usoDeRecetas()]); }
   $effect(() => { if (vista.cambio) cargar(); });
   (async () => {
     await sembrarRecetas();
@@ -43,7 +44,7 @@
   const q = $derived(norm(vista.q.trim()));
   const filas = $derived(
     recetas
-      .filter((r) => (cat === 'todo' || r.cat === cat) && pasaFiltros(r, filtros, perfiles) && (!q || norm(r.n).includes(q) || r.ing.some((it) => norm(it[2]).includes(q))))
+      .filter((r) => (cat === 'todo' || r.cat === cat) && pasaFiltros(r, filtros, perfiles, uso) && (!q || norm(r.n).includes(q) || r.ing.some((it) => norm(it[2]).includes(q))))
       .sort((a, b) => a.n.localeCompare(b.n, 'es'))
   );
 
@@ -64,6 +65,7 @@
   }
 
   const meta = (r: Receta) => r.cat + ' · ' + r.y + (r.y > 1 ? ' porciones' : ' porción') + (r.t ? ' · ' + r.t : '');
+  const usoDe = (r: Receta) => usoTxt(uso[r.id]);
   const notas = (r: Receta) => (r.nts?.length ? ' · ' + r.nts.length + (r.nts.length === 1 ? ' nota' : ' notas y tips') : '');
 
   async function guardada(r: Receta, nueva: boolean) {
@@ -121,12 +123,12 @@
       {#if vista.vin}
         <button class="rc-card" id={'rc-' + r.id} onclick={() => nav.abrir('receta', { id: r.id })}>
           <span class="rc-ph"><Plato receta={r} /></span>
-          <span class="rc-tx"><b>{r.n}</b><small>{meta(r)}{notas(r)}</small>{#if ver && r.k != null}<small>{Math.round(r.k)} kcal aprox. por porción</small>{/if}{#if aviso}<em>{aviso}</em>{/if}</span>
+          <span class="rc-tx"><b>{r.n}</b><small>{meta(r)}{notas(r)}</small><small class="rc-uso">{usoDe(r)}</small>{#if ver && r.k != null}<small>{Math.round(r.k)} kcal aprox. por porción</small>{/if}{#if aviso}<em>{aviso}</em>{/if}</span>
         </button>
       {:else}
         <button class="rc-row" id={'rc-' + r.id} onclick={() => nav.abrir('receta', { id: r.id })}>
           <span class="rc-th" style:--c={CAT_COLOR[r.cat]}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={BOWL} /></svg></span>
-          <span><b>{r.n}</b><small>{meta(r)}{notas(r)}</small>{#if ver && r.k != null}<small>{Math.round(r.k)} kcal aprox. por porción</small>{/if}{#if aviso}<em>{aviso}</em>{/if}</span>
+          <span><b>{r.n}</b><small>{meta(r)}{notas(r)}</small><small class="rc-uso">{usoDe(r)}</small>{#if ver && r.k != null}<small>{Math.round(r.k)} kcal aprox. por porción</small>{/if}{#if aviso}<em>{aviso}</em>{/if}</span>
           <i aria-hidden="true">›</i>
         </button>
       {/if}

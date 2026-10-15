@@ -4,7 +4,7 @@ import { registroNuevo } from '../ajustes';
 import { comprasVacias, type EstadoCompras } from './compras';
 import { sincronizar } from './preparacion';
 import { tipsVacios, type TipsGuardados } from './tips';
-import { fechaDe } from './calculos';
+import { fechaDe, type UsoReceta } from './calculos';
 
 // Comida es la única dueña de recetas y perfiles. Las recetas del archivo de contenido se copian una vez
 // a tu tabla y desde ahí son tuyas: si quitas una, no vuelve; si el archivo trae nuevas, solo se agregan esas.
@@ -151,3 +151,14 @@ export const leerFlexibles = () => db.flexibles.toArray();
 export const flexibleDe = (fecha: string) => db.flexibles.get(fecha);
 export async function guardarFlexible(d: DiaFlexible) { await db.flexibles.put(limpio(d)); await registroNuevo(); }
 export const quitarFlexible = (fecha: string) => db.flexibles.delete(fecha);
+
+/** Cuántas veces elegiste cada receta en el menú y cuántos días la registraste. Se calcula; no se guarda. */
+export async function usoDeRecetas(): Promise<Record<string, UsoReceta>> {
+  const [menu, reg] = await Promise.all([db.menu.toArray(), db.registro.toArray()]);
+  const out: Record<string, UsoReceta> = {};
+  const de = (id: string) => (out[id] ??= { e: 0, r: 0 });
+  for (const m of menu) for (const id of new Set([m.r, m.rl, m.rj])) if (id) de(id).e++;
+  const dias = new Set<string>();
+  for (const a of reg) if (a.receta && !dias.has(a.receta + '|' + a.fecha)) { dias.add(a.receta + '|' + a.fecha); de(a.receta).r++; }
+  return out;
+}

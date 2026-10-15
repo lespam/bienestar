@@ -3,8 +3,8 @@
   import type { ItemMenu, LugarMenu, PerfilComida, Receta } from '../../core/db';
   import { avisos } from '../../core/aviso.svelte';
   import { nav } from '../../core/nav.svelte';
-  import { CAT_COLOR, fechaDe, pasaFiltros } from './calculos';
-  import { leerPerfiles, listarRecetas, menuDe, ponerEnMenu, reponerMenu, sembrarRecetas } from './datos';
+  import { CAT_COLOR, fechaDe, pasaFiltros, type UsoReceta } from './calculos';
+  import { leerPerfiles, listarRecetas, menuDe, ponerEnMenu, reponerMenu, sembrarRecetas, usoDeRecetas } from './datos';
   import { filtros, numerosVisibles, tarjetas } from './estado.svelte';
   import { LETRA_DIA, NOMBRE_LUGAR, fechasDeSemana, indexar, itemDos, llave, nombreDia, numeroDia, platoTxt } from './semana';
   import { CATS_TARJETA, cuentaTarjetas, elegidasTxt, mazoDe } from './tarjetas';
@@ -19,17 +19,18 @@
   let recetas = $state<Receta[]>([]);
   let items = $state<ItemMenu[]>([]);
   let listo = $state(false);
+  let uso = $state<Record<string, UsoReceta>>({});
   let perfiles = $state<Record<'les' | 'jeff', Pick<PerfilComida, 'no'>>>({ les: { no: [] }, jeff: { no: [] } });
 
   const cargarMenu = async () => { items = await menuDe(dias); };
   (async () => {
     await sembrarRecetas();
-    [recetas, perfiles] = await Promise.all([listarRecetas(), leerPerfiles(), cargarMenu()]);
+    [recetas, perfiles, uso] = await Promise.all([listarRecetas(), leerPerfiles(), usoDeRecetas(), cargarMenu()]);
     listo = true;
   })();
 
   const porId = $derived(new Map(recetas.map((r) => [r.id, r])));
-  const mazo = $derived(mazoDe(recetas.filter((r) => pasaFiltros(r, filtros, perfiles)), tarjetas.liked, tarjetas.passed, tarjetas.cat));
+  const mazo = $derived(mazoDe(recetas.filter((r) => pasaFiltros(r, filtros, perfiles, uso)), tarjetas.liked, tarjetas.passed, tarjetas.cat, uso));
   const visibles = $derived(mazo.slice(0, 3));
   const indice = $derived(indexar(items));
   const ver = $derived(numerosVisibles());
@@ -211,7 +212,7 @@
     <div class="tj-stack">
       {#if listo && !mazo.length}
         <div class="tj-empty">
-          <b>No quedan tarjetas{tarjetas.cat === 'todo' && filtros.origen === 'todo' && !filtros.sinLes && !filtros.sinJeff ? '' : ' con estos filtros'}.</b>
+          <b>No quedan tarjetas{tarjetas.cat === 'todo' && filtros.origen === 'todo' && !filtros.sinLes && !filtros.sinJeff && filtros.uso === 'todo' && filtros.foto === 'todo' ? '' : ' con estos filtros'}.</b>
           <p>{tarjetas.liked.length ? 'Ya puedes acomodar las que elegiste en la semana.' : 'Puedes cambiar los filtros o volver a ver las que dijiste que no.'}</p>
         </div>
       {/if}
