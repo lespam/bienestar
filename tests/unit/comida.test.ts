@@ -3,7 +3,7 @@ import { BaseBienestar, usarBase, db } from '../../src/core/db';
 import { cargarContenido } from '../../src/core/contenido';
 import { crearZip, leerZip } from '../../src/core/respaldo';
 import { strToU8, zipSync } from 'fflate';
-import { aplicarCambio, ajustar, barra, diaBreve, etiquetaDia, fechaDe, recientes, sinRepetir, sumas, alcanzaTxt, avisoConflicto, calBaja, calculadoraLibro, cantidadTxt, fmtQ, leerIngrediente, leerReceta, lineaIng, notaConflictos, porTxt, porcionDe } from '../../src/modules/comida/calculos';
+import { aplicarCambio, ajustar, barra, partes, diaBreve, etiquetaDia, fechaDe, recientes, sinRepetir, sumas, alcanzaTxt, avisoConflicto, calBaja, calculadoraLibro, cantidadTxt, fmtQ, leerIngrediente, leerReceta, lineaIng, notaConflictos, porTxt, porcionDe } from '../../src/modules/comida/calculos';
 import { itemDeMenu, menuDe, ponerEnMenu, ponerVariosEnMenu, quitarDelMenu, reponerMenu, agregarAlimentos, alimentosDe, quitarAlimento, reponerDia, ultimosRegistrados, guardarPerfil, guardarReceta, leerPerfiles, listarRecetas, perfilInicial, quitarReceta, sembrarRecetas } from '../../src/modules/comida/datos';
 import { cargarPrefs } from '../../src/modules/ajustes';
 import type { ItemMenu, Receta } from '../../src/core/db';
@@ -199,6 +199,13 @@ describe('registro del día', () => {
   it('las barras usan la referencia si existe', () => {
     expect(barra(70, 100)).toEqual({ w: 50, marca: (100 / 140) * 100 });
     expect(barra(70, null).marca).toBeNull();
+    // Pasar la referencia se ve: la barra llega al final y la marca se recorre
+    expect(barra(200, 100)).toEqual({ w: 100, marca: 50 });
+    // Sin referencia, la barra cambia con lo que comes: es la parte de las calorías de ese macro
+    const pt = partes({ p: 25, c: 50, g: 0 });
+    expect(barra(25, null, pt.p).w).toBeCloseTo(33.3, 1);
+    expect(barra(50, null, pt.c).w).toBeCloseTo(66.7, 1);
+    expect(partes({ p: 0, c: 0, g: 0 })).toEqual({ p: 0, c: 0, g: 0 });
   });
   it('guarda alimentos por día y deja un día como estaba', async () => {
     const base = { comida: 1 as const, por: '1', k: 100, p: 1, c: 1, g: 1 };

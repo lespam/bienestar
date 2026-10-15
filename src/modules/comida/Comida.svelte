@@ -7,7 +7,7 @@
   import { aBase64, AnfitrionIA, estimarComida, estimarDeFoto, pedirIA } from '../ia';
   import { reducirFoto } from '../../core/imagen';
   import type { AlimentoEstimado } from '../ia';
-  import { COMIDAS, DIAS_ATRAS, barra, diaBreve, etiquetaDia, fechaDe, fmtN, fraseDia, kRango, macroLinea, porTxt, porcionDe, r1, recientes, sinRepetir, sumas, type Plato } from './calculos';
+  import { COMIDAS, DIAS_ATRAS, barra, partes, diaBreve, etiquetaDia, fechaDe, fmtN, fraseDia, kRango, macroLinea, porTxt, porcionDe, r1, recientes, sinRepetir, sumas, type Plato } from './calculos';
   import { agregarAlimentos, alimentosDe, guardarAlimento, leerPerfiles, flexibleDe, leerPrep, listarRecetas, menuDe, quitarAlimento, reponerDia, sembrarRecetas, ultimosRegistrados } from './datos';
   import { filaDeTanda } from './preparacion';
   import { NOMBRE_LUGAR, fechasDeSemana, indexar, llave, nombreDia } from './semana';
@@ -331,9 +331,9 @@
         {#each [['p', '', 'Proteína'], ['c', 'c', 'Carbohidratos'], ['g', 'g', 'Grasa']] as [k, clase, rotulo] (k)}
           {@const v = total[k as 'p' | 'c' | 'g']}
           {@const r = ref?.[k as 'p' | 'c' | 'g'] ?? null}
-          {@const b = barra(v, r)}
+          {@const b = barra(v, r, partes(total)[k as 'p' | 'c' | 'g'])}
           <div class="mac">
-            <div class="mac-top"><span>{rotulo}</span><span>{Math.round(v)} g{r ? ' · referencia ' + r + ' g' : ''}</span></div>
+            <div class="mac-top"><span>{rotulo}</span><span>{Math.round(v)} g{r ? ' · referencia ' + r + ' g' : total.k ? ' · ' + Math.round(partes(total)[k as 'p' | 'c' | 'g'] * 100) + ' % de las kcal' : ''}</span></div>
             <div class="bar {clase}"><i style:width={b.w + '%'}></i>{#if b.marca != null}<em style:left={b.marca + '%'}></em>{/if}</div>
           </div>
         {/each}

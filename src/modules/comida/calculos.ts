@@ -249,7 +249,17 @@ export function fraseDia(off: number, comidas: number): string {
   return comidas >= 3 ? 'Ya registraste ' + comidas + ' comidas hoy. Registrar también es cuidarte.' : 'Cada comida que registras te da información, no calificaciones.';
 }
 /** Cuántos gramos mide la barra respecto a la referencia (si no hay, a lo registrado). */
-export function barra(valor: number, ref: number | null) {
-  const max = (ref || valor || 1) * 1.4;
-  return { w: Math.min(100, (valor / max) * 100), marca: ref ? (ref / max) * 100 : null };
+/**
+ * Ancho de la barra de un macro. Con referencia, la barra crece con lo que llevas y la marca es la referencia
+ * (pasarla se ve, no se corta). Sin referencia, la barra es la parte de las calorías que viene de ese macro.
+ */
+export function barra(valor: number, ref: number | null, parte = 0) {
+  if (!ref) return { w: Math.round(Math.max(0, Math.min(1, parte)) * 1000) / 10, marca: null };
+  const max = Math.max(ref * 1.4, valor);
+  return { w: Math.min(100, (valor / max) * 100), marca: (ref / max) * 100 };
+}
+/** Qué parte de las calorías viene de cada macro (proteína y carbohidratos 4 kcal por g, grasa 9). */
+export function partes(t: { p: number; c: number; g: number }) {
+  const k = t.p * 4 + t.c * 4 + t.g * 9;
+  return k > 0 ? { p: (t.p * 4) / k, c: (t.c * 4) / k, g: (t.g * 9) / k } : { p: 0, c: 0, g: 0 };
 }
