@@ -1,13 +1,14 @@
 <script lang="ts">
   import { tick } from 'svelte';
-  import type { ItemMenu, LugarMenu, Receta } from '../../core/db';
+  import type { ItemMenu, LugarMenu, PerfilComida, Receta } from '../../core/db';
   import { avisos } from '../../core/aviso.svelte';
   import { nav } from '../../core/nav.svelte';
-  import { CAT_COLOR, fechaDe } from './calculos';
-  import { listarRecetas, menuDe, ponerEnMenu, reponerMenu, sembrarRecetas } from './datos';
-  import { numerosVisibles, tarjetas } from './estado.svelte';
+  import { CAT_COLOR, fechaDe, pasaFiltros } from './calculos';
+  import { leerPerfiles, listarRecetas, menuDe, ponerEnMenu, reponerMenu, sembrarRecetas } from './datos';
+  import { filtros, numerosVisibles, tarjetas } from './estado.svelte';
   import { LETRA_DIA, NOMBRE_LUGAR, fechasDeSemana, indexar, itemDos, llave, nombreDia, numeroDia, platoTxt } from './semana';
   import { CATS_TARJETA, cuentaTarjetas, elegidasTxt, mazoDe } from './tarjetas';
+  import FiltrosRecetas from './FiltrosRecetas.svelte';
   import Plato from './Plato.svelte';
 
   const hoy = fechaDe(0);
@@ -18,16 +19,17 @@
   let recetas = $state<Receta[]>([]);
   let items = $state<ItemMenu[]>([]);
   let listo = $state(false);
+  let perfiles = $state<Record<'les' | 'jeff', Pick<PerfilComida, 'no'>>>({ les: { no: [] }, jeff: { no: [] } });
 
   const cargarMenu = async () => { items = await menuDe(dias); };
   (async () => {
     await sembrarRecetas();
-    [recetas] = await Promise.all([listarRecetas(), cargarMenu()]);
+    [recetas, perfiles] = await Promise.all([listarRecetas(), leerPerfiles(), cargarMenu()]);
     listo = true;
   })();
 
   const porId = $derived(new Map(recetas.map((r) => [r.id, r])));
-  const mazo = $derived(mazoDe(recetas, tarjetas.liked, tarjetas.passed, tarjetas.cat));
+  const mazo = $derived(mazoDe(recetas.filter((r) => pasaFiltros(r, filtros, perfiles)), tarjetas.liked, tarjetas.passed, tarjetas.cat));
   const visibles = $derived(mazo.slice(0, 3));
   const indice = $derived(indexar(items));
   const ver = $derived(numerosVisibles());
@@ -205,11 +207,12 @@
         <button class:on={tarjetas.cat === k} aria-pressed={tarjetas.cat === k} onclick={() => (tarjetas.cat = k)}>{t}</button>
       {/each}
     </div>
+    <FiltrosRecetas {recetas} {perfiles} />
     <div class="tj-stack">
       {#if listo && !mazo.length}
         <div class="tj-empty">
-          <b>No quedan tarjetas{tarjetas.cat === 'todo' ? '' : ' de este tipo'}.</b>
-          <p>{tarjetas.liked.length ? 'Ya puedes acomodar las que elegiste en la semana.' : 'Puedes cambiar el tipo o volver a ver las que dijiste que no.'}</p>
+          <b>No quedan tarjetas{tarjetas.cat === 'todo' && filtros.origen === 'todo' && !filtros.sinLes && !filtros.sinJeff ? '' : ' con estos filtros'}.</b>
+          <p>{tarjetas.liked.length ? 'Ya puedes acomodar las que elegiste en la semana.' : 'Puedes cambiar los filtros o volver a ver las que dijiste que no.'}</p>
         </div>
       {/if}
       {#each [...visibles].reverse() as r (r.id)}

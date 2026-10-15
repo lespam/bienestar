@@ -3,7 +3,7 @@ import { BaseBienestar, usarBase, db } from '../../src/core/db';
 import { cargarContenido } from '../../src/core/contenido';
 import { crearZip, leerZip } from '../../src/core/respaldo';
 import { strToU8, zipSync } from 'fflate';
-import { aplicarCambio, ajustar, barra, partes, diaBreve, etiquetaDia, fechaDe, recientes, sinRepetir, sumas, alcanzaTxt, avisoConflicto, calBaja, calculadoraLibro, cantidadTxt, fmtQ, leerIngrediente, leerReceta, lineaIng, notaConflictos, porTxt, porcionDe } from '../../src/modules/comida/calculos';
+import { aplicarCambio, ajustar, barra, partes, diaBreve, etiquetaDia, fechaDe, recientes, sinRepetir, sumas, alcanzaTxt, avisoConflicto, calBaja, calculadoraLibro, cantidadTxt, fmtQ, leerIngrediente, leerReceta, lineaIng, notaConflictos, pasaFiltros, porTxt, porcionDe } from '../../src/modules/comida/calculos';
 import { itemDeMenu, menuDe, ponerEnMenu, ponerVariosEnMenu, quitarDelMenu, reponerMenu, agregarAlimentos, alimentosDe, quitarAlimento, reponerDia, ultimosRegistrados, guardarPerfil, guardarReceta, leerPerfiles, listarRecetas, perfilInicial, quitarReceta, sembrarRecetas } from '../../src/modules/comida/datos';
 import { cargarPrefs } from '../../src/modules/ajustes';
 import type { ItemMenu, Receta } from '../../src/core/db';
@@ -278,5 +278,25 @@ describe('menú de la semana', () => {
     expect((await menuDe(['2026-10-01', '2026-10-02'])).map((x) => x.n).sort()).toEqual(['Tacos', 'Tinga']);
     const zip = leerZip(await crearZip(new Date('2026-10-11')))!;
     expect(zip.datos.tablas.menu).toHaveLength(2);
+  });
+});
+
+describe('filtros de recetas', () => {
+  const perf = { les: { no: [] as string[] }, jeff: { no: ['Huevo'] } };
+  const f = { origen: 'todo', sinLes: false, sinJeff: true };
+  it('quita la receta si lo que no le gusta se nota en el plato', () => {
+    expect(pasaFiltros({ n: 'Tacos de huevo' }, f, perf)).toBe(false);
+    expect(pasaFiltros({ n: 'Huevos rancheros' }, f, perf)).toBe(false);
+  });
+  it('deja las que lo llevan escondido o tienen otra versión', () => {
+    expect(pasaFiltros({ n: 'Crepas de avena' }, f, perf)).toBe(true);
+    expect(pasaFiltros({ n: 'Galletas de avena' }, f, perf)).toBe(true);
+    expect(pasaFiltros({ n: 'Tacos de huevo', alt: { w: 'jeff', x: 'huevo', by: 'tofu' } }, f, perf)).toBe(true);
+    expect(pasaFiltros({ n: 'Tacos de huevo' }, { ...f, sinJeff: false }, perf)).toBe(true);
+  });
+  it('filtra por fuente', () => {
+    expect(pasaFiltros({ n: 'Sopa', origen: 'Familia' }, { ...f, origen: 'Familia' }, perf)).toBe(true);
+    expect(pasaFiltros({ n: 'Sopa', origen: 'Tastemade' }, { ...f, origen: 'Familia' }, perf)).toBe(false);
+    expect(pasaFiltros({ n: 'Sopa' }, { ...f, origen: 'Mías' }, perf)).toBe(true);
   });
 });

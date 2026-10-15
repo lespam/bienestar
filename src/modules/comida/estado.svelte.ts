@@ -5,6 +5,9 @@ import type { LugarMenu } from '../../core/db';
 // (solo hasta salir de Comida) y los filtros de la lista de recetas.
 export const vista = $state({ ver: false, cat: 'todo', q: '', vin: false, cambio: 0 });
 
+/** Filtros de fuente y de lo que no le gusta a alguien: los mismos en el Recetario y en las Tarjetas. */
+export const filtros = $state({ origen: 'todo', sinLes: false, sinJeff: false });
+
 export const numerosVisibles = () => !prefs.ocultarComida || vista.ver;
 
 export function reiniciarVista() { vista.ver = false; vista.cat = 'todo'; vista.q = ''; }

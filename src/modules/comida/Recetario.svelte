@@ -2,11 +2,12 @@
   import type { PerfilComida, Receta } from '../../core/db';
   import { avisos } from '../../core/aviso.svelte';
   import { nav } from '../../core/nav.svelte';
-  import { CATEGORIAS, CAT_COLOR, CAT_PLURAL, avisoConflicto, norm } from './calculos';
+  import { CATEGORIAS, CAT_COLOR, CAT_PLURAL, avisoConflicto, norm, pasaFiltros } from './calculos';
   import { guardarReceta, leerPerfiles, listarRecetas, quitarReceta, sembrarRecetas } from './datos';
-  import { eleccion, numerosVisibles, vista } from './estado.svelte';
+  import { eleccion, filtros, numerosVisibles, vista } from './estado.svelte';
   import { NOMBRE_LUGAR, nombreDia, platoTxt } from './semana';
   import { itemDeMenu } from './datos';
+  import FiltrosRecetas from './FiltrosRecetas.svelte';
   import FormReceta from './FormReceta.svelte';
   import Plato from './Plato.svelte';
 
@@ -42,7 +43,7 @@
   const q = $derived(norm(vista.q.trim()));
   const filas = $derived(
     recetas
-      .filter((r) => (cat === 'todo' || r.cat === cat) && (!q || norm(r.n).includes(q) || r.ing.some((it) => norm(it[2]).includes(q))))
+      .filter((r) => (cat === 'todo' || r.cat === cat) && pasaFiltros(r, filtros, perfiles) && (!q || norm(r.n).includes(q) || r.ing.some((it) => norm(it[2]).includes(q))))
       .sort((a, b) => a.n.localeCompare(b.n, 'es'))
   );
 
@@ -108,6 +109,7 @@
       <button class:on aria-pressed={on} onclick={() => (vista.cat = c)}>{CAT_PLURAL[c]} · {recetas.filter((r) => r.cat === c).length}</button>
     {/each}
   </div>
+  <FiltrosRecetas {recetas} {perfiles} />
   {#if conLetras}
     <nav class="fi-jump rc-abc" aria-label="Ir a la letra">
       {#each Object.keys(primeras) as l (l)}<button onclick={() => saltar(l)} aria-label={'Recetas con ' + l}>{l}</button>{/each}
@@ -129,7 +131,7 @@
         </button>
       {/if}
     {:else}
-      {#if listo}<p class="rc-empty">{q ? 'No hay recetas con «' + vista.q.trim() + '». Puedes agregarla con + Agregar.' : 'Aún no hay recetas aquí.'}</p>{/if}
+      {#if listo}<p class="rc-empty">{q ? 'No hay recetas con «' + vista.q.trim() + '». Puedes agregarla con + Agregar.' : recetas.length ? 'No hay recetas con estos filtros.' : 'Aún no hay recetas aquí.'}</p>{/if}
     {/each}
   </div>
   <p class="tool-note">Calorías y macros aproximados, por porción.</p>

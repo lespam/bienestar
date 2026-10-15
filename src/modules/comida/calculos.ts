@@ -48,6 +48,24 @@ export function notaConflictos(r: Pick<Receta, 'ing' | 'alt'>, perfiles: Record<
     return (yo ? 'No comes ' : 'Jeff no come ') + lc(c.x) + (tieneAlt(r, c) ? ': ' + (yo ? 'tu' : 'su') + ' versión va con ' + r.alt!.by + '.' : '. Cambia ese ingrediente en ' + (yo ? 'tu' : 'su') + ' porción.');
   }).join(' ');
 }
+/**
+ * El ingrediente que no le gusta se nota en el plato: aparece en el nombre de la receta
+ * (tacos de huevo sí; crepas o galletas con huevo no) y no hay una versión sin él.
+ */
+export function noLeGustaPrincipal(r: Pick<Receta, 'n' | 'alt'>, no: string[], w: 'les' | 'jeff'): boolean {
+  const nombre = norm(r.n);
+  return no.some((x) => {
+    const sx = raiz(x);
+    return !!sx && nombre.split(/[^a-z0-9]+/).some((p) => raiz(p) === sx || (sx.includes(' ') && nombre.includes(sx))) && !(r.alt && r.alt.w === w && raiz(r.alt.x) === sx);
+  });
+}
+export interface FiltrosReceta { origen: string; sinLes: boolean; sinJeff: boolean }
+export function pasaFiltros(r: Pick<Receta, 'n' | 'alt' | 'origen'>, f: FiltrosReceta, perfiles: Record<'les' | 'jeff', Pick<PerfilComida, 'no'>>): boolean {
+  if (f.origen !== 'todo' && (r.origen ?? 'Mías') !== f.origen) return false;
+  if (f.sinLes && noLeGustaPrincipal(r, perfiles.les.no, 'les')) return false;
+  if (f.sinJeff && noLeGustaPrincipal(r, perfiles.jeff.no, 'jeff')) return false;
+  return true;
+}
 export function avisoConflicto(r: Pick<Receta, 'ing' | 'alt'>, perfiles: Record<'les' | 'jeff', Pick<PerfilComida, 'no'>>): string {
   const c = conflictos(r, perfiles)[0];
   if (!c) return '';

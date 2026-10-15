@@ -74,3 +74,30 @@ test('Compras y preparación: solo lo de hoy y mañana, para cargar lo mínimo',
   await expect(page.locator('.cp-row', { hasText: 'Berenjena' })).toHaveCount(semanaTiene);
   expect(errores).toEqual([]);
 });
+
+test('Recetas: filtrar por fuente y quitar lo que no le gusta a Jeff, en el Recetario y en las tarjetas', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await sembrar(page, 'recetas', [
+    { ...receta('f1', 'Tacos de huevo', 'Desayuno', [[2, 'pieza', 'Huevo']]), origen: 'Familia' },
+    { ...receta('f2', 'Crepas de avena', 'Desayuno', [[1, 'pieza', 'Huevo']]), origen: 'Familia' },
+    { ...receta('f3', 'Sopa de lentejas'), origen: 'Tastemade' }
+  ]);
+  await sembrar(page, 'perfiles', [{ quien: 'jeff', no: ['Huevo'] }]);
+  await page.reload();
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Recetario' }).click();
+  await page.getByLabel('Fuente').selectOption('Familia');
+  await expect(page.getByRole('button', { name: /^Tacos de huevo/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Sopa de lentejas/ })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Sin lo que no le gusta a Jeff' }).click();
+  await expect(page.getByRole('button', { name: /^Tacos de huevo/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Crepas de avena/ })).toBeVisible();
+  await revisarPantalla(page);
+  await page.getByRole('button', { name: /Elegir con tarjetas/ }).click();
+  await expect(page.getByLabel('Fuente')).toHaveValue('Familia');
+  await expect(page.locator('.tj-card', { hasText: 'Crepas de avena' })).toHaveCount(1);
+  await expect(page.locator('.tj-card', { hasText: 'Tacos de huevo' })).toHaveCount(0);
+  await revisarPantalla(page);
+  expect(errores).toEqual([]);
+});
