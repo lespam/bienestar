@@ -97,9 +97,15 @@
     return (e.codigo || e.nombre) + ' · serie ' + (p.s + 1);
   }
 
+  /** Para saltar a cualquier grupo al editar una sesión terminada: «Superserie A», «Superserie B», «Series normales 1»… */
+  const etiquetasGrupos = $derived.by(() => {
+    const nombres = grupos.map((g) => (g.tipo === 'superserie' ? (g.etiqueta ?? '').split(' · ')[0] : 'Series normales'));
+    return nombres.map((t, i) => (nombres.filter((x) => x === t).length > 1 ? t + ' ' + (nombres.slice(0, i + 1).filter((x) => x === t).length) : t));
+  });
+
   const boton = $derived.by(() => {
     if (!grupo) return '';
-    if (completo) return ultimoGrupo ? 'Terminar sesión' : 'Seguir con ' + (grupos[mostrado + 1].tipo === 'superserie' ? (grupos[mostrado + 1].etiqueta ?? '').split(' · ')[0].toLowerCase().replace(/^./, (x) => x.toUpperCase()) : 'las series normales').replace('Superserie', 'la superserie');
+    if (completo) return ultimoGrupo ? (revisar != null ? 'Listo' : 'Terminar sesión') : 'Seguir con ' + (grupos[mostrado + 1].tipo === 'superserie' ? (grupos[mostrado + 1].etiqueta ?? '').split(' · ')[0].toLowerCase().replace(/^./, (x) => x.toUpperCase()) : 'las series normales').replace('Superserie', 'la superserie');
     const siguiente = siguientePaso;
     if (!siguiente) return grupo.tipo === 'superserie' ? 'Guardar y terminar ' + titulo.toLowerCase() : 'Guardar y terminar';
     if (grupo.tipo === 'superserie' && siguiente.e !== paso!.e && siguiente.s === paso!.s) return 'Guardar y pasar a ' + grupo.ejercicios[siguiente.e].codigo;
@@ -215,7 +221,12 @@
 
 <div class="screen">
   {#if grupo && c}
-    {#if revisar != null}<p class="seg-help">Estás editando una sesión que ya terminó. Lo que guardes se suma a esa sesión y su duración no cambia.</p>{/if}
+    {#if revisar != null}
+      <p class="seg-help">Estás editando una sesión que ya terminó. Lo que guardes se suma a esa sesión y su duración no cambia. Toca un grupo para editarlo.</p>
+      <div class="m-chips" role="tablist" aria-label="Grupos de la rutina">
+        {#each etiquetasGrupos as t, gi (gi)}<button role="tab" class:on={gi === mostrado} aria-selected={gi === mostrado} onclick={() => (mostrado = gi)}>{t}</button>{/each}
+      </div>
+    {/if}
     <div class="ss-head">
       <div>
         <h2 tabindex="-1">{titulo}</h2>
@@ -297,7 +308,7 @@
       <textarea id="notas" rows="3" placeholder="Cómo te sentiste, ajustes, lo que quieras recordar" bind:value={nota} oninput={escribirNota}></textarea>
       <p class="saved-note" role="status">{notaEstado}</p>
     </section>
-    <button class="ghost" onclick={terminar}>Terminar sesión</button>
+    <button class="ghost" onclick={terminar}>{revisar != null ? 'Listo' : 'Terminar sesión'}</button>
     <p class="tool-note">Lo que hagas se guarda y cuenta, aunque no hagas todo. La pantalla se queda encendida durante toda la sesión.</p>
   {/if}
 </div>

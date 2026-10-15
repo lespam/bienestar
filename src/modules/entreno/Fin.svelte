@@ -7,6 +7,7 @@
   import { cargarContexto, excluir, type Contexto } from './contexto';
   import { segundosDeDescanso, sentirse } from './datos';
   import { aFecha, fechaDia } from './semana';
+  import { gruposDeRutina } from './programa';
   import type { Sesion } from '../../core/db';
   import Rico from './Rico.svelte';
 
@@ -23,7 +24,7 @@
 
   const reg = $derived(c?.todas.find((x) => x.sesion.id === id));
   const s = $derived(reg?.sesion);
-  const grupos = $derived(c && s ? c.grupos : []);
+  const grupos = $derived(c && s ? (s.rutina && s.rutina !== c.letra ? gruposDeRutina(c.p, s.rutina) : c.grupos) : []);
   const total = $derived(grupos.flatMap((g) => g.ejercicios).length);
   const k = $derived(reg ? ejerciciosEmpezados(grupos, new Set(reg.series.map((x) => llave(x.clave, x.n)))) : 0);
   const completa = $derived(k >= total && total > 0);

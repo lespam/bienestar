@@ -136,6 +136,11 @@ test('sesión completa: guardar series, descanso, retomar, ficha, fin, PR', asyn
   await page.getByRole('button', { name: 'Guardar y pasar a A2' }).click();
   await expect(page.getByText('Serie guardada')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Descanso' })).toHaveCount(0);
+  // Cualquier grupo de la rutina se puede abrir para editarlo
+  await expect(page.getByRole('tab', { name: 'Superserie A' })).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('tab', { name: 'Series normales' }).click();
+  await expect(page.getByRole('heading', { name: 'Series normales' })).toBeVisible();
+  await expect(page.locator('.card .nm', { hasText: 'Ejercicio C' })).toBeVisible();
   await page.getByRole('button', { name: /Volver a Rutina/ }).click();
   await page.getByRole('tab', { name: 'Sesiones' }).click();
   await expect(page.getByText('Terminada')).toBeVisible();
