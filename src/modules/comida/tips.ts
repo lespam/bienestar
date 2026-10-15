@@ -48,7 +48,14 @@ export const COMBINACIONES: Combinacion[] = [
   { b: 'Proteína completa', t: 'Tortilla de maíz + frijoles', x: 'Pasa lo mismo que con el arroz: juntos dan una proteína completa. También basta con comerlos el mismo día.', ing: [/tortilla/, /frijol/] },
   { b: 'Más hierro', t: 'Lentejas + jitomate o limón', x: 'La vitamina C del jitomate o del limón ayuda a absorber el hierro de las lentejas, los frijoles y el garbanzo. Funciona cuando van en la misma comida.', ing: [/lenteja|frijol|garbanzo/, /jitomate|limon/] },
   { b: 'Más vitaminas', t: 'Verduras + un poco de aceite', x: 'El licopeno del jitomate y el betacaroteno de la zanahoria se absorben mejor con un poco de grasa, como aceite o aguacate.', ing: [/jitomate|zanahoria/, /aceite|aguacate/] },
-  { b: 'Más proteína', t: 'Avena + leche o yogur', x: 'Con leche o yogur, el desayuno de avena tiene más proteína.', ing: [/avena/, /leche|yogur|yogurt/] }
+  { b: 'Más proteína', t: 'Avena + leche o yogur', x: 'Con leche o yogur, el desayuno de avena tiene más proteína.', ing: [/avena/, /leche|yogur|yogurt/] },
+  { b: 'Proteína completa', t: 'Garbanzo + ajonjolí', x: 'Como en el hummus con tahini: la legumbre y la semilla se completan entre sí.', ing: [/garbanzo/, /tahini|ajonjoli/] },
+  { b: 'Más hierro', t: 'Espinaca + fresa, naranja o pimiento', x: 'La vitamina C de la fruta o del pimiento ayuda a absorber el hierro de las hojas verdes. Funciona en la misma comida, por ejemplo en una ensalada.', ing: [/espinaca|acelga|kale/, /fresa|naranja|pimiento|kiwi/] },
+  { b: 'Más vitaminas', t: 'Hojas verdes + aguacate, nuez o aceite', x: 'Las vitaminas A y K de la espinaca, el brócoli o la kale se absorben mejor con un poco de grasa.', ing: [/espinaca|kale|brocoli|acelga/, /aguacate|nuez|almendra|aceite/] },
+  { b: 'Más vitaminas', t: 'Huevo + verduras', x: 'Comer huevo junto con verduras de colores ayuda a aprovechar sus carotenoides, como los del jitomate y la zanahoria.', ing: [/huevo/, /espinaca|jitomate|zanahoria|pimiento|lechuga/] },
+  { b: 'Mejor absorción', t: 'Cúrcuma + pimienta negra', x: 'La pimienta ayuda a que el cuerpo aproveche más la cúrcuma. Una pizca basta.', ing: [/curcuma/, /pimienta/] },
+  { b: 'Para tu intestino', t: 'Yogur o kéfir + fruta o avena', x: 'Los probióticos del yogur se alimentan de la fibra de la fruta y la avena.', ing: [/yogur|yogurt|kefir/, /platano|manzana|avena|frutos rojos|fresa/] },
+  { b: 'Mejor absorción', t: 'Té verde + limón', x: 'Unas gotas de limón ayudan a que se aprovechen más los antioxidantes del té verde.', ing: [/te verde|matcha/, /limon/] }
 ];
 export const MAX_RECETAS_POR_COMBINACION = 3;
 
