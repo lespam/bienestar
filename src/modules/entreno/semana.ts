@@ -49,8 +49,11 @@ export function semanaDelPrograma(sesiones: Pick<Sesion, 'inicio'>[], ahora = Da
 
 export interface DiaSemana { iso: string; inicial: string; num: number; ses: string; estado: 'hecha' | 'hoy' | 'luego' | 'libre'; texto: string }
 
-/** De lunes a domingo. Las sesiones hechas muestran su letra; los días que entrenas muestran las que siguen. */
-export function armarSemana(hoy: Date, sesiones: Pick<Sesion, 'fecha' | 'tipo' | 'rutina' | 'abierta'>[], seguidas: Letra[], dias: boolean[]): DiaSemana[] {
+/**
+ * De lunes a domingo. Las sesiones hechas muestran su letra; los días que entrenas muestran las que siguen.
+ * Los días de cardio no se llevan una letra: la rutina pasa al siguiente día de entrenar.
+ */
+export function armarSemana(hoy: Date, sesiones: Pick<Sesion, 'fecha' | 'tipo' | 'rutina' | 'abierta'>[], seguidas: Letra[], dias: boolean[], cardio: boolean[] = []): DiaSemana[] {
   const lunes = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - ((hoy.getDay() + 6) % 7));
   const hoyIso = iso(hoy);
   let k = 0;
@@ -60,6 +63,9 @@ export function armarSemana(hoy: Date, sesiones: Pick<Sesion, 'fecha' | 'tipo' |
     const base = { iso: f, inicial: INICIAL[dow], num: d.getDate() };
     const hecha = delDia.find((s) => !s.abierta);
     if (hecha) return { ...base, ses: hecha.rutina!, estado: f === hoyIso ? 'hoy' : 'hecha', texto: f === hoyIso ? 'hoy, hecha' : 'hecha' } as DiaSemana;
+    const esCardio = cardio[(dow + 6) % 7] && !delDia.length;
+    if (sesiones.some((s) => s.fecha === f && s.tipo === 'cardio') && (esCardio || f < hoyIso)) return { ...base, ses: 'cardio', estado: f === hoyIso ? 'hoy' : 'hecha', texto: f === hoyIso ? 'hoy, cardio hecho' : 'cardio hecho' } as DiaSemana;
+    if (esCardio && f >= hoyIso) return { ...base, ses: 'cardio', estado: f === hoyIso ? 'hoy' : 'luego', texto: f === hoyIso ? 'hoy, cardio' : 'cardio' } as DiaSemana;
     if (f === hoyIso) { const l = delDia[0]?.rutina ?? seguidas[k++]; return { ...base, ses: l ?? '–', estado: 'hoy', texto: 'hoy' } as DiaSemana; }
     if (f > hoyIso && dias[(dow + 6) % 7] && seguidas[k]) return { ...base, ses: seguidas[k++], estado: 'luego', texto: '' } as DiaSemana;
     return { ...base, ses: '–', estado: 'libre', texto: '' } as DiaSemana;
@@ -73,7 +79,8 @@ export function horaCorta(v: string): string {
   const p = (v || '19:00').split(':'), h = +p[0], m = p[1] || '00';
   return (h % 12 || 12) + (m !== '00' ? ':' + m : '') + (h < 12 ? ' am' : ' pm');
 }
-export function lineaCuando(c: { dias: boolean[]; hora: string; lugar: string }, hoy: Date): string {
+export function lineaCuando(c: { dias: boolean[]; cardio?: boolean[]; hora: string; lugar: string }, hoy: Date): string {
+  if (c.cardio?.[(hoy.getDay() + 6) % 7]) return 'Hoy toca cardio';
   if (!c.dias[(hoy.getDay() + 6) % 7]) return 'Hoy no tienes hora planeada';
   const h = +c.hora.split(':')[0] % 12 || 12;
   return 'Hoy ' + (h === 1 ? 'a la ' : 'a las ') + horaCorta(c.hora) + (c.lugar ? ', ' + c.lugar : '');

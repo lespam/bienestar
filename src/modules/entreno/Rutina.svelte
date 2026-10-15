@@ -96,12 +96,13 @@
   function abrirCuando() {
     if (!c) return;
     cuando = structuredClone($state.snapshot(c.aj.cuando));
+    cuando.cardio ??= [false, false, false, false, false, false, false];
     nav.abrirHoja('cuando');
   }
   async function guardarCuando() {
     if (!c) return;
     await guardarAjuste('cuando', $state.snapshot(cuando));
-    c.aj.cuando = $state.snapshot(cuando);
+    await leer();
     nav.cerrar();
     avisos.mostrar('Guardado');
   }
@@ -204,7 +205,7 @@
       <div class="days">
         {#each c.semana as d (d.iso)}
           <div class="day" class:done={d.estado === 'hecha' || d.texto === 'hoy, hecha'} class:today={d.estado === 'hoy'} class:rest={d.estado === 'libre'}>
-            <span class="dn">{d.inicial}</span><span class="num">{d.num}</span><span class="ses">{d.ses}</span>{#if d.texto}<span class="sr">{d.texto}</span>{/if}
+            <span class="dn">{d.inicial}</span><span class="num">{d.num}</span>{#if d.ses === 'cardio'}<span class="ses"><Icono nombre="pulso" /></span>{:else}<span class="ses">{d.ses}</span>{/if}{#if d.texto}<span class="sr">{d.texto}</span>{/if}
           </div>
         {/each}
       </div>
@@ -221,6 +222,7 @@
         </div>
       {/if}
       <div class="when-row"><Icono nombre="reloj" /><span>{lineaCuando(c.aj.cuando, hoy)}</span><button class="when-btn" onclick={abrirCuando}>Cambiar</button></div>
+      {#if c.aj.cuando.cardio?.[(hoy.getDay() + 6) % 7] && estado === 'nueva'}<button class="link-btn" onclick={() => nav.abrir('cardio')}>Registrar el cardio de hoy</button>{/if}
     </section>
 
     <VistaPrevia programa={c.p} letra={c.letra} />
@@ -286,10 +288,14 @@
 
 {#if nav.hojaAbierta('cuando') && c}
   <Hoja titulo="Cuándo y dónde">
-    <p class="seg-help">Elige tus días de entrenamiento, la hora y el lugar.</p>
-    <span class="sh-lbl">Días</span>
+    <p class="seg-help">Elige qué días haces rutina y qué días cardio, la hora y el lugar. La rutina que sigue va al siguiente día de rutina.</p>
+    <span class="sh-lbl">Días de rutina</span>
     <div class="wh-days">
-      {#each DIA2 as d, i (i)}<button class:on={cuando.dias[i]} aria-pressed={cuando.dias[i]} aria-label={DIAN[i]} onclick={() => (cuando.dias[i] = !cuando.dias[i])}>{d}</button>{/each}
+      {#each DIA2 as d, i (i)}<button class:on={cuando.dias[i]} aria-pressed={cuando.dias[i]} aria-label={'Rutina el ' + DIAN[i].toLowerCase()} onclick={() => { cuando.dias[i] = !cuando.dias[i]; if (cuando.dias[i] && cuando.cardio) cuando.cardio[i] = false; }}>{d}</button>{/each}
+    </div>
+    <span class="sh-lbl">Días de cardio</span>
+    <div class="wh-days">
+      {#each DIA2 as d, i (i)}<button class:on={cuando.cardio?.[i]} aria-pressed={!!cuando.cardio?.[i]} aria-label={'Cardio el ' + DIAN[i].toLowerCase()} onclick={() => { const cd = (cuando.cardio ??= [false, false, false, false, false, false, false]); cd[i] = !cd[i]; if (cd[i]) cuando.dias[i] = false; }}>{d}</button>{/each}
     </div>
     <div class="man">
       <label for="wh-time">Hora</label><input id="wh-time" type="time" bind:value={cuando.hora} />

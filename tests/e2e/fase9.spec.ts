@@ -101,3 +101,21 @@ test('Recetas: filtrar por fuente y quitar lo que no le gusta a Jeff, en el Rece
   await revisarPantalla(page);
   expect(errores).toEqual([]);
 });
+
+test('Rutina: marcar un día de cardio y que la rutina pase al siguiente día', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await page.getByRole('button', { name: 'Rutina', exact: true }).click();
+  const dia = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'][new Date().getDay()];
+  await page.getByRole('button', { name: 'Cambiar' }).click();
+  const hoja = page.getByRole('dialog', { name: 'Cuándo y dónde' });
+  await hoja.getByRole('button', { name: 'Cardio el ' + dia }).click();
+  await expect(hoja.getByRole('button', { name: 'Rutina el ' + dia })).toHaveAttribute('aria-pressed', 'false');
+  await revisarPantalla(page);
+  await hoja.getByRole('button', { name: 'Guardar' }).click();
+  await expect(page.getByText('Hoy toca cardio')).toBeVisible();
+  await expect(page.locator('.day.today .sr')).toHaveText('hoy, cardio');
+  await page.getByRole('button', { name: 'Registrar el cardio de hoy' }).click();
+  await expect(page.getByRole('button', { name: 'Guardar cardio' })).toBeVisible();
+  expect(errores).toEqual([]);
+});

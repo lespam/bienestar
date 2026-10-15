@@ -8,7 +8,8 @@ import type { Letra } from './programa';
 // Entreno es el único que escribe sesiones, series, descansos, sustitutos, fichas y Calentar.
 // Las series se guardan en cuanto las marcas; la sesión sigue abierta hasta que la termines.
 
-export interface Cuando { dias: boolean[]; hora: string; lugar: string }
+/** `cardio`: días de cardio en vez de rutina (lunes primero). */
+export interface Cuando { dias: boolean[]; cardio?: boolean[]; hora: string; lugar: string }
 /** La rutina que elegiste para un día, distinta a la que toca por el ciclo. Solo vale ese día. */
 export interface RutinaElegida { letra: Letra; fecha: string }
 export interface AjustesEntreno { modo: Modo; primero: 'gym' | 'casa'; cuando: Cuando; elegida: RutinaElegida | null }

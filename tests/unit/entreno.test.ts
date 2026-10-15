@@ -104,6 +104,16 @@ describe('qué toca y la semana', () => {
     expect(s[3].ses).toBe('C');
     expect(s[4].ses).toBe('A');
   });
+  it('los días de cardio no se llevan letra: la rutina pasa al siguiente día', () => {
+    const hoy = new Date(2026, 9, 1); // jueves
+    const cardio = [false, false, true, false, true, false, false]; // miércoles y viernes
+    const dias = [true, true, false, true, false, true, false];
+    const s = armarSemana(hoy, [{ fecha: '2026-09-28', tipo: 'rutina', rutina: 'A', abierta: 0 }, { fecha: '2026-09-30', tipo: 'cardio', abierta: 0 }], ['B', 'C'], dias, cardio);
+    expect(s.map((d) => d.ses)).toEqual(['A', '–', 'cardio', 'B', 'cardio', 'C', '–']);
+    expect(s[2].texto).toBe('cardio hecho');
+    expect(s[4].estado).toBe('luego');
+    expect(lineaCuando({ dias, cardio, hora: '19:00', lugar: '' }, new Date(2026, 9, 2))).toBe('Hoy toca cardio');
+  });
   it('la línea de cuándo y dónde', () => {
     const c = { dias: DIAS_INICIALES, hora: '19:00', lugar: 'en la sala' };
     expect(lineaCuando(c, new Date(2026, 9, 1))).toBe('Hoy a las 7 pm, en la sala');

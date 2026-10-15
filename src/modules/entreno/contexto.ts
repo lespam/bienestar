@@ -52,7 +52,7 @@ export async function cargarContexto(ahora = new Date()): Promise<Contexto | nul
   const donde = dondeEstas(letra, nth, anterior, '', previos);
 
   const seguidas = proximasLetras(p, letra, 8);
-  const semana = armarSemana(ahora, sesiones, seguidas, aj.cuando.dias);
+  const semana = armarSemana(ahora, sesiones, seguidas, aj.cuando.dias, aj.cuando.cardio);
   const terminadas = sesiones.filter((s) => !s.abierta);
   return {
     p, aj, todas, tocaPorCiclo: letraQueToca(p, sesiones)!, sustitutos: Object.fromEntries(susts.map((s) => [s.clave, s])), hoy, letra, grupos, semana,
