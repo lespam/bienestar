@@ -3,7 +3,7 @@
   import Hoja from '../../core/Hoja.svelte';
   import { avisos } from '../../core/aviso.svelte';
   import { nav } from '../../core/nav.svelte';
-  import { norm } from './calculos';
+  import { fechaDe, norm } from './calculos';
   import { NOMBRE_TIENDA, SECCIONES, armarLista, comprasVacias, conteos, marcada, plantillaMarcada, repartir, seccionDe, sugerencias, textoCompartir, type Destino, type Extra, type FilaCompra, type Pestana } from './compras';
   import { guardarCompras, leerCompras, listarRecetas, menuDe, sembrarRecetas } from './datos';
   import { fechasDeSemana, rangoSemana } from './semana';
@@ -24,7 +24,12 @@
     listo = true;
   })();
 
-  const lista = $derived(repartir(armarLista(items, recetas), estado));
+  // Comprar lo mínimo: solo lo de las comidas de los próximos días (lo que agregas a mano sale siempre).
+  const RANGOS = [['semana', 'Toda la semana'], ['1', 'Hoy y mañana'], ['3', 'Próximos 3 días']] as const;
+  let rango = $state<'semana' | '1' | '3'>('semana');
+  const hoyIso = fechaDe(0);
+  const delRango = $derived(semana !== 0 || rango === 'semana' ? items : items.filter((m) => m.fecha >= hoyIso && m.fecha <= fechaDe(Number(rango))));
+  const lista = $derived(repartir(armarLista(delRango, recetas), estado));
   const filas = $derived(lista.filas);
   const cuenta = $derived(conteos(filas, estado));
   const visibles = $derived(filas.filter((f) => pestana === 'todo' || f.dest === pestana));
@@ -132,6 +137,11 @@
       <button role="radio" class:on={pestana === k} aria-checked={pestana === k} onclick={() => (pestana = k as Pestana)}>{t} · {cuenta[k as Pestana]}</button>
     {/each}
   </div>
+  {#if semana === 0}
+    <div class="m-chips" role="radiogroup" aria-label="Para cuándo">
+      {#each RANGOS as [v, t] (v)}<button role="radio" class:on={rango === v} aria-checked={rango === v} onclick={() => (rango = v)}>{t}</button>{/each}
+    </div>
+  {/if}
   <section class="cq" aria-label="Falta o se acaba">
     <label for="cq-n"><b>Falta o se acaba</b></label>
     <div class="cq-row">

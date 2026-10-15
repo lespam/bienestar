@@ -53,3 +53,24 @@ test('Menú: editar día por día sin pasar por las tarjetas', async ({ page }) 
   await page.getByRole('button', { name: /Tinga de pollo/ }).click();
   expect(errores).toEqual([]);
 });
+
+test('Compras y preparación: solo lo de hoy y mañana, para cargar lo mínimo', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  const f = (d: number) => { const x = new Date(); x.setDate(x.getDate() + d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
+  await sembrar(page, 'recetas', [receta('hoy1', 'Sopa de hoy', 'Comida', [[2, 'pieza', 'Calabacita']]), receta('lejos', 'Guiso lejano', 'Comida', [[1, 'pieza', 'Berenjena']])]);
+  await sembrar(page, 'menu', [{ fecha: f(0), lugar: 'n', t: 'dos', n: 'Sopa de hoy', r: 'hoy1' }, { fecha: f(5), lugar: 'n', t: 'dos', n: 'Guiso lejano', r: 'lejos' }]);
+  await page.reload();
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Menú', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Lista de compras' }).click();
+  await page.getByRole('radio', { name: /^Todo/ }).click();
+  const semanaTiene = await page.locator('.cp-row', { hasText: 'Berenjena' }).count();
+  await page.getByRole('radio', { name: 'Hoy y mañana' }).click();
+  await expect(page.locator('.cp-row', { hasText: 'Calabacita' })).toBeVisible();
+  await expect(page.locator('.cp-row', { hasText: 'Berenjena' })).toHaveCount(0);
+  await revisarPantalla(page);
+  await page.getByRole('radio', { name: 'Toda la semana' }).click();
+  await expect(page.locator('.cp-row', { hasText: 'Berenjena' })).toHaveCount(semanaTiene);
+  expect(errores).toEqual([]);
+});

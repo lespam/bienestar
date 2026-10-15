@@ -25,7 +25,15 @@
     listo = true;
   });
 
-  const tandas = $derived(tandasDeSemana(todas, dias));
+  // Solo lo próximo: para saber qué comprar hoy y cargar lo mínimo.
+  const RANGOS = [['semana', 'Toda la semana'], ['1', 'Hoy y mañana'], ['3', 'Próximos 3 días']] as const;
+  let rango = $state<'semana' | '1' | '3'>('semana');
+  const tandas = $derived.by(() => {
+    const t = tandasDeSemana(todas, dias);
+    if (semana !== 0 || rango === 'semana') return t;
+    const hasta = sumarDias(hoy, Number(rango));
+    return t.filter((x) => x.fecha <= hasta && (x.fecha >= hoy || x.items.some((i) => !i.ok)));
+  });
   const preparadas = $derived(tandas.reduce((a, t) => a + hechas(t), 0));
   const guardar = () => guardarPrep($state.snapshot(todas));
 
@@ -126,10 +134,15 @@
     <h2 tabindex="-1">Plan de preparación</h2>
     <p class="seg-help">Lo que conviene cocinar antes, según el menú de la semana. Va en tandas para que todo se coma fresco.</p>
   </div>
+  {#if semana === 0}
+    <div class="m-chips" role="radiogroup" aria-label="Para cuándo">
+      {#each RANGOS as [v, t] (v)}<button role="radio" class:on={rango === v} aria-checked={rango === v} onclick={() => (rango = v)}>{t}</button>{/each}
+    </div>
+  {/if}
   {#if preparadas}<p class="coach">{preparoTxt(preparadas)}</p>{/if}
   <div class="pp-list">
     {#if listo && !tandas.length}
-      <p class="tool-note">Aún no hay nada por preparar. Cuando elijas recetas en el menú, aquí aparece qué cocinar antes y cuándo.</p>
+      <p class="tool-note">{rango !== 'semana' && todas.length ? 'Nada por preparar en estos días.' : 'Aún no hay nada por preparar.'} Cuando elijas recetas en el menú, aquí aparece qué cocinar antes y cuándo.</p>
     {/if}
     {#each tandas as t (t.id)}
       {@const k = hechas(t)}
