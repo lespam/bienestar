@@ -7,7 +7,8 @@
   import { prefs } from '../ajustes';
   import { dondeQuedaste, textoSeries } from './calculos';
   import { cargarContexto, datosDeEjercicio, type Contexto } from './contexto';
-  import { guardarFicha, leerFicha } from './datos';
+  import { agregarTip, guardarFicha, leerFicha } from './datos';
+  import { AnfitrionIA, pedirIA, tipsDeEjercicios } from '../ia';
   import { buscarEjercicio, enlaceSeguro, type Ejercicio } from './programa';
   import { cuerpoSVG, MOVIMIENTO, MUSCULOS } from './musculos';
   import { fechaCorta3 } from './semana';
@@ -58,6 +59,18 @@
     await guardarFicha($state.snapshot(nueva) as FichaPropia);
   }
 
+  function tipsIA() {
+    if (!e) return;
+    const ej = { clave: e.clave, nombre: e.nombre, series: rx, casa: !e.gym };
+    pedirIA({
+      fn: 'entreno', titulo: 'Tips con IA', envia: 'el nombre del ejercicio, sus series y repeticiones',
+      ejecutar: async (k) => ({
+        intro: 'Tres ideas de técnica para «' + ej.nombre + '». Revísalas con el libro antes de guardarlas.',
+        items: (await tipsDeEjercicios(k, [ej])).map((x) => ({ t: x.tip, act: 'Guardar en la ficha', aplicar: async () => { ficha = await agregarTip(clave, x.tip, true); avisos.mostrar('Tip guardado'); } }))
+      })
+    });
+  }
+
   function abrirVideo() { vTitulo = ''; vUrl = ''; nav.abrirHoja('video'); }
   async function agregarVideo() {
     const u = enlaceSeguro(vUrl);
@@ -87,6 +100,7 @@
     const cancion = eCancion.trim() ? enlaceSeguro(eCancion) : null;
     if (eCancion.trim() && !cancion) { avisos.mostrar('El link de la canción debe empezar con https://'); return; }
     const cambios: Partial<FichaPropia> = { cancion: cancion ?? undefined, letra: eLetra.trim() || undefined, tips: eTips.split('\n').map((t) => t.trim()).filter(Boolean) };
+    cambios.tipsIA = (ficha.tipsIA ?? []).filter((t) => cambios.tips!.includes(t));
     if (eArchivo) cambios.animacion = eArchivo;
     else if (quitarAnim) cambios.animacion = undefined;
     await guardar(cambios);
@@ -179,10 +193,11 @@
     <section class="fi-sec" id="fi-tip">
       <h4>Tips</h4>
       {#if ficha.tips?.length}
-        <ul class="tips">{#each ficha.tips as t, i (i)}<li>{t}</li>{/each}</ul>
+        <ul class="tips">{#each ficha.tips as t, i (i)}<li>{t}{#if ficha.tipsIA?.includes(t)}<span class="ai-tag">Sugerido por IA</span>{/if}</li>{/each}</ul>
       {:else}
         <p class="where">Aún no hay tips. Agrégalos en Editar.</p>
       {/if}
+      <button class="link-btn" onclick={tipsIA}>Pedir tips con IA</button>
     </section>
 
     <section class="fi-sec" id="fi-var">
@@ -253,3 +268,5 @@
   .quitar-mini { border: 0; background: none; color: var(--muted); font-size: 20px; min-width: 44px; min-height: 44px; }
   .fe-quitar { display: flex; gap: 8px; align-items: center; min-height: 44px; font-size: 14px; }
 </style>
+
+<AnfitrionIA />

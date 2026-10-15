@@ -133,3 +133,27 @@ export async function resumenSemanal(clave: string, sesiones: SesionResumen[], s
   if (!r.length) throw new ErrorIA('otro', 'sin resumen');
   return r;
 }
+
+// ---------- Tips de los ejercicios ----------
+export interface EjercicioCorto { clave: string; nombre: string; series: string; casa: boolean }
+export interface TipEjercicio { clave: string; tip: string }
+/** Se envían solo los nombres de los ejercicios, sus series y repeticiones y si se hacen en casa. Un ejercicio o la rutina completa. */
+export async function tipsDeEjercicios(clave: string, ejercicios: EjercicioCorto[], ask: Pregunta = preguntar): Promise<TipEjercicio[]> {
+  const uno = ejercicios.length === 1;
+  const t = await ask({
+    modelo: MODELO_TEXTO, max: 900,
+    texto: (uno ? 'Ejercicio de fuerza' : 'Rutina de fuerza, en orden') + ' (clave, nombre, series y repeticiones, si es en casa):\n' +
+      ejercicios.map((e) => e.clave + ' | ' + e.nombre + ' | ' + e.series + ' | ' + (e.casa ? 'casa' : 'gym')).join('\n') +
+      '\nDa ' + (uno ? '3 tips cortos de técnica para este ejercicio' : 'un tip corto de técnica para cada ejercicio, más uno general para la rutina con la clave "rutina"') +
+      ' (una frase cada uno: postura, ritmo, respiración o cómo sentir el músculo). Sin consejos médicos y sin hablar del cuerpo ni de bajar de peso. ' +
+      'JSON: {"tips": [{"clave": "...", "tip": "..."}]}'
+  }, clave);
+  const validas = new Set([...ejercicios.map((e) => e.clave), ...(uno ? [] : ['rutina'])]);
+  const j = extraerJson(t).tips;
+  const r = (Array.isArray(j) ? j : [])
+    .map((x) => ({ clave: String((x as TipEjercicio)?.clave ?? ''), tip: typeof (x as TipEjercicio)?.tip === 'string' ? (x as TipEjercicio).tip.trim() : '' }))
+    .filter((x) => x.tip && validas.has(x.clave))
+    .slice(0, uno ? 3 : ejercicios.length + 1);
+  if (!r.length) throw new ErrorIA('otro', 'sin tips');
+  return r;
+}

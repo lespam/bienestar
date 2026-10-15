@@ -80,6 +80,8 @@ export interface FichaPropia {
   cancion?: string;
   letra?: string;
   tips?: string[];
+  /** Los tips que sugirió la IA y guardaste tú. */
+  tipsIA?: string[];
   videos?: { t: string; u: string }[];
   faciles?: { n: string; p: string }[];
   dificiles?: { n: string; p: string }[];

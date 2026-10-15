@@ -3,7 +3,7 @@ import { db } from '../../core/db';
 // La IA es opcional y empieza apagada. Todo vive en tu teléfono: la clave nunca sale en el respaldo
 // (CLAVES_PRIVADAS) y la pantalla solo guarda si hay una y sus últimos 4 caracteres.
 
-export type FnIA = 'foto' | 'tips' | 'ing' | 'prep' | 'idea' | 'comida' | 'escaner' | 'resumen';
+export type FnIA = 'foto' | 'tips' | 'ing' | 'prep' | 'idea' | 'comida' | 'escaner' | 'resumen' | 'entreno';
 /** Nombre de cada función en Ajustes y qué datos se envían (el aviso se arma con este texto). */
 export const FUNCIONES: Record<FnIA, [string, string]> = {
   foto: ['Leer recetas desde una foto', 'la imagen de la receta'],
@@ -13,11 +13,12 @@ export const FUNCIONES: Record<FnIA, [string, string]> = {
   idea: ['Ideas para el menú', 'los nombres de tus recetas y qué comidas están libres'],
   comida: ['Registrar comida escrita', 'solo el texto que escribas sobre lo que comiste'],
   escaner: ['Escáner de etiqueta o plato', 'la foto del plato o la etiqueta y el contexto que escribas'],
-  resumen: ['Resumen de la semana', 'tus sesiones de entreno de dos semanas: ejercicios, pesos y repeticiones, y cómo te sentiste']
+  resumen: ['Resumen de la semana', 'tus sesiones de entreno de dos semanas: ejercicios, pesos y repeticiones, y cómo te sentiste'],
+  entreno: ['Tips de ejercicios', 'los nombres de los ejercicios de la rutina, sus series y repeticiones']
 };
 export const NUNCA_SE_ENVIA = 'Nunca se envía: tu peso, medidas, fotos de cuerpo, calorías ni tu registro de comidas.';
 
-const FN_INICIAL = (): Record<FnIA, boolean> => ({ foto: true, tips: true, ing: true, prep: true, idea: true, comida: true, escaner: true, resumen: true });
+const FN_INICIAL = (): Record<FnIA, boolean> => ({ foto: true, tips: true, ing: true, prep: true, idea: true, comida: true, escaner: true, resumen: true, entreno: true });
 
 export const ia = $state({ cargada: false, on: false, fn: FN_INICIAL(), vistas: {} as Record<string, boolean>, tieneClave: false, fin: '' });
 

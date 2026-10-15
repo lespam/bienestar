@@ -7,10 +7,10 @@
   import { prefs } from '../ajustes';
   import { dondeQuedaste, ejerciciosEmpezados, textoSeries, type Modo } from './calculos';
   import { cargarContexto, datosDeEjercicio, planDe, type Contexto } from './contexto';
-  import { cambiarModoSesion, guardarAjuste, guardarSustituto, iniciarSesion, quitarSustituto, terminarSesion, type Cuando } from './datos';
+  import { agregarTip, cambiarModoSesion, guardarAjuste, guardarSustituto, iniciarSesion, quitarSustituto, terminarSesion, type Cuando } from './datos';
   import { fechaCorta3, lineaCuando, rutinasDelPrograma } from './semana';
   import { tieneGym, type Ejercicio, type Grupo, type Letra } from './programa';
-  import { AnfitrionIA, pedirIA, resumenSemanal } from '../ia';
+  import { AnfitrionIA, pedirIA, resumenSemanal, tipsDeEjercicios } from '../ia';
   import { sesionesParaResumen } from './resumen';
   import Animacion from './Animacion.svelte';
   import Rico from './Rico.svelte';
@@ -91,6 +91,22 @@
     if (!c?.hoy) return;
     await terminarSesion(c.hoy.sesion.id!);
     nav.abrir('fin', { sesion: c.hoy.sesion.id });
+  }
+
+  function tipsDeRutina() {
+    if (!c) return;
+    const letra = c.letra;
+    const ejs = todos.map((e) => ({ clave: e.clave, nombre: e.nombre, series: e.series + ' × ' + e.rango, casa: !e.gym }));
+    const nombre = new Map(ejs.map((e) => [e.clave, e.nombre]));
+    pedirIA({
+      fn: 'entreno', titulo: 'Tips con IA', envia: 'los nombres de los ejercicios de la Rutina ' + letra + ', sus series y repeticiones',
+      ejecutar: async (k) => ({
+        intro: 'Un tip por ejercicio de la Rutina ' + letra + '. Revísalos con el libro; los que guardes quedan en la ficha de cada ejercicio.',
+        items: (await tipsDeEjercicios(k, ejs)).map((x) => x.clave === 'rutina'
+          ? { t: x.tip, sub: 'Para toda la rutina' }
+          : { t: x.tip, sub: nombre.get(x.clave), act: 'Guardar en su ficha', aplicar: async () => { await agregarTip(x.clave, x.tip, true); avisos.mostrar('Guardado en la ficha de ' + nombre.get(x.clave)); } })
+      })
+    });
   }
 
   function abrirCuando() {
@@ -226,6 +242,7 @@
     </section>
 
     <VistaPrevia programa={c.p} letra={c.letra} />
+    <button class="link-btn" onclick={tipsDeRutina}>Tips de la Rutina {c.letra} con IA</button>
 
     <section class="focus" aria-label="Dónde estás">
       <div class="fh"><h4>Dónde estás</h4></div>

@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { BaseBienestar, usarBase, db } from '../../src/core/db';
 import { ErrorIA, extraerJson, preguntar } from '../../src/modules/ia/api';
-import { estimarComida, estimarDeFoto, resumenSemanal, cambiosDeIngredientes, ideasDeMenu, leerRecetaDeFoto, ordenarPreparacion, tipsDeReceta } from '../../src/modules/ia/tareas';
+import { estimarComida, estimarDeFoto, resumenSemanal, cambiosDeIngredientes, ideasDeMenu, leerRecetaDeFoto, ordenarPreparacion, tipsDeReceta, tipsDeEjercicios } from '../../src/modules/ia/tareas';
 import { cargarIA, claveValida, guardarClave, ia, leerClave, ponerFuncion, ponerUsarIA, quitarClave } from '../../src/modules/ia/estado.svelte';
 import { crearZip } from '../../src/core/respaldo';
 
@@ -117,5 +117,16 @@ describe('privacidad', () => {
     const dir = 'src/modules/ia/';
     const prohibido = /db\.(pesos|medidas|fotos|periodo|registro|flexibles)|\.\.\/cuerpo|\.\.\/comida/;
     for (const f of readdirSync(dir)) expect(readFileSync(dir + f, 'utf8'), f).not.toMatch(prohibido);
+  });
+});
+
+describe('tips de ejercicios', () => {
+  it('solo acepta ejercicios que se enviaron y no acepta vacío', async () => {
+    const ejs = [{ clave: 'a', nombre: 'Puente', series: '3 × 10', casa: true }, { clave: 'b', nombre: 'Remo', series: '3 × 12', casa: false }];
+    const r = await tipsDeEjercicios('k', ejs, async () => '{"tips":[{"clave":"a","tip":"Sube lento."},{"clave":"x","tip":"Otro."},{"clave":"rutina","tip":"Respira."}]}');
+    expect(r).toEqual([{ clave: 'a', tip: 'Sube lento.' }, { clave: 'rutina', tip: 'Respira.' }]);
+    const uno = await tipsDeEjercicios('k', [ejs[0]], async () => '{"tips":[{"clave":"rutina","tip":"No."},{"clave":"a","tip":"Sí."}]}');
+    expect(uno).toEqual([{ clave: 'a', tip: 'Sí.' }]);
+    await expect(tipsDeEjercicios('k', ejs, async () => '{"tips":[]}')).rejects.toThrow(ErrorIA);
   });
 });

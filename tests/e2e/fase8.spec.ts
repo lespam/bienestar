@@ -278,3 +278,25 @@ test('Rutina: resumen de la semana con IA envía solo entreno', async ({ page })
   await revisarPantalla(page);
   expect(errores).toEqual([]);
 });
+
+test('Rutina y ficha: tips de técnica con IA que se guardan en la ficha', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await prenderIA(page);
+  const enviados = await simular(page, '{"tips":[{"clave":"a","tip":"Aprieta los glúteos arriba un segundo."},{"clave":"rutina","tip":"Toma agua entre superseries."},{"clave":"zz","tip":"No existe."}]}');
+  await page.getByRole('button', { name: 'Rutina', exact: true }).click();
+  await page.getByRole('button', { name: 'Tips de la Rutina A con IA' }).click();
+  await page.getByRole('button', { name: 'Enviar' }).click();
+  const hoja = page.locator('.ai-body');
+  await expect(hoja.getByText('Toma agua entre superseries.')).toBeVisible();
+  await expect(hoja.getByText('No existe.')).toHaveCount(0);
+  expect(enviados[0].body).toContain('Ejercicio A');
+  await revisarPantalla(page);
+  await page.getByRole('button', { name: 'Guardar en su ficha' }).click();
+  await page.getByRole('button', { name: 'Cerrar', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Ver ficha' }).first().click();
+  await expect(page.locator('#fi-tip').getByText('Aprieta los glúteos arriba un segundo.')).toBeVisible();
+  await expect(page.locator('#fi-tip').getByText('Sugerido por IA')).toBeVisible();
+  await revisarPantalla(page);
+  expect(errores).toEqual([]);
+});

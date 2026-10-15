@@ -89,6 +89,16 @@ export async function quitarSustituto(clave: string) { await db.sustitutos.delet
 
 export async function leerFicha(clave: string): Promise<FichaPropia> { return (await db.fichas.get(clave)) ?? { clave }; }
 export async function guardarFicha(f: FichaPropia) { await db.fichas.put(f); }
+/** Agrega un tip a la ficha de un ejercicio; si vino de la IA queda marcado. No repite uno igual. */
+export async function agregarTip(clave: string, tip: string, ia: boolean): Promise<FichaPropia> {
+  const f = await leerFicha(clave);
+  if (!(f.tips ?? []).includes(tip)) {
+    f.tips = [...(f.tips ?? []), tip];
+    if (ia) f.tipsIA = [...(f.tipsIA ?? []), tip];
+    await guardarFicha(f);
+  }
+  return f;
+}
 
 // ---------- Calentar ----------
 export async function calentadosDe(fecha: string): Promise<Set<string>> {
