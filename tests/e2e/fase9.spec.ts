@@ -369,3 +369,20 @@ test('Menú: lo libre es una línea «Agregar»; después de elegir vuelve al mi
   await expect(page.getByRole('button', { name: 'Sí, lo mismo' })).toHaveAttribute('aria-pressed', 'true');
   expect(errores).toEqual([]);
 });
+
+test('Ceros y detalles: sin «Llevas 0» al empezar y los cuadros de texto con la letra de la app', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await page.getByRole('button', { name: 'Rutina', exact: true }).click();
+  await expect(page.getByText('Esta semana empieza tu programa.')).toBeVisible();
+  await expect(page.getByText(/Llevas 0/)).toHaveCount(0);
+  const fuentes = await page.evaluate(() => {
+    const t = document.createElement('textarea');
+    document.body.appendChild(t);
+    const r = [getComputedStyle(t).fontFamily, getComputedStyle(document.body).fontFamily];
+    t.remove();
+    return r;
+  });
+  expect(fuentes[0]).toBe(fuentes[1]);
+  expect(errores).toEqual([]);
+});

@@ -13,9 +13,10 @@ describe('recordatorio mensual de respaldo', () => {
     expect(tocaRespaldo({ ...base, ultimoRespaldo: t - 29 * DIA_MS }, t)).toBe(false);
     expect(tocaRespaldo({ ...base, ultimoRespaldo: t - 30 * DIA_MS }, t)).toBe(true);
   });
-  it('si nunca hubo respaldo, cuenta desde tu primer registro', () => {
+  it('si nunca hubo respaldo, aparece en cuanto hay algo que respaldar', () => {
     expect(tocaRespaldo(base, t)).toBe(false);
-    expect(tocaRespaldo({ ...base, primerRegistro: t - 31 * DIA_MS }, t)).toBe(true);
+    expect(tocaRespaldo({ ...base, primerRegistro: t - DIA_MS }, t)).toBe(true);
+    expect(tocaRespaldo({ ...base, primerRegistro: t - DIA_MS, respaldoOcultoHasta: t + DIA_MS }, t)).toBe(false);
   });
   it('"Ahora no" la esconde 7 días y el interruptor la apaga', () => {
     const v = { ...base, ultimoRespaldo: t - 40 * DIA_MS };

@@ -107,15 +107,11 @@
   {/if}
 
   {#if respaldo}
+    <!-- Hasta el primer respaldo y después solo una vez al mes: un aviso fijo todos los días deja de verse. -->
     <section class="in-note" aria-label="Respaldo">
-      <b>Hace un mes de tu último respaldo</b>
-      <p>Toma un minuto y protege tus datos y fotos.</p>
+      <b>{prefs.ultimoRespaldo == null ? 'Aún no tienes un respaldo' : 'Hace un mes de tu último respaldo'}</b>
+      <p>{plataforma.persistente === false ? 'Tu navegador todavía no asegura guardar tus datos. Un respaldo los protege, con tus fotos.' : 'Toma un minuto y protege tus datos y fotos.'}</p>
       <div class="im-two"><button class="im-go" onclick={respaldar}>Hacer respaldo</button><button class="im-end" onclick={() => ahoraNoRespaldo()}>Ahora no</button></div>
-    </section>
-  {:else if plataforma.persistente === false}
-    <section class="in-note" aria-label="Guardado">
-      <p>Tu navegador todavía no asegura guardar tus datos. Instala la app en tu pantalla de inicio y haz un respaldo.</p>
-      <button class="ghost" onclick={respaldar}>Hacer respaldo</button>
     </section>
   {/if}
 

@@ -77,9 +77,10 @@ export async function registroNuevo() {
 /** La tarjeta mensual: 30 días sin respaldo (o desde tu primer registro); "Ahora no" la esconde 7 días. */
 export function tocaRespaldo(p: Pick<Prefs, 'recordarRespaldo' | 'ultimoRespaldo' | 'primerRegistro' | 'respaldoOcultoHasta'>, ahora = Date.now()): boolean {
   if (!p.recordarRespaldo) return false;
-  const desde = p.ultimoRespaldo ?? p.primerRegistro;
-  if (desde == null || ahora - desde < 30 * DIA_MS) return false;
-  return !(p.respaldoOcultoHasta && ahora < p.respaldoOcultoHasta);
+  if (p.respaldoOcultoHasta && ahora < p.respaldoOcultoHasta) return false;
+  // Hasta tu primer respaldo se ve en cuanto hay algo que respaldar; después, una vez al mes.
+  if (p.ultimoRespaldo == null) return p.primerRegistro != null;
+  return ahora - p.ultimoRespaldo >= 30 * DIA_MS;
 }
 
 export function ahoraNoRespaldo(ahora = Date.now()) { return guardar('respaldoOcultoHasta', ahora + 7 * DIA_MS); }

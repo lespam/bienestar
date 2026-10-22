@@ -62,7 +62,7 @@ test('Patrones: flexibles, menús y takeouts describen sin juzgar', async ({ pag
   await entrarConContenido(page);
   await page.getByRole('button', { name: /^Patrones/ }).click();
   await expect(page.getByRole('heading', { name: 'Patrones', level: 2 })).toBeVisible();
-  await expect(page.getByText('Con 3 registros empiezan a verse patrones. Llevas 0.')).toBeVisible();
+  await expect(page.getByText('Con 3 registros empiezan a verse patrones.')).toBeVisible();
   await expect(page.getByText('Aquí aparecen los días flexibles que registres.')).toBeVisible();
   await expect(page.getByText('Aún no hay menús guardados', { exact: false })).toHaveCount(0);
   await revisarPantalla(page);

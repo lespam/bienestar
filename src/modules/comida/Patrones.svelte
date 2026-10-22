@@ -72,7 +72,7 @@
         <p class="pat-empty">Cargando…</p>
       {:else if principal === 'flex'}
         {#if rec.length < MIN_REGISTROS}
-          <p class="pat-empty">Con {MIN_REGISTROS} registros empiezan a verse patrones. Llevas {rec.length}.</p>
+          <p class="pat-empty">Con {MIN_REGISTROS} registros empiezan a verse patrones.{rec.length ? ' Llevas ' + rec.length + '.' : ''}</p>
         {:else if !conteo.conocidos}
           <p class="pat-empty">Ninguno de tus {rec.length} registros tiene este dato todavía.{dim === 'ciclo' ? ' Marca tu Período en Cuerpo y aparece aquí.' : ''}</p>
         {:else}

@@ -232,7 +232,8 @@
         {/each}
       </div>
       {#if iaLista('resumen')}<button class="link-btn" onclick={resumirSemana}>Resumen de la semana con IA</button>{/if}
-      <span class="week-note">Llevas {c.llevas} {c.llevas === 1 ? 'sesión' : 'sesiones'} desde que empezaste.</span>
+      <!-- Un cero al empezar se lee como deuda: hasta la primera sesión, un mensaje de inicio. -->
+      <span class="week-note">{c.llevas ? 'Llevas ' + c.llevas + (c.llevas === 1 ? ' sesión' : ' sesiones') + ' desde que empezaste.' : 'Esta semana empieza tu programa.'}</span>
     </section>
     <section class="today">
       {#if c.cardioHoy}

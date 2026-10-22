@@ -1209,3 +1209,6 @@ a.mus-btn { text-decoration: none; color: var(--fg); }
 /* Menú: un tiempo libre es una línea con «Agregar», como en Acomoda la semana. */
 .ml-h .ml-add { grid-row: 1 / 3; grid-column: 2 / 4; margin: 0; border-style: solid; color: var(--accent); font-weight: 700; }
 .ml-two .add[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); color: var(--ink); }
+/* Ningún cuadro de texto usa la letra de máquina de escribir del navegador. */
+textarea { font: inherit; color: var(--fg); }
+.sheet > textarea { width: 100%; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); font-size: 15px; line-height: 1.45; padding: 10px 12px; resize: vertical; }
