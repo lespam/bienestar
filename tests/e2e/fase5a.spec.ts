@@ -86,8 +86,8 @@ test('Recetario: pegar una receta, editarla y quitarla', async ({ page }) => {
   await page.getByRole('button', { name: '+ Agregar' }).click();
   const hoja = page.getByRole('dialog', { name: 'Agregar receta' });
   await expect(hoja).toBeVisible();
-  await hoja.getByRole('tab', { name: 'Foto' }).click();
-  await expect(hoja.getByRole('button', { name: 'Leer la receta' })).toBeDisabled();
+  // Con la IA apagada no hay pestaña de foto
+  await expect(hoja.getByRole('tab', { name: 'Foto' })).toHaveCount(0);
   await hoja.getByRole('tab', { name: 'Pegar' }).click();
   await revisarPantalla(page);
   await hoja.getByRole('button', { name: 'Usar una receta de ejemplo' }).click();

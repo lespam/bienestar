@@ -6,7 +6,7 @@ test('Rutina: semana, plan por modo, ejercicio abierto y vista previa', async ({
   await entrarConContenido(page);
   await page.getByRole('button', { name: 'Rutina', exact: true }).click();
   await expect(page.getByRole('heading', { level: 2 })).toContainText('Les');
-  await expect(page.getByText('Esta semana')).toBeVisible();
+  await expect(page.getByText('Esta semana', { exact: true })).toBeVisible();
   await expect(page.getByText('3 ejercicios · 1 superserie (p. 1)')).toBeVisible();
   await expect(page.getByText('Hoy a las 7 pm, en la sala').or(page.getByText('Hoy no tienes hora planeada'))).toBeVisible();
   // El primer ejercicio llega abierto, con su animación
