@@ -6,10 +6,11 @@
   import { CAT_COLOR, fechaDe, pasaFiltros, type UsoReceta } from './calculos';
   import { leerPerfiles, listarRecetas, menuDe, ponerEnMenu, ponerVariosEnMenu, reponerMenu, sembrarRecetas, usoDeRecetas } from './datos';
   import { filtros, numerosVisibles, tarjetas } from './estado.svelte';
-  import { LETRA_DIA, NOMBRE_LUGAR, etiquetaFecha, fechasDeSemana, indexar, itemDos, llave, nombreDia, numeroDia, platoTxt } from './semana';
+  import { COMIDAS_MENU, LETRA_DIA, NOMBRE_LUGAR, cambiosRepetir, etiquetaFecha, fechasDeSemana, indexar, itemDecidir, itemDos, llave, nombreDia, numeroDia, platoTxt, rangoSemana } from './semana';
   import { CATS_TARJETA, RONDA, cuentaRonda, elegidasTxt, mazoDe } from './tarjetas';
   import FiltrosRecetas from './FiltrosRecetas.svelte';
   import Plato from './Plato.svelte';
+  import Hoja from '../../core/Hoja.svelte';
 
   const hoy = fechaDe(0);
   // 0: esta semana. -1: la próxima (así cuenta fechasDeSemana).
@@ -19,11 +20,12 @@
 
   let recetas = $state<Receta[]>([]);
   let items = $state<ItemMenu[]>([]);
+  let pasada = $state<ItemMenu[]>([]);
   let listo = $state(false);
   let uso = $state<Record<string, UsoReceta>>({});
   let perfiles = $state<Record<'les' | 'jeff', Pick<PerfilComida, 'no'>>>({ les: { no: [] }, jeff: { no: [] } });
 
-  const cargarMenu = async () => { items = await menuDe(dias); };
+  const cargarMenu = async () => { [items, pasada] = await Promise.all([menuDe(dias), menuDe(fechasDeSemana(semanaK + 1))]); };
   async function cambiarSemana(k: number) { semanaK = k; await cargarMenu(); }
   (async () => {
     await sembrarRecetas();
@@ -47,12 +49,17 @@
   const noElegidas = $derived(tarjetas.passed.map((id) => porId.get(id)).filter((r): r is Receta => !!r));
   const sel = $derived(tarjetas.sel ? porId.get(tarjetas.sel) : undefined);
 
-  // «Acomodar» es una capa más de la pila: el gesto atrás de Android vuelve al mazo antes de salir.
-  const acomodando = $derived(nav.hojaAbierta('tj-acomodar'));
+  // Desde «Planear» se llega directo a Acomoda la semana y el mazo es la capa de encima («Agregar»).
+  // Desde el Recetario es al revés: el mazo abajo y «Acomodar» encima. Así el gesto atrás vuelve a donde estabas.
+  const base = !!nav.pantalla?.datos?.acomodar;
+  const acomodando = $derived(base ? !nav.hojaEnPila('tj-mazo') : nav.hojaEnPila('tj-acomodar'));
+  function irAcomodar() { if (base) nav.cerrar(); else nav.abrirHoja('tj-acomodar'); }
   function atras() { tarjetas.sel = null; nav.cerrar(); }
   function verMenu() {
+    // Al menú de la semana que estabas acomodando, sin apilar otro menú si ya venías de ahí.
     if (nav.pila.some((c) => c.tipo === 'pantalla' && c.id === 'menu')) nav.cerrarHasta('menu');
-    else { nav.cerrar(); nav.reemplazar('menu', semanaK ? { k: semanaK } : undefined); }
+    else if (!base) nav.cerrar();
+    nav.reemplazar('menu', semanaK ? { k: semanaK } : undefined);
   }
 
   // ---------- El mazo ----------
@@ -181,7 +188,7 @@
     tarjetas.ronda = tarjetas.hist.length;
     tarjetas.cat = l === 'd' ? 'Desayuno' : l === 'c' ? 'Comida' : l === 'n' ? 'Cena' : 'todo';
     tarjetas.sel = null; moviendo = null;
-    nav.cerrar();
+    if (base) nav.abrirHoja('tj-mazo'); else nav.cerrar();
   }
   const nuevasDestino = $derived(tarjetas.destino ? tarjetas.liked.slice(tarjetas.destino.desde).map((id) => porId.get(id)).filter((r): r is Receta => !!r) : []);
   /** Pone las que dijiste que sí en ese tiempo de comida, en los días libres desde el elegido. */
@@ -195,11 +202,36 @@
     if (filas.length) await ponerVariosEnMenu(filas);
     await cargarMenu();
     dia = d.f;
-    nav.abrirHoja('tj-acomodar');
+    irAcomodar();
     const sobran = nuevas.length - filas.length;
     if (filas.length) avisos.deshacer(filas.length + (filas.length === 1 ? ' receta puesta en ' : ' recetas puestas en ') + NOMBRE_LUGAR[d.l].toLowerCase() + (sobran ? '. ' + sobran + ' quedaron en tus elegidas' : ''), async () => { await reponerMenu(dias, antes.filter((m) => dias.includes(m.fecha))); await cargarMenu(); });
     else avisos.mostrar('No hay ' + NOMBRE_LUGAR[d.l].toLowerCase() + ' libre desde ese día. Quedaron en tus elegidas.');
   }
+  // ---------- Repetir la semana anterior y dejar lo libre por decidir ----------
+  let modoRepetir = $state<'libres' | 'todo'>('libres');
+  const cambiosRep = $derived(cambiosRepetir(pasada, items, hoy, modoRepetir));
+  const repetirTxt = $derived(semanaK ? 'Repetir esta semana' : 'Repetir semana pasada');
+  function abrirRepetir() { modoRepetir = 'libres'; moviendo = null; nav.abrirHoja('tj-rp'); }
+  async function repetir() {
+    const cs = cambiosRep;
+    if (!cs.length) return;
+    nav.cerrar();
+    const antes = structuredClone($state.snapshot(items)) as ItemMenu[];
+    const fechas = [...new Set(cs.map((c) => c.fecha))];
+    await ponerVariosEnMenu(cs);
+    await cargarMenu();
+    avisos.deshacer('Se copiaron ' + cs.length + (cs.length === 1 ? ' comida' : ' comidas') + (semanaK ? ' de esta semana' : ' de la semana pasada'), async () => { await reponerMenu(fechas, antes.filter((m) => fechas.includes(m.fecha))); await cargarMenu(); });
+  }
+  async function libresPorDecidir() {
+    const fechas = dias.filter((f) => f >= hoy);
+    const filas = fechas.flatMap((f) => COMIDAS_MENU.filter((c) => !indice.has(llave(f, c.l))).map((c) => itemDecidir(f, c.l)));
+    if (!filas.length) { avisos.mostrar('No había comidas libres'); return; }
+    const antes = structuredClone($state.snapshot(items)) as ItemMenu[];
+    await ponerVariosEnMenu(filas);
+    await cargarMenu();
+    avisos.deshacer(filas.length + (filas.length === 1 ? ' comida queda por decidir' : ' comidas quedan por decidir'), async () => { await reponerMenu(fechas, antes.filter((m) => fechas.includes(m.fecha))); await cargarMenu(); });
+  }
+
   const colorDe = (m: ItemMenu | undefined) => {
     if (!m) return '';
     if (m.t === 'takeout') return 'var(--rose)';
@@ -357,7 +389,7 @@
     {#if tarjetas.destino}
       <button class="start" onclick={ponerDestino}>{nuevasDestino.length ? 'Poner en ' + NOMBRE_LUGAR[tarjetas.destino.l].toLowerCase() + ' (' + nuevasDestino.length + ')' : 'Volver sin agregar'}</button>
     {:else}
-      <button class={rondaLista && tarjetas.liked.length ? 'start' : 'ghost'} onclick={() => nav.abrirHoja('tj-acomodar')}>{elegidasTxt(tarjetas.liked.length)}</button>
+      <button class={rondaLista && tarjetas.liked.length ? 'start' : 'ghost'} onclick={irAcomodar}>{elegidasTxt(tarjetas.liked.length)}</button>
     {/if}
     <p class="tool-note">El tipo es opcional: unas quesadillas de cena también pueden ser desayuno. Con «Todas» ves todo. Elegir una receta aquí no cambia el menú hasta que la acomodas.</p>
   </div>
@@ -369,6 +401,7 @@
       <div class="m-chips" role="radiogroup" aria-label="Qué semana">
         {#each [[0, 'Esta semana'], [-1, 'Próxima semana']] as const as [k, t] (k)}<button role="radio" aria-checked={semanaK === k} class:on={semanaK === k} onclick={() => cambiarSemana(k)}>{t}</button>{/each}
       </div>
+      <button class="ghost tj-rep" onclick={abrirRepetir}>{repetirTxt}</button>
       <p class="seg-help" aria-live="polite">{ayudaAcomodar}</p>
     </div>
     <div class="tj-dias" role="radiogroup" aria-label="Día">
@@ -393,6 +426,7 @@
       {/each}
     </div>
     {#if delDia.length && !pasado}<button class="link-btn" onclick={reiniciarDia}>Volver a planear el {nombreDia(dia).toLowerCase()}</button>{/if}
+    <button class="link-btn" onclick={libresPorDecidir}>Dejar lo libre por decidir</button>
     <h4 class="pat-sub">Tus elegidas</h4>
     <div class="tj-pool" role="group" aria-label="Tus tarjetas elegidas">
       {#each elegidas as r (r.id)}
@@ -412,4 +446,17 @@
     {/if}
     <button class="ghost" onclick={verMenu}>Ver el menú de {semanaK ? 'la próxima semana' : 'la semana'}</button>
   </div>
+{/if}
+
+{#if nav.hojaAbierta('tj-rp')}
+  <Hoja titulo={repetirTxt}>
+    <p class="seg-help">Copia el menú del {rangoSemana(fechasDeSemana(semanaK + 1))} a {semanaK ? 'la próxima semana' : 'esta semana'}. Solo cambia de hoy en adelante, y puedes deshacerlo.</p>
+    <div class="seg seg2" role="radiogroup" aria-label="Cómo copiar">
+      <button class:on={modoRepetir === 'libres'} role="radio" aria-checked={modoRepetir === 'libres'} onclick={() => (modoRepetir = 'libres')}>Solo lugares libres</button>
+      <button class:on={modoRepetir === 'todo'} role="radio" aria-checked={modoRepetir === 'todo'} onclick={() => (modoRepetir = 'todo')}>Reemplazar todo</button>
+    </div>
+    <p class="rp-sum" aria-live="polite">{cambiosRep.length ? (modoRepetir === 'libres' ? (cambiosRep.length === 1 ? 'Se llenaría ' : 'Se llenarían ') : (cambiosRep.length === 1 ? 'Se cambiaría ' : 'Se cambiarían ')) + cambiosRep.length + (cambiosRep.length === 1 ? ' comida.' : ' comidas.') : 'No hay nada que copiar con esta opción.'}</p>
+    <button class="start" disabled={!cambiosRep.length} onclick={repetir}>Copiar menú</button>
+    <button class="ghost" onclick={() => nav.cerrar()}>Cancelar</button>
+  </Hoja>
 {/if}

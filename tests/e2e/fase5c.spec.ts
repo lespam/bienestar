@@ -124,23 +124,26 @@ test('Menú: próxima semana, repetir la semana pasada y semanas pasadas', async
   await page.reload();
   await abrirMenu(page);
 
+  // «Planear» lleva a Acomoda la semana; repetir está arriba
+  await page.getByRole('button', { name: 'Planear', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Acomoda la semana', level: 2 })).toBeVisible();
   await page.getByRole('button', { name: 'Repetir semana pasada' }).click();
   const rp = page.getByRole('dialog', { name: 'Repetir semana pasada' });
   await expect(rp.getByText(/^Se llenaría 1 comida\.|^Se llenarían 2 comidas\./)).toBeVisible();
   await revisarPantalla(page);
   await rp.getByRole('button', { name: 'Copiar menú' }).click();
   await expect(page.getByText(/^Se copiaron \d comidas? de la semana pasada/)).toBeVisible();
-  await expect(page.getByText('Tinga de pollo').first()).toBeVisible();
+  await expect(page.locator('.tj-cell', { hasText: 'Tinga de pollo' })).toBeVisible();
   await page.getByRole('button', { name: 'Deshacer' }).click();
-  await expect(page.getByText('Tinga de pollo')).toHaveCount(0);
+  await expect(page.locator('.tj-cell', { hasText: 'Tinga de pollo' })).toHaveCount(0);
 
-  // Próxima semana: todo por decidir, y Deshacer
-  await page.getByRole('button', { name: 'Empezar a planear' }).click();
-  const pl = page.getByRole('dialog', { name: 'Empezar a planear' });
-  await pl.getByRole('radio', { name: 'Próxima semana' }).click();
-  await pl.getByRole('button', { name: 'Dejar todo por decidir' }).click();
-  await expect(page.getByText('Próxima semana', { exact: true })).toBeVisible();
+  // Próxima semana: lo libre por decidir, y ver ese menú
+  await page.getByRole('radio', { name: 'Próxima semana' }).click();
+  await expect(page.getByRole('button', { name: 'Repetir esta semana' })).toBeVisible();
+  await page.getByRole('button', { name: 'Dejar lo libre por decidir' }).click();
   await expect(page.getByText('21 comidas quedan por decidir')).toBeVisible();
+  await page.getByRole('button', { name: 'Ver el menú de la próxima semana' }).click();
+  await expect(page.getByText('Próxima semana', { exact: true })).toBeVisible();
   await expect(page.getByText('21 comidas por decidir.')).toBeVisible();
   await revisarPantalla(page);
   // Elegir una comida concreta de esa semana
@@ -159,10 +162,10 @@ test('Menú: próxima semana, repetir la semana pasada y semanas pasadas', async
   await page.getByRole('button', { name: 'Semana anterior' }).click();
   await expect(page.getByText('Semana pasada', { exact: true })).toBeVisible();
   await expect(page.getByText('Es una semana pasada, solo para ver.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Empezar a planear' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Planear', exact: true })).toHaveCount(0);
   await expect(page.getByText('Ninguno')).toBeVisible();
   await page.getByRole('button', { name: 'Volver a esta semana' }).click();
-  await expect(page.getByRole('button', { name: 'Empezar a planear' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Planear', exact: true })).toBeVisible();
   expect(errores).toEqual([]);
 });
 

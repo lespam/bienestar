@@ -302,7 +302,7 @@
           <div class="pt-row"><span><small>Registrado</small><b class="pt-done">{hechasTxt}</b></span><span class="pt-ok" aria-hidden="true">✓</span></div>
         {/if}
         {#if !filasPlan.alguna && !filasPlan.filas.some((f) => !f.hecho)}
-          <div class="pt-row"><span><b class="pt-done">{pasado ? 'No había nada planeado ese día.' : 'Aún no hay nada planeado.'}</b></span>{#if !pasado}<button class="pt-link" onclick={() => nav.abrir('menu')}>Planear</button>{/if}</div>
+          <div class="pt-row"><span><b class="pt-done">{pasado ? 'No había nada planeado ese día.' : 'Aún no hay nada planeado.'}</b></span>{#if !pasado}<button class="pt-link" onclick={() => nav.abrir('tarjetas', { acomodar: 1 })}>Planear</button>{/if}</div>
         {:else}
           {#each filasPlan.filas as f (f.l)}
             <div class="pt-row">

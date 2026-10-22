@@ -35,20 +35,26 @@ test('Recetario: saltar a una letra sin scroll eterno', async ({ page }) => {
   expect(errores).toEqual([]);
 });
 
-test('Menú: tarjetas también para la próxima semana, sin «Editar día por día»', async ({ page }) => {
+test('Menú: «Planear» lleva a Acomoda la semana, también la próxima; Agregar abre las tarjetas', async ({ page }) => {
   const errores = vigilarConsola(page);
   await entrarConContenido(page);
   await page.getByRole('button', { name: 'Comida', exact: true }).click();
   await page.getByRole('button', { name: 'Menú', exact: true }).first().click();
   await expect(page.getByRole('button', { name: /Editar día por día/ })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Empezar a planear' }).click();
-  await page.getByRole('radio', { name: 'Próxima semana' }).click();
+  await page.getByRole('button', { name: 'Semana siguiente' }).click();
+  await page.getByRole('button', { name: 'Planear', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Acomoda la semana', level: 2 })).toBeVisible();
+  await expect(page.getByRole('radio', { name: 'Próxima semana' })).toHaveAttribute('aria-checked', 'true');
   await revisarPantalla(page);
-  await page.getByRole('button', { name: 'Elegir con tarjetas' }).click();
+  await page.getByRole('button', { name: 'Agregar a cena con tarjetas' }).click();
   await expect(page.getByRole('heading', { name: 'Elegir con tarjetas', level: 2 })).toBeVisible();
   await page.getByRole('button', { name: 'Sí', exact: true }).click();
-  await page.getByRole('button', { name: 'Acomodar mis elegidas (1)' }).click();
+  await page.getByRole('button', { name: /^Poner en cena/ }).click();
+  await expect(page.getByRole('heading', { name: 'Acomoda la semana', level: 2 })).toBeVisible();
   await expect(page.getByRole('radio', { name: 'Próxima semana' })).toHaveAttribute('aria-checked', 'true');
+  // Atrás desde Acomoda vuelve al menú
+  await page.getByRole('button', { name: 'Volver', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Menú de la semana', level: 2 })).toBeVisible();
   expect(errores).toEqual([]);
 });
 
