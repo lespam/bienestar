@@ -7,7 +7,8 @@ test('Comida: registrar, ver números, editar, quitar, copiar y moverse entre d�
   await page.getByRole('button', { name: 'Comida', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Comida', level: 2 })).toBeFocused();
   await expect(page.getByText(/^Hoy · /)).toBeVisible();
-  await expect(page.getByText('0 de 4 comidas registradas')).toBeVisible();
+  await expect(page.getByText('Aún no registras nada hoy')).toBeVisible();
+  await expect(page.getByText(/de 4 comidas/)).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Día siguiente' })).toBeEnabled();
   await revisarPantalla(page);
 
@@ -24,7 +25,7 @@ test('Comida: registrar, ver números, editar, quitar, copiar y moverse entre d�
   await revisarPantalla(page);
   await hoja.getByRole('button', { name: 'Agregar', exact: true }).click();
   await expect(page.getByText('Agregado a Cena')).toBeVisible();
-  await expect(page.getByText('1 de 4 comidas registradas')).toBeVisible();
+  await expect(page.getByText('Registraste cena')).toBeVisible();
   // Con los números ocultos, el alimento aparece sin cifras
   const fila = page.getByRole('button', { name: 'Editar o quitar Quesadilla de champiñones' });
   await expect(fila).toBeVisible();
@@ -49,7 +50,7 @@ test('Comida: registrar, ver números, editar, quitar, copiar y moverse entre d�
   await h2.getByRole('button', { name: /Tinga de pollo/ }).click();
   await expect(page.getByText('Agregado a Desayuno')).toBeVisible();
   await expect(page.locator('.meal', { hasText: 'Desayuno' }).getByText('Tinga de pollo')).toBeVisible();
-  await expect(page.getByText('2 de 4 comidas registradas')).toHaveCount(0); // los números ya se ven
+  await expect(page.getByText(/^Registraste /)).toHaveCount(0); // los números ya se ven
   await expect(page.getByText('Ya registraste')).toHaveCount(0);
 
   // Editar: moverla a Comida, con Deshacer

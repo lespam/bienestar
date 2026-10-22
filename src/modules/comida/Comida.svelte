@@ -7,7 +7,7 @@
   import { aBase64, AnfitrionIA, estimarComida, estimarDeFoto, pedirIA } from '../ia';
   import { reducirFoto } from '../../core/imagen';
   import type { AlimentoEstimado } from '../ia';
-  import { COMIDAS, DIAS_ATRAS, barra, partes, diaBreve, etiquetaDia, fechaDe, fmtN, fraseDia, kRango, macroLinea, porTxt, porcionDe, r1, recientes, sinRepetir, sumas, type Plato } from './calculos';
+  import { COMIDAS, DIAS_ATRAS, registradoTxt, barra, partes, diaBreve, etiquetaDia, fechaDe, fmtN, fraseDia, kRango, macroLinea, porTxt, porcionDe, r1, recientes, sinRepetir, sumas, type Plato } from './calculos';
   import { agregarAlimentos, alimentosDe, guardarAlimento, leerPerfiles, flexibleDe, leerPrep, listarRecetas, menuDe, quitarAlimento, reponerDia, sembrarRecetas, ultimosRegistrados } from './datos';
   import { filaDeTanda } from './preparacion';
   import { NOMBRE_LUGAR, fechasDeSemana, indexar, llave, nombreDia } from './semana';
@@ -339,7 +339,7 @@
         {/each}
       </div>
     {:else}
-      <div class="sum-soft"><b>{comidas} de 4 comidas registradas</b><span>Los números están ocultos. Siguen guardados para tus patrones.</span></div>
+      <div class="sum-soft"><b>{registradoTxt(COMIDAS.filter((_, i) => porComida[i]?.length))}</b><span>Los números están ocultos. Siguen guardados para tus patrones.</span></div>
     {/if}
   </section>
   <p class="coach">{fraseDia(off, comidas)}</p>

@@ -276,7 +276,14 @@ export function recientes<T extends Plato>(filas: T[], limite = 8): T[] {
 }
 export function fraseDia(off: number, comidas: number): string {
   if (off) return comidas ? 'Registro de ese día. Puedes agregar o corregir lo que falte.' : 'Sin registro este día, y está bien. Puedes agregar lo que recuerdes.';
-  return comidas >= 3 ? 'Ya registraste ' + comidas + ' comidas hoy. Registrar también es cuidarte.' : 'Cada comida que registras te da información, no calificaciones.';
+  // Sin conteo ni total: un «X de 4» vuelve el registro una tarea por completar (auditoría 2026-10-22, hallazgo 1).
+  return 'Cada comida que registras te da información, no calificaciones.';
+}
+/** Lo que sí registraste, sin total: «Registraste desayuno y cena». */
+export function registradoTxt(nombres: string[]): string {
+  if (!nombres.length) return 'Aún no registras nada hoy';
+  const l = nombres.map((n) => n.toLowerCase());
+  return 'Registraste ' + (l.length > 1 ? l.slice(0, -1).join(', ') + ' y ' + l[l.length - 1] : l[0]);
 }
 /** Cuántos gramos mide la barra respecto a la referencia (si no hay, a lo registrado). */
 /**
