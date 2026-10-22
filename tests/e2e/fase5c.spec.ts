@@ -36,7 +36,8 @@ test('Menú: elegir recetas para los dos y cada quien, por decidir, colaciones y
   // Cena para los dos, desde el Recetario
   const cena = page.locator('section.ml', { hasText: 'Cena' });
   await expect(cena.getByText('Libre')).toBeVisible();
-  await cena.getByRole('button', { name: 'Sí, lo mismo' }).click();
+  await expect(page.getByText('¿Comen lo mismo?')).toHaveCount(0);
+  await cena.getByRole('button', { name: 'Agregar a cena' }).click();
   await expect(page.getByText(/^Para los dos · cena del /)).toBeVisible();
   await expect(page.getByText('Ahora está libre')).toBeVisible();
   await revisarPantalla(page);
@@ -49,8 +50,13 @@ test('Menú: elegir recetas para los dos y cada quien, por decidir, colaciones y
   await expect(cena2.locator('.tag.s')).toHaveCount(0);
 
   // Comida: cada quien
+  // Con el plato elegido aparece «¿Comen lo mismo?»
+  await expect(cena2.getByRole('button', { name: 'Sí, lo mismo' })).toHaveAttribute('aria-pressed', 'true');
   const comida = page.locator('section.ml', { hasText: 'Comida' }).first();
-  await comida.getByRole('button', { name: 'No, cada quien' }).click();
+  await comida.getByRole('button', { name: 'Agregar a comida' }).click();
+  await page.getByRole('button', { name: /Tinga de pollo/ }).click();
+  await page.getByRole('button', { name: 'Elegir para los dos' }).click();
+  await page.locator('section.ml', { hasText: 'Comida' }).first().getByRole('button', { name: 'No, cada quien' }).click();
   await expect(page.getByText(/^Para ti · comida del /)).toBeVisible();
   await page.getByRole('button', { name: /Tinga de pollo/ }).click();
   await page.getByRole('button', { name: 'Elegir para mí' }).click();
@@ -63,16 +69,10 @@ test('Menú: elegir recetas para los dos y cada quien, por decidir, colaciones y
   await page.getByRole('button', { name: 'Elegir para Jeff' }).click();
   await expect(page.getByRole('button', { name: /Tinga de pollo \/ Tacos de champiñón/ })).toBeVisible();
   await page.getByRole('button', { name: 'Deshacer' }).click();
-  await expect(page.locator('section.ml', { hasText: 'Comida' }).first().getByText('Libre')).toBeVisible();
-
-  // Desayuno por decidir
-  const des = page.locator('section.ml', { hasText: 'Desayuno' });
-  await des.getByRole('button', { name: 'Dejar por decidir' }).click();
-  await expect(page.getByRole('button', { name: /Desayuno Por decidir/ })).toBeVisible();
-  await expect(page.getByText('1 comida por decidir.')).toBeVisible();
+  await expect(page.locator('section.ml', { hasText: 'Comida' }).first().getByRole('button', { name: /Tinga de pollo/ }).first()).toBeVisible();
 
   // Colación AM: armar, juntar con el desayuno, separar y quitar
-  await page.getByRole('button', { name: 'Armar colación' }).first().click();
+  await page.getByRole('button', { name: 'Agregar a colación am' }).click();
   const sh = page.getByRole('dialog', { name: /Colación AM/ });
   await expect(sh.getByText('Elige una base para empezar.')).toBeVisible();
   await expect(sh.getByRole('button', { name: 'Guardar colación' })).toBeDisabled();
@@ -86,12 +86,12 @@ test('Menú: elegir recetas para los dos y cada quien, por decidir, colaciones y
   const col = page.locator('section.ml', { hasText: 'Colación AM' });
   await expect(col.getByRole('button', { name: /Yogur natural \+ manzana/ })).toBeVisible();
   await col.getByRole('button', { name: 'Juntar con una comida' }).click();
-  await col.getByRole('button', { name: 'Desayuno', exact: true }).click();
-  await expect(col.locator('.tag', { hasText: 'Con el desayuno' })).toBeVisible();
+  await col.getByRole('button', { name: 'Comida', exact: true }).click();
+  await expect(col.locator('.tag', { hasText: 'Con la comida' })).toBeVisible();
   await col.getByRole('button', { name: 'Separar' }).click();
   await expect(col.locator('.tag', { hasText: 'Colación' })).toBeVisible();
   await col.getByRole('button', { name: 'Quitar' }).click();
-  await expect(page.getByRole('button', { name: 'Armar colación' }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Agregar a colación am' })).toBeVisible();
 
   // Takeout con ticket
   await page.getByRole('button', { name: '+ Ticket' }).click();

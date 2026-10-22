@@ -337,3 +337,29 @@ test('Tarjetas: rondas cortas de 10 con «Otra ronda»', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Sí', exact: true })).toBeEnabled();
   expect(errores).toEqual([]);
 });
+
+test('Menú: lo libre es una línea «Agregar»; después de elegir vuelve al mismo día con «¿Comen lo mismo?»', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Menú', exact: true }).first().click();
+  const dias = page.locator('.wk-day');
+  const otro = (await dias.count()) - 1;
+  const hoyEs = await dias.nth(otro).getAttribute('aria-pressed');
+  const destino = hoyEs === 'true' ? dias.nth(0) : dias.nth(otro);
+  const etiqueta = (await destino.getAttribute('aria-label'))!;
+  await destino.click();
+  const cena = page.locator('section.ml', { hasText: 'Cena' });
+  const agregar = cena.getByRole('button', { name: 'Agregar a cena' });
+  if (!(await agregar.count())) return; // ese día ya pasó
+  await expect(page.getByText('¿Comen lo mismo?')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Dejar por decidir' })).toHaveCount(0);
+  await revisarPantalla(page);
+  await agregar.click();
+  await page.getByRole('button', { name: /Tacos de champiñón/ }).click();
+  await page.getByRole('button', { name: 'Elegir para los dos' }).click();
+  await expect(page.getByRole('button', { name: etiqueta })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('section.ml', { hasText: 'Cena' }).getByText('¿Comen lo mismo?')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sí, lo mismo' })).toHaveAttribute('aria-pressed', 'true');
+  expect(errores).toEqual([]);
+});

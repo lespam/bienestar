@@ -7,7 +7,7 @@
   import { nav } from '../../core/nav.svelte';
   import { fechaDe, norm, notaConflictos, porTxt, porcionDe } from './calculos';
   import { leerPerfiles, listarRecetas, menuDe, ponerEnMenu, ponerVariosEnMenu, quitarDelMenu, reponerMenu, sembrarRecetas } from './datos';
-  import { eleccion, vista } from './estado.svelte';
+  import { eleccion, menuFoco, vista } from './estado.svelte';
   import { COLACION, colacionTxt } from './colacion';
   import { AnfitrionIA, iaLista, ideasDeMenu, pedirIA } from '../ia';
   import { COMIDAS_MENU, LETRA_DIA, NOMBRE_LUGAR, SEMANAS_ATRAS, cambiosRepetir, dinero, etiquetaFecha, fechasDeSemana, indexar, itemDecidir, itemDos, itemTakeout, llave, nombreDia, numeroDia, platoTxt, puntoDe, rangoSemana, takeoutTxt, takeouts, tipoTxt, tituloSemana } from './semana';
@@ -15,9 +15,12 @@
   // Al llegar al menú ya no estás eligiendo receta.
   eleccion.actual = null;
   const hoyIso = fechaDe(0);
-  let k = $state(typeof nav.pantalla?.datos?.k === 'number' ? (nav.pantalla.datos.k as number) : 0);
+  const k0 = typeof nav.pantalla?.datos?.k === 'number' ? (nav.pantalla.datos.k as number) : 0;
+  let k = $state(k0);
   let sel = $state(hoyIso);
   let abierto = $state<LugarMenu | ''>('c');
+  if (menuFoco.fecha && fechasDeSemana(k0).includes(menuFoco.fecha)) { sel = menuFoco.fecha; abierto = menuFoco.lugar; }
+  menuFoco.fecha = ''; menuFoco.lugar = '';
   let items = $state<ItemMenu[]>([]);
   let pasada = $state<ItemMenu[]>([]);
   let recetas = $state<Receta[]>([]);
@@ -82,6 +85,7 @@
   // ---------- Elegir receta (en el Recetario) ----------
   function elegir(l: LugarMenu, modo: 'dos' | 'les') {
     eleccion.actual = { fecha: sel, lugar: l, modo };
+    menuFoco.fecha = sel; menuFoco.lugar = l;
     vista.q = ''; vista.cat = ({ d: 'Desayuno', c: 'Comida', n: 'Cena' } as Record<string, string>)[l] ?? 'todo';
     nav.abrir('recetas');
   }
@@ -122,7 +126,6 @@
   }
 
   // ---------- Por decidir, libre ----------
-  const dejarDecidir = (l: LugarMenu) => cambiar([sel], () => ponerEnMenu(itemDecidir(sel, l)), 'Queda por decidir');
   const quitarLugar = (l: LugarMenu, mensaje: string) => cambiar([sel], () => quitarDelMenu(sel, l), mensaje);
 
   // ---------- Colaciones ----------
@@ -294,15 +297,7 @@
     {@const m = indice.get(llave(sel, l))}
     {@const id = 'ml-' + l}
     {#if !m}
-      <section class="ml ml-empty">
-        <div class="ml-h"><small>{NOMBRE_LUGAR[l]}</small><span class="dish" style="color:var(--muted)">Libre</span><span class="tag">—</span></div>
-        {#if !pasadaVista}
-          <div class="ml-b">
-            {@render pregunta(l)}
-            {#if sel >= hoyIso}<button class="add" onclick={() => dejarDecidir(l)}>Dejar por decidir</button>{/if}
-          </div>
-        {/if}
-      </section>
+      {@render libre(l, () => elegir(l, 'dos'))}
     {:else if pasadaVista}
       <section class="ml"><div class="ml-h"><small>{NOMBRE_LUGAR[l]}</small><span class="dish">{m.t === 'takeout' ? m.n + (m.costo ? ' · ' + dinero(m.costo) : '') : platoTxt(m)}</span><span class="tag {m.t === 'takeout' ? 't' : m.t === 'cada' ? 's' : 'f'}">{tipoTxt(m)}</span></div></section>
     {:else}
@@ -329,32 +324,40 @@
             {#if m.t === 'cada'}
               {#each [...new Set([m.rl, m.rj])] as rid (rid)}<button class="add" onclick={() => verReceta(rid)}>Ver receta: {porId.get(rid ?? '')?.n ?? (rid === m.rl ? m.nl : m.nj)}</button>{/each}
             {/if}
+            <button class="add" onclick={() => elegir(l, 'dos')}>{m.t === 'dos' || m.t === 'cada' ? 'Cambiar plato' : 'Elegir plato'}</button>
             {#if m.t === 'decidir'}<button class="add" onclick={() => quitarLugar(l, 'Quitado de "por decidir"')}>Quitar "por decidir"</button>{/if}
             {#if m.t !== 'decidir'}<button class="add" onclick={() => quitarLugar(l, 'Comida liberada')}>Dejar libre</button>{/if}
           </div>
-          {@render pregunta(l)}
+          {#if m.t === 'dos' || m.t === 'cada'}{@render pregunta(l, m.t)}{/if}
         </div>
       </section>
     {/if}
   {/snippet}
 
-  {#snippet pregunta(l: LugarMenu)}
+  <!-- Un tiempo libre es una sola línea, como en Acomoda la semana. -->
+  {#snippet libre(l: LugarMenu, agregar: () => void)}
+    {#if !pasadaVista}
+      <section class="ml ml-empty">
+        <div class="ml-h"><small>{NOMBRE_LUGAR[l]}</small><span class="dish" style="color:var(--muted)">Libre</span>{#if sel >= hoyIso}<button class="add ml-add" aria-label={'Agregar a ' + NOMBRE_LUGAR[l].toLowerCase()} onclick={agregar}>Agregar</button>{:else}<span class="tag">—</span>{/if}</div>
+      </section>
+    {:else}
+      <section class="ml ml-empty"><div class="ml-h"><small>{NOMBRE_LUGAR[l]}</small><span class="dish" style="color:var(--muted)">Libre</span><span class="tag">—</span></div></section>
+    {/if}
+  {/snippet}
+
+  <!-- Solo con un plato ya elegido: «Sí, lo mismo» es lo que ya hay; «No, cada quien» elige dos. -->
+  {#snippet pregunta(l: LugarMenu, t: 'dos' | 'cada')}
     <p class="ml-q">¿Comen lo mismo?</p>
-    <div class="ml-two">
-      <button class="add" onclick={() => elegir(l, 'dos')}>Sí, lo mismo</button>
-      <button class="add" onclick={() => elegir(l, 'les')}>No, cada quien</button>
+    <div class="ml-two" role="group" aria-label="¿Comen lo mismo?">
+      <button class="add" aria-pressed={t === 'dos'} onclick={() => t !== 'dos' && elegir(l, 'dos')}>Sí, lo mismo</button>
+      <button class="add" aria-pressed={t === 'cada'} onclick={() => t !== 'cada' && elegir(l, 'les')}>No, cada quien</button>
     </div>
   {/snippet}
 
   {#snippet colacion(l: 'a' | 'p')}
     {@const m = indice.get(llave(sel, l))}
     {#if !m}
-      {#if !pasadaVista}
-        <section class="ml ml-empty">
-          <div class="ml-h"><small>{NOMBRE_LUGAR[l]}</small><span class="dish" style="color:var(--muted)">Libre</span><span class="tag">—</span></div>
-          <div class="ml-b"><button class="add" onclick={() => abrirColacion(l)}>Armar colación</button></div>
-        </section>
-      {/if}
+      {@render libre(l, () => abrirColacion(l))}
     {:else if pasadaVista}
       <section class="ml"><div class="ml-h"><small>{NOMBRE_LUGAR[l]}</small><span class="dish">{m.n}</span><span class="tag">Colación</span></div></section>
     {:else}

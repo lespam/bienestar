@@ -19,6 +19,8 @@ export function reiniciarVista() { vista.ver = false; vista.cat = 'todo'; vista.
  */
 export interface Eleccion { fecha: string; lugar: LugarMenu; modo: 'dos' | 'les' | 'jeff'; les?: { id: string; n: string } }
 export const eleccion = $state<{ actual: Eleccion | null }>({ actual: null });
+/** Al volver al menú después de elegir, se abre el mismo día y el mismo tiempo de comida. */
+export const menuFoco = $state<{ fecha: string; lugar: LugarMenu | '' }>({ fecha: '', lugar: '' });
 
 /** Elegir con tarjetas: lo que llevas elegido se queda mientras no cierres la app. */
 /** destino: viniste de «Agregar» en un tiempo de comida; `desde` = cuántas elegidas había antes.
