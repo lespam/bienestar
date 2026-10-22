@@ -9,7 +9,7 @@
   import { leerPerfiles, listarRecetas, menuDe, ponerEnMenu, ponerVariosEnMenu, quitarDelMenu, reponerMenu, sembrarRecetas } from './datos';
   import { eleccion, vista } from './estado.svelte';
   import { COLACION, colacionTxt } from './colacion';
-  import { AnfitrionIA, ideasDeMenu, pedirIA } from '../ia';
+  import { AnfitrionIA, iaLista, ideasDeMenu, pedirIA } from '../ia';
   import { COMIDAS_MENU, LETRA_DIA, NOMBRE_LUGAR, SEMANAS_ATRAS, cambiosRepetir, dinero, etiquetaFecha, fechasDeSemana, indexar, itemDecidir, itemDos, itemTakeout, llave, nombreDia, numeroDia, platoTxt, puntoDe, rangoSemana, takeoutTxt, takeouts, tipoTxt, tituloSemana } from './semana';
 
   // Al llegar al menú ya no estás eligiendo receta.
@@ -91,22 +91,30 @@
   }
 
   // ---------- Ideas con IA (opcional) ----------
-  function ideasIA(l: LugarMenu) {
-    const fecha = sel, comida = NOMBRE_LUGAR[l], cat = ({ d: 'Desayuno', c: 'Comida', n: 'Cena' } as Record<string, string>)[l];
-    const candidatas = recetas.filter((r) => r.cat === cat);
-    if (!candidatas.length) { avisos.mostrar('No tienes recetas de este tipo en tu Recetario'); return; }
+  /** Un solo pedido por día: ideas para cada desayuno, comida o cena que esté libre. */
+  const CAT_DE: Record<string, string> = { d: 'Desayuno', c: 'Comida', n: 'Cena' };
+  const libresIA = $derived((['d', 'c', 'n'] as LugarMenu[]).filter((l) => !indice.get(llave(sel, l)) && recetas.some((r) => r.cat === CAT_DE[l])));
+  function ideasIA() {
+    const fecha = sel, lugares = libresIA;
+    if (!lugares.length) return;
     const usadas = new Set(items.flatMap((m) => (m.t === 'dos' || m.t === 'cada' ? [m.r, m.rl, m.rj] : [])).filter((x): x is string => !!x));
-    const nombresUsados = candidatas.filter((r) => usadas.has(r.id)).map((r) => r.n);
     pedirIA({
       fn: 'idea', titulo: 'Ayuda con IA', envia: 'los nombres de tus recetas y qué comidas están libres',
       ejecutar: async (clave) => {
-        const ids = await ideasDeMenu(clave, comida, candidatas.map((r) => ({ id: r.id, n: r.n })), nombresUsados);
-        const rs = ids.map((i) => porId.get(i)).filter((r): r is Receta => !!r);
+        const res = await Promise.allSettled(lugares.map(async (l) => {
+          const candidatas = recetas.filter((r) => r.cat === CAT_DE[l]);
+          const ids = await ideasDeMenu(clave, NOMBRE_LUGAR[l], candidatas.map((r) => ({ id: r.id, n: r.n })), candidatas.filter((r) => usadas.has(r.id)).map((r) => r.n));
+          return ids.map((i) => porId.get(i)).filter((r): r is Receta => !!r).sort((a, b) => Number(usadas.has(a.id)) - Number(usadas.has(b.id))).map((r) => ({ l, r }));
+        }));
+        // Si una comida no tuvo ideas, se muestran las de las otras; solo falla si ninguna tuvo.
+        const ok = res.filter((x) => x.status === 'fulfilled');
+        if (!ok.length) throw (res[0] as PromiseRejectedResult).reason;
+        const porLugar = ok.map((x) => (x as PromiseFulfilledResult<{ l: LugarMenu; r: Receta }[]>).value);
         return {
-          intro: 'Ideas de tu Recetario para ' + comida.toLowerCase() + ' del ' + nombreDia(fecha).toLowerCase() + '. Las que no están en tu menú esta semana van primero.',
-          items: rs.sort((a, b) => Number(usadas.has(a.id)) - Number(usadas.has(b.id))).map((r) => ({
-            t: r.n, sub: usadas.has(r.id) ? 'Ya está en tu menú esta semana' : 'Aún no está en tu menú', act: 'Agregar al menú',
-            aplicar: () => cambiar([fecha], () => ponerEnMenu(itemDos(fecha, l, r)), r.n + ': ' + nombreDia(fecha).toLowerCase() + ', ' + comida.toLowerCase())
+          intro: 'Ideas de tu Recetario para lo libre del ' + nombreDia(fecha).toLowerCase() + '. Las que no están en tu menú esta semana van primero.',
+          items: porLugar.flat().map(({ l, r }) => ({
+            t: r.n, sub: NOMBRE_LUGAR[l] + (usadas.has(r.id) ? ' · ya está en tu menú esta semana' : ''), act: 'Poner en ' + NOMBRE_LUGAR[l].toLowerCase(),
+            aplicar: () => cambiar([fecha], () => ponerEnMenu(itemDos(fecha, l, r)), r.n + ': ' + nombreDia(fecha).toLowerCase() + ', ' + NOMBRE_LUGAR[l].toLowerCase())
           }))
         };
       }
@@ -292,7 +300,6 @@
           <div class="ml-b">
             {@render pregunta(l)}
             {#if sel >= hoyIso}<button class="add" onclick={() => dejarDecidir(l)}>Dejar por decidir</button>{/if}
-            {#if sel >= hoyIso && l !== 'a' && l !== 'p'}<button class="ai-btn" onclick={() => ideasIA(l)}>Ideas con IA para {NOMBRE_LUGAR[l].toLowerCase()}</button>{/if}
           </div>
         {/if}
       </section>
@@ -400,6 +407,7 @@
       {@render colacion('p')}
       {@render comidaPrincipal('n')}
     {/if}
+    {#if !pasadaVista && sel >= hoyIso && libresIA.length && iaLista('idea')}<button class="ai-btn" onclick={ideasIA}>Ideas con IA para lo libre del {nombreDia(sel).toLowerCase()}</button>{/if}
   </div>
 
   {#if !proxima}

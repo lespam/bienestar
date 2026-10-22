@@ -259,3 +259,22 @@ for (const [id, nombre] of [['bosque', 'Bosque'], ['oceano', 'Océano'], ['atard
     expect(errores).toEqual([]);
   });
 }
+
+test('IA apagada: no se ven botones «con IA» en Rutina, Ficha, Comida ni Menú', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  const sinIA = async () => expect(page.getByRole('button', { name: /con IA/ })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Rutina', exact: true }).click();
+  await sinIA();
+  await page.getByRole('button', { name: 'Ver ficha' }).first().click();
+  await sinIA();
+  await page.getByRole('button', { name: 'Volver', exact: true }).click();
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.locator('.meal', { hasText: 'Cena' }).getByRole('button', { name: '+ Agregar' }).click();
+  await expect(page.getByRole('tab', { name: 'Describir' })).toHaveCount(0);
+  await expect(page.getByRole('tab', { name: 'Escanear' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Cerrar', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Menú', exact: true }).first().click();
+  await sinIA();
+  expect(errores).toEqual([]);
+});

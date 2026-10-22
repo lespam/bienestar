@@ -35,6 +35,8 @@ export async function cargarIA() {
   ia.fin = c ? c.slice(-4) : '';
   ia.cargada = true;
 }
+/** La IA está prendida, con clave y esa función activa: solo así se muestran sus botones (auditoría 2026-10-22, hallazgo 2). */
+export const iaLista = (fn: FnIA) => ia.cargada && ia.on && ia.tieneClave && ia.fn[fn];
 export async function leerClave(): Promise<string> { return leer('ia.clave', ''); }
 
 export async function ponerUsarIA(v: boolean) { ia.on = v; await poner('ia.on', v); }

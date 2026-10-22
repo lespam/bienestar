@@ -41,13 +41,14 @@ test('Ajustes: la IA empieza apagada, pide tu clave y se puede quitar', async ({
   await expect(page.getByRole('switch', { name: 'Usar IA' })).toHaveAttribute('aria-checked', 'false');
   await expect(page.getByLabel('Tu clave de Anthropic')).toHaveCount(0);
 
-  // Con la IA apagada, la ayuda lo explica y deja hacerlo a mano
+  // Con la IA apagada, sus botones no se ven (auditoría 2026-10-22, hallazgo 2)
   await page.getByRole('button', { name: 'Volver' }).click();
   await abrirTinga(page);
-  await page.getByRole('button', { name: 'Tips para prepararla' }).click();
-  await expect(page.locator('.ai-body').getByText('La IA está apagada. Puedes activarla en Ajustes con tu propia clave.')).toBeVisible();
-  await revisarPantalla(page);
-  await page.getByRole('button', { name: 'Ir a Ajustes' }).click();
+  await expect(page.getByRole('button', { name: 'Tips para prepararla' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Volver' }).click();
+  await page.getByRole('button', { name: 'Volver' }).click();
+  await page.getByRole('button', { name: 'Inicio', exact: true }).click();
+  await page.getByRole('button', { name: 'Ajustes' }).click();
 
   await page.getByRole('switch', { name: 'Usar IA' }).click();
   await expect(page.getByRole('switch', { name: 'Usar IA' })).toHaveAttribute('aria-checked', 'true');
@@ -180,11 +181,11 @@ test('Menú, preparación y tips: ideas y orden con IA, con Deshacer', async ({ 
   await simular(page, '{"ids":["tacos","inventada"]}');
   await page.getByRole('button', { name: 'Menú', exact: true }).first().click();
   const cena = page.locator('section.ml', { hasText: 'Cena' });
-  await cena.getByRole('button', { name: 'Ideas con IA para cena' }).click();
+  await page.getByRole('button', { name: /^Ideas con IA para lo libre del / }).click();
   await page.getByRole('button', { name: 'Enviar' }).click();
   await expect(page.getByText('Tacos de champiñón', { exact: true })).toBeVisible();
   await expect(page.getByText('inventada')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Agregar al menú' }).click();
+  await page.getByRole('button', { name: 'Poner en cena' }).click();
   await expect(cena.getByRole('button', { name: /Tacos de champiñón/ })).toBeVisible();
   await page.getByRole('button', { name: 'Volver' }).click();
 

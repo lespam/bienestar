@@ -4,7 +4,7 @@
   import { avisos } from '../../core/aviso.svelte';
   import { nav } from '../../core/nav.svelte';
   import { cap, fechaDe } from './calculos';
-  import { AnfitrionIA, ordenarPreparacion, pedirIA } from '../ia';
+  import { AnfitrionIA, iaLista, ordenarPreparacion, pedirIA } from '../ia';
   import { guardarPrep, leerPrep } from './datos';
   import { cuandoTxt, diaTanda, estTxt, hechas, horaTxt, idTanda, minutosPendientes, ponerEnOrden, preparoTxt, sumarDias, tandasDeSemana, ultimoDia } from './preparacion';
   import { fechasDeSemana, LETRA_DIA, numeroDia, etiquetaFecha, rangoSemana } from './semana';
@@ -198,7 +198,7 @@
     {/each}
   </div>
   {#if tandas.some((x) => x.fecha >= hoy && x.items.filter((i) => !i.ok).length > 1)}
-    <button class="ghost" onclick={ordenarIA}>Ordenar mi preparación con IA</button>
+    {#if iaLista('prep')}<button class="ghost" onclick={ordenarIA}>Ordenar mi preparación con IA</button>{/if}
   {/if}
   <p class="tool-note">Si cambias el menú, el plan se actualiza. Los tiempos son aproximados.</p>
 </div>

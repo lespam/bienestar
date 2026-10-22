@@ -6,4 +6,4 @@ export { default as AjustesIA } from './AjustesIA.svelte';
 export { leerRecetaDeFoto, tipsDeReceta, tipsGenerales, cambiosDeIngredientes, ordenarPreparacion, ideasDeMenu, estimarComida, estimarDeFoto, resumenSemanal, tipsDeEjercicios } from './tareas';
 export type { RecetaLeida, AlimentoEstimado, EjercicioCorto } from './tareas';
 export { aBase64 } from './api';
-export { cargarIA } from './estado.svelte';
+export { cargarIA, iaLista } from './estado.svelte';

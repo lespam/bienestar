@@ -8,7 +8,7 @@
   import { dondeQuedaste, textoSeries } from './calculos';
   import { cargarContexto, datosDeEjercicio, type Contexto } from './contexto';
   import { agregarTip, guardarFicha, leerFicha } from './datos';
-  import { AnfitrionIA, pedirIA, tipsDeEjercicios } from '../ia';
+  import { AnfitrionIA, iaLista, pedirIA, tipsDeEjercicios } from '../ia';
   import { buscarEjercicio, enlaceSeguro, type Ejercicio } from './programa';
   import { cuerpoSVG, MOVIMIENTO, MUSCULOS } from './musculos';
   import { fechaCorta3 } from './semana';
@@ -197,7 +197,7 @@
       {:else}
         <p class="where">Aún no hay tips. Agrégalos en Editar.</p>
       {/if}
-      <button class="link-btn" onclick={tipsIA}>Pedir tips con IA</button>
+      {#if iaLista('entreno')}<button class="link-btn" onclick={tipsIA}>Pedir tips con IA</button>{/if}
     </section>
 
     <section class="fi-sec" id="fi-var">

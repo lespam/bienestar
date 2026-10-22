@@ -4,7 +4,7 @@
   import { avisos } from '../../core/aviso.svelte';
   import { nav } from '../../core/nav.svelte';
   import { guardar, prefs } from '../ajustes';
-  import { aBase64, AnfitrionIA, estimarComida, estimarDeFoto, pedirIA } from '../ia';
+  import { aBase64, AnfitrionIA, estimarComida, estimarDeFoto, iaLista, pedirIA } from '../ia';
   import { reducirFoto } from '../../core/imagen';
   import type { AlimentoEstimado } from '../ia';
   import { COMIDAS, DIAS_ATRAS, registradoTxt, barra, partes, diaBreve, etiquetaDia, fechaDe, fmtN, fraseDia, kRango, macroLinea, porTxt, porcionDe, r1, recientes, sinRepetir, sumas, type Plato } from './calculos';
@@ -388,8 +388,8 @@
       <button class:on={pestaña === 'rec'} role="tab" aria-selected={pestaña === 'rec'} onclick={() => (pestaña = 'rec')}>Recientes</button>
       <button class:on={pestaña === 'rcp'} role="tab" aria-selected={pestaña === 'rcp'} onclick={() => (pestaña = 'rcp')}>Recetas</button>
       <button class:on={pestaña === 'man'} role="tab" aria-selected={pestaña === 'man'} onclick={() => (pestaña = 'man')}>Escribir</button>
-      <button class:on={pestaña === 'ia'} role="tab" aria-selected={pestaña === 'ia'} onclick={() => (pestaña = 'ia')}>Describir</button>
-      <button class:on={pestaña === 'esc'} role="tab" aria-selected={pestaña === 'esc'} onclick={() => (pestaña = 'esc')}>Escanear</button>
+      {#if iaLista('comida')}<button class:on={pestaña === 'ia'} role="tab" aria-selected={pestaña === 'ia'} onclick={() => (pestaña = 'ia')}>Describir</button>{/if}
+      {#if iaLista('escaner')}<button class:on={pestaña === 'esc'} role="tab" aria-selected={pestaña === 'esc'} onclick={() => (pestaña = 'esc')}>Escanear</button>{/if}
     </div>
     <div class="hide-nums-scope" class:hide-nums={!ver}>
       {#if pestaña === 'rec'}

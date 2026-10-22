@@ -12,7 +12,7 @@
   import { itemDeMenu, menuDe, ponerEnMenu, quitarDelMenu } from './datos';
   import type { ItemMenu, LugarMenu } from '../../core/db';
   import FormReceta from './FormReceta.svelte';
-  import { AnfitrionIA, cambiosDeIngredientes, pedirIA, tipsDeReceta } from '../ia';
+  import { AnfitrionIA, cambiosDeIngredientes, iaLista, pedirIA, tipsDeReceta } from '../ia';
 
   const id = String(nav.pantalla?.datos?.id ?? '');
   let r = $state<Receta | null>(null);
@@ -299,11 +299,13 @@
       <button class="add" onclick={agregarNota}>+ Agregar</button>
     </section>
 
-    <section class="rc-sec" aria-labelledby="rc-h6">
-      <h4 id="rc-h6">Ideas con IA</h4>
-      <div class="ai-acts"><button class="ai-btn" onclick={tipsIA}>Tips para prepararla</button><button class="ai-btn" onclick={ingredientesIA}>Cambiar un ingrediente</button></div>
-      <p class="seg-help">Se envía a Anthropic: el nombre y los ingredientes de esta receta.</p>
-    </section>
+    {#if iaLista('tips') || iaLista('ing')}
+      <section class="rc-sec" aria-labelledby="rc-h6">
+        <h4 id="rc-h6">Ideas con IA</h4>
+        <div class="ai-acts">{#if iaLista('tips')}<button class="ai-btn" onclick={tipsIA}>Tips para prepararla</button>{/if}{#if iaLista('ing')}<button class="ai-btn" onclick={ingredientesIA}>Cambiar un ingrediente</button>{/if}</div>
+        <p class="seg-help">Se envía a Anthropic: el nombre y los ingredientes de esta receta.</p>
+      </section>
+    {/if}
 
     <button class="pr-btn" onclick={abrirAjustar}>
       <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" /><circle cx="15" cy="6" r="2" /><circle cx="9" cy="12" r="2" /><circle cx="17" cy="18" r="2" /></svg>

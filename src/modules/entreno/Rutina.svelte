@@ -10,7 +10,7 @@
   import { agregarTip, cambiarModoSesion, guardarAjuste, guardarSustituto, iniciarSesion, quitarSustituto, terminarSesion, type Cuando } from './datos';
   import { fechaCorta3, lineaCuando, rutinasDelPrograma } from './semana';
   import { tieneGym, type Ejercicio, type Grupo, type Letra } from './programa';
-  import { AnfitrionIA, pedirIA, resumenSemanal, tipsDeEjercicios } from '../ia';
+  import { AnfitrionIA, iaLista, pedirIA, resumenSemanal, tipsDeEjercicios } from '../ia';
   import { sesionesParaResumen } from './resumen';
   import Animacion from './Animacion.svelte';
   import Rico from './Rico.svelte';
@@ -231,7 +231,7 @@
           </div>
         {/each}
       </div>
-      <button class="link-btn" onclick={resumirSemana}>Resumen de la semana con IA</button>
+      {#if iaLista('resumen')}<button class="link-btn" onclick={resumirSemana}>Resumen de la semana con IA</button>{/if}
       <span class="week-note">Llevas {c.llevas} {c.llevas === 1 ? 'sesión' : 'sesiones'} desde que empezaste.</span>
     </section>
     <section class="today">
@@ -258,7 +258,7 @@
       </div>
     {:else}
     <VistaPrevia programa={c.p} letra={c.letra} />
-    <button class="link-btn" onclick={tipsDeRutina}>Tips de la Rutina {c.letra} con IA</button>
+    {#if iaLista('entreno')}<button class="link-btn" onclick={tipsDeRutina}>Tips de la Rutina {c.letra} con IA</button>{/if}
 
     <section class="focus" aria-label="Dónde estás">
       <div class="fh"><h4>Dónde estás</h4></div>

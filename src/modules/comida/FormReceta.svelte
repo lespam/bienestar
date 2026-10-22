@@ -6,7 +6,7 @@
   import { leerIngrediente, leerReceta, lineaIng, type Borrador } from './calculos';
   import { numerosVisibles } from './estado.svelte';
   import { reducirFoto } from '../../core/imagen';
-  import { aBase64, AnfitrionIA, leerRecetaDeFoto, pedirIA } from '../ia';
+  import { aBase64, AnfitrionIA, iaLista, leerRecetaDeFoto, pedirIA } from '../ia';
 
   // Agregar o editar una receta. Pegar separa el texto en partes; siempre revisas antes de guardar.
   // La pestaña Foto lee con IA (opcional, con tu propia clave): siempre revisas antes de guardar.
@@ -97,7 +97,7 @@
   <div bind:this={contenedor}>
     {#if !edita}
       <div class="seg" role="tablist" aria-label="Cómo agregarla">
-        <button class:on={pestaña === 'foto'} role="tab" aria-selected={pestaña === 'foto'} onclick={() => (pestaña = 'foto')}>Foto</button>
+        {#if iaLista('foto')}<button class:on={pestaña === 'foto'} role="tab" aria-selected={pestaña === 'foto'} onclick={() => (pestaña = 'foto')}>Foto</button>{/if}
         <button class:on={pestaña === 'pegar'} role="tab" aria-selected={pestaña === 'pegar'} onclick={() => (pestaña = 'pegar')}>Pegar</button>
         <button class:on={pestaña === 'escribir'} role="tab" aria-selected={pestaña === 'escribir'} onclick={() => (pestaña = 'escribir')}>Escribir</button>
       </div>

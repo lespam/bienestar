@@ -3,7 +3,7 @@
   import { avisos } from '../../core/aviso.svelte';
   import { nav } from '../../core/nav.svelte';
   import { cap, fechaDe } from './calculos';
-  import { AnfitrionIA, pedirIA, tipsGenerales } from '../ia';
+  import { AnfitrionIA, iaLista, pedirIA, tipsGenerales } from '../ia';
   import { guardarTips, leerTips, listarRecetas, menuDe, sembrarRecetas } from './datos';
   import { fechasDeSemana } from './semana';
   import { COMBINACIONES, diasEnMenu, recetasDe, tipsVacios, tipsVisibles, yLista, type FilaTip } from './tips';
@@ -104,7 +104,7 @@
           {:else}
             <button class="add tp-add" onclick={() => (agregando = true)}>+ Agregar un tip</button>
           {/if}
-          <button class="ghost tp-add" onclick={pedirTip}>Pedir un tip con IA</button>
+          {#if iaLista('tips')}<button class="ghost tp-add" onclick={pedirTip}>Pedir un tip con IA</button>{/if}
         </div>
       </section>
       <section class="tp-sec" aria-labelledby="tp-h2">
