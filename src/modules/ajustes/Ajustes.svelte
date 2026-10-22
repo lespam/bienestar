@@ -9,7 +9,7 @@
   import { importarZip, volverACopia, ultimaCopia } from '../../core/respaldo';
   import { metaContenido, resumenCargado } from '../../core/contenido';
   import { fechaCorta, diasEntre } from '../../core/fechas';
-  import { prefs, guardar, cargarPrefs, enlaceObsidian } from './prefs.svelte';
+  import { prefs, guardar, cargarPrefs, enlaceObsidian, aplicarPaleta, PALETAS, type Paleta } from './prefs.svelte';
   import { hacerRespaldo, elegirContenido } from './acciones';
 
   let copia = $state<{ id: number; fecha: number } | null>(null);
@@ -33,6 +33,10 @@
   async function interruptor(k: 'ocultarComida' | 'ocultarEntreno' | 'recordarRespaldo') {
     await guardar(k, !prefs[k]);
     avisos.mostrar('Guardado');
+  }
+  async function paleta(p: Paleta) {
+    aplicarPaleta(p);
+    await guardar('paleta', p);
   }
   async function unidad(u: 'lb' | 'kg') {
     await guardar('unidad', u);
@@ -94,6 +98,16 @@
       <Interruptor id="aj-train" encendido={prefs.ocultarEntreno} titulo="Entrenamiento" detalle="Oculta pesos y repeticiones de tus series." onchange={() => interruptor('ocultarEntreno')} />
     </div>
     <p class="tp-hint">La primera vez que abres la app, te pregunta esto. Cada pantalla tiene un botón «Mostrar» por si quieres verlos un momento.</p>
+  </section>
+
+  <section class="tp-sec"><h4 id="aj-pal">Colores</h4>
+    <div class="pal-opc" role="radiogroup" aria-labelledby="aj-pal">
+      {#each PALETAS as x (x.id)}
+        <button role="radio" class:on={prefs.paleta === x.id} aria-checked={prefs.paleta === x.id} onclick={() => paleta(x.id)}>
+          <span class="pal-m" aria-hidden="true">{#each x.m as c (c)}<i style:background={c}></i>{/each}</span>{x.n}
+        </button>
+      {/each}
+    </div>
   </section>
 
   <section class="tp-sec"><h4 id="aj-u">Unidades de peso</h4>

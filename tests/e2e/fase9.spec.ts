@@ -237,3 +237,25 @@ test('Acomoda la semana: por tiempos de comida, Agregar con tarjetas, mover y vo
   await revisarPantalla(page);
   expect(errores).toEqual([]);
 });
+
+for (const [id, nombre] of [['bosque', 'Bosque'], ['oceano', 'Océano'], ['atardecer', 'Atardecer']]) {
+  test(`Ajustes: paleta ${nombre} con buen contraste y que se queda al volver a abrir`, async ({ page }) => {
+    const errores = vigilarConsola(page);
+    await entrarConContenido(page);
+    await page.getByRole('button', { name: 'Ajustes' }).click();
+    await page.getByRole('radio', { name: nombre }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-paleta', id);
+    await revisarPantalla(page);
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-paleta', id);
+    for (const tab of ['Inicio', 'Rutina', 'Comida', 'Cuerpo']) {
+      await page.getByRole('button', { name: tab, exact: true }).click();
+      await revisarPantalla(page);
+    }
+    await page.getByRole('button', { name: 'Inicio', exact: true }).click();
+    await page.getByRole('button', { name: 'Ajustes' }).click();
+    await page.getByRole('radio', { name: 'Calma' }).click();
+    await expect(page.locator('html')).not.toHaveAttribute('data-paleta', /./);
+    expect(errores).toEqual([]);
+  });
+}

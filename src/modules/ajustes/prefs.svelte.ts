@@ -3,6 +3,20 @@ import { DIA_MS } from '../../core/fechas';
 import { plataforma } from '../../core/plataforma.svelte';
 
 // Preferencias: son de Ajustes y todos las leen por su puerta (plan, punto 1).
+export type Paleta = 'calma' | 'bosque' | 'oceano' | 'atardecer';
+export const PALETAS: { id: Paleta; n: string; m: string[] }[] = [
+  { id: 'calma', n: 'Calma', m: ['#1b1622', '#c9b3f5', '#f2b8c6'] },
+  { id: 'bosque', n: 'Bosque', m: ['#141b18', '#9fdcbf', '#f2b8c6'] },
+  { id: 'oceano', n: 'Océano', m: ['#121822', '#a9c8f0', '#f2b8c6'] },
+  { id: 'atardecer', n: 'Atardecer', m: ['#1e1517', '#f5b9a6', '#a8dcc5'] }
+];
+/** Pone la paleta en toda la app y en la barra del teléfono. */
+export function aplicarPaleta(p: Paleta) {
+  const raiz = document.documentElement;
+  if (p === 'calma') delete raiz.dataset.paleta; else raiz.dataset.paleta = p;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', PALETAS.find((x) => x.id === p)?.m[0] ?? '#1b1622');
+}
+
 export interface Prefs {
   /** Ocultar números: true = ocultos. */
   ocultarComida: boolean;
@@ -15,6 +29,8 @@ export interface Prefs {
   primerRegistro: number | null;
   respaldoOcultoHasta: number | null;
   bienvenida: boolean;
+  /** Colores de la app (Ajustes > Colores). */
+  paleta: Paleta;
 }
 
 export const PREFS_INICIALES: Prefs = {
@@ -26,7 +42,8 @@ export const PREFS_INICIALES: Prefs = {
   ultimoRespaldo: null,
   primerRegistro: null,
   respaldoOcultoHasta: null,
-  bienvenida: false
+  bienvenida: false,
+  paleta: 'calma'
 };
 
 export const prefs = $state<Prefs>(structuredClone(PREFS_INICIALES));
@@ -36,6 +53,7 @@ export async function cargarPrefs() {
   const p = structuredClone(PREFS_INICIALES) as unknown as Record<string, unknown>;
   for (const f of filas) if (f.k in p) p[f.k] = f.v;
   Object.assign(prefs, p);
+  aplicarPaleta(prefs.paleta);
 }
 
 export async function guardar<K extends keyof Prefs>(k: K, v: Prefs[K]) {
