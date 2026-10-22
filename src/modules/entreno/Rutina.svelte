@@ -257,6 +257,14 @@
         {#if c.cardioHoy === 'hecho'}<button class="ghost" onclick={() => elegirRutina(c!.letra)}>También hacer Rutina {c.letra}</button>{/if}
       </div>
     {:else}
+    <div class="r-acts">
+      {#if estado === 'nueva' && c.mejor}
+        <p class="feel"><Icono nombre="carita" /><span>Las últimas 3 veces terminaste sintiéndote mejor.</span></p>
+      {/if}
+      <button class="start" bind:this={botonInicio} onclick={empezar}>{textoInicio}</button>
+      {#if estado === 'abierta'}<button class="ghost" onclick={terminarAsi}>Terminar así</button>{/if}
+    </div>
+
     <VistaPrevia programa={c.p} letra={c.letra} />
     {#if iaLista('entreno')}<button class="link-btn" onclick={tipsDeRutina}>Tips de la Rutina {c.letra} con IA</button>{/if}
 
@@ -266,13 +274,6 @@
       <p class="goal">{c.donde.meta}</p>
     </section>
 
-    <div class="r-acts">
-      {#if estado === 'nueva' && c.mejor}
-        <p class="feel"><Icono nombre="carita" /><span>Las últimas 3 veces terminaste sintiéndote mejor.</span></p>
-      {/if}
-      <button class="start" bind:this={botonInicio} onclick={empezar}>{textoInicio}</button>
-      {#if estado === 'abierta'}<button class="ghost" onclick={terminarAsi}>Terminar así</button>{/if}
-    </div>
 
     <section class="plan">
       <h4>Ejercicios</h4>

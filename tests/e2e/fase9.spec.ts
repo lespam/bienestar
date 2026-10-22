@@ -278,3 +278,14 @@ test('IA apagada: no se ven botones «con IA» en Rutina, Ficha, Comida ni Menú
   await sinIA();
   expect(errores).toEqual([]);
 });
+
+test('Rutina: «Empezar Rutina» queda arriba, antes del video', async ({ page }) => {
+  await entrarConContenido(page);
+  await page.getByRole('button', { name: 'Rutina', exact: true }).click();
+  const empezar = page.locator('.r-acts .start');
+  await expect(empezar).toHaveText(/^Empezar Rutina /);
+  await expect(empezar).toBeInViewport();
+  const yBoton = (await empezar.boundingBox())!.y;
+  const yVideo = (await page.getByRole('button', { name: /Vista previa de la sesión/ }).boundingBox())!.y;
+  expect(yBoton).toBeLessThan(yVideo);
+});
