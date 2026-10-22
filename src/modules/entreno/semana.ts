@@ -61,6 +61,8 @@ export function armarSemana(hoy: Date, sesiones: Pick<Sesion, 'fecha' | 'tipo' |
     const d = new Date(lunes.getFullYear(), lunes.getMonth(), lunes.getDate() + i);
     const f = iso(d), dow = d.getDay(), delDia = sesiones.filter((s) => s.fecha === f && s.tipo === 'rutina' && s.rutina);
     const base = { iso: f, inicial: INICIAL[dow], num: d.getDate() };
+    // La sesión de hoy (abierta o hecha) ya usa su letra: los días siguientes empiezan con la que sigue.
+    if (f === hoyIso && delDia[0]?.rutina && seguidas[k] === delDia[0].rutina) k++;
     const hecha = delDia.find((s) => !s.abierta);
     if (hecha) return { ...base, ses: hecha.rutina!, estado: f === hoyIso ? 'hoy' : 'hecha', texto: f === hoyIso ? 'hoy, hecha' : 'hecha' } as DiaSemana;
     const esCardio = cardio[(dow + 6) % 7] && !delDia.length;

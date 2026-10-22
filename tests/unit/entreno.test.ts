@@ -117,6 +117,14 @@ describe('qué toca y la semana', () => {
     expect(t.map((d) => d.ses).slice(3, 6)).toEqual(['cardio', 'B', 'C']);
     expect(lineaCuando({ dias, cardio, hora: '19:00', lugar: '' }, new Date(2026, 9, 2))).toBe('Hoy toca cardio');
   });
+  it('con la sesión de hoy hecha, mañana va la que sigue y no se repite', () => {
+    const hoy = new Date(2026, 9, 22); // jueves
+    // Así lo arma el contexto: con sesión hoy, las seguidas empiezan con la letra de hoy.
+    const s = armarSemana(hoy, [{ fecha: '2026-10-22', tipo: 'rutina', rutina: 'A', abierta: 0 }], ['A', 'B', 'C'], DIAS_INICIALES);
+    expect(s.map((d) => d.ses).slice(3, 6)).toEqual(['A', 'B', 'C']);
+    const abierta = armarSemana(hoy, [{ fecha: '2026-10-22', tipo: 'rutina', rutina: 'A', abierta: 1 }], ['A', 'B', 'C'], DIAS_INICIALES);
+    expect(abierta.map((d) => d.ses).slice(3, 6)).toEqual(['A', 'B', 'C']);
+  });
   it('la línea de cuándo y dónde', () => {
     const c = { dias: DIAS_INICIALES, hora: '19:00', lugar: 'en la sala' };
     expect(lineaCuando(c, new Date(2026, 9, 1))).toBe('Hoy a las 7 pm, en la sala');
