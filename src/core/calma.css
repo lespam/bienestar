@@ -1204,3 +1204,5 @@ a.mus-btn { text-decoration: none; color: var(--fg); }
 .pal-opc button { display: grid; gap: 8px; justify-items: start; min-height: 72px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 16px; background: var(--panel); font-size: 14px; font-weight: 700; text-align: left; }
 .pal-opc button.on { border-color: var(--accent); }
 .pal-opc .pal-m { display: flex; gap: 4px; } .pal-opc .pal-m i { width: 18px; height: 18px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(255,255,255,.12); }
+.fin-dos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fin-dos button { margin: 0; }

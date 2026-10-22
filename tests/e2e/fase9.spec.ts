@@ -289,3 +289,28 @@ test('Rutina: «Empezar Rutina» queda arriba, antes del video', async ({ page }
   const yVideo = (await page.getByRole('button', { name: /Vista previa de la sesión/ }).boundingBox())!.y;
   expect(yBoton).toBeLessThan(yVideo);
 });
+
+test('Fin: una sesión sin series pregunta si la hiciste sin anotar o se descarta', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await page.getByRole('button', { name: 'Rutina', exact: true }).click();
+  await page.getByRole('button', { name: 'Empezar Rutina A' }).first().click();
+  await page.getByRole('button', { name: 'Terminar sesión' }).click();
+  await expect(page.getByRole('heading', { name: 'Rutina A terminada' })).toBeVisible();
+  await expect(page.getByText(/Hiciste 0/)).toHaveCount(0);
+  await revisarPantalla(page);
+  // Descartar: vuelve a Rutina y se puede deshacer
+  await page.getByRole('button', { name: 'Descartar' }).click();
+  await expect(page.getByText('Sesión descartada')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Empezar Rutina A' }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Deshacer' }).click();
+  // Otra vez, ahora «La hice sin anotar»
+  await page.getByRole('button', { name: 'Inicio', exact: true }).click();
+  await page.getByRole('button', { name: 'Rutina', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Ver resumen de hoy' }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Ver resumen de hoy' }).first().click();
+  await page.getByRole('button', { name: 'La hice sin anotar' }).click();
+  await expect(page.getByRole('heading', { name: 'Rutina A guardada' })).toBeVisible();
+  await expect(page.getByText('La hiciste sin anotar series. Cuenta como sesión.')).toBeVisible();
+  expect(errores).toEqual([]);
+});

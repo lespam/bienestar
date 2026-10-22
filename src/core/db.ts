@@ -56,6 +56,8 @@ export interface Sesion {
   /** Cómo te sentiste al terminar, comparado con antes de entrenar (opcional). */
   sintio?: 'mejor' | 'igual' | 'peor';
   nota: string;
+  /** Terminada sin series: dijiste que la hiciste sin anotar, así que cuenta como sesión. */
+  sinAnotar?: 1;
 }
 /** Entreno: una serie, guardada en cuanto la marcas. Los valores siguen lo que pide el libro para ese ejercicio. */
 export interface Serie {

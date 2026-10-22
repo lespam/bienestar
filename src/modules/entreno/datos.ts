@@ -63,6 +63,7 @@ export async function reabrirSesion(id: number) {
 }
 export async function ponerNota(id: number, nota: string) { await db.sesiones.update(id, { nota }); }
 export async function sentirse(id: number, sintio: Sesion['sintio']) { await db.sesiones.update(id, { sintio }); }
+export async function marcarSinAnotar(id: number) { await db.sesiones.update(id, { sinAnotar: 1 }); }
 
 // ---------- Series ----------
 export async function guardarSerie(sesion: number, clave: string, n: number, v: Serie['v'], sust?: string): Promise<number> {
