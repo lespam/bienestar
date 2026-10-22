@@ -12,6 +12,7 @@ export const PALETAS: { id: Paleta; n: string; m: string[] }[] = [
 ];
 /** Pone la paleta en toda la app y en la barra del teléfono. */
 export function aplicarPaleta(p: Paleta) {
+  if (typeof document === 'undefined') return;
   const raiz = document.documentElement;
   if (p === 'calma') delete raiz.dataset.paleta; else raiz.dataset.paleta = p;
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', PALETAS.find((x) => x.id === p)?.m[0] ?? '#1b1622');
