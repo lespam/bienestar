@@ -204,9 +204,9 @@ test('Acomoda la semana: por tiempos de comida, Agregar con tarjetas, mover y vo
   await page.getByRole('button', { name: 'Agregar a comida con tarjetas' }).click();
   await expect(page.getByText(/Comida · desde el lunes/)).toBeVisible();
   await page.getByRole('button', { name: 'Sí', exact: true }).click();
-  await expect(page.getByText(/^Sí 1 ·/)).toBeVisible();
+  await expect(page.getByText(/ · Sí 1$/)).toBeVisible();
   await page.getByRole('button', { name: 'Sí', exact: true }).click();
-  await expect(page.getByText(/^Sí 2 ·/)).toBeVisible();
+  await expect(page.getByText(/ · Sí 2$/)).toBeVisible();
   await page.getByRole('button', { name: 'Poner en comida (2)' }).click();
   await expect(page.getByRole('heading', { name: 'Acomoda la semana', level: 2 })).toBeVisible();
   const comidaLunes = page.locator('.tj-cell[data-l="c"]');
@@ -312,5 +312,28 @@ test('Fin: una sesión sin series pregunta si la hiciste sin anotar o se descart
   await page.getByRole('button', { name: 'La hice sin anotar' }).click();
   await expect(page.getByRole('heading', { name: 'Rutina A guardada' })).toBeVisible();
   await expect(page.getByText('La hiciste sin anotar series. Cuenta como sesión.')).toBeVisible();
+  expect(errores).toEqual([]);
+});
+
+test('Tarjetas: rondas cortas de 10 con «Otra ronda»', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await sembrar(page, 'recetas', Array.from({ length: 14 }, (_, i) => receta('r' + i, 'Platillo ' + i)));
+  await page.reload();
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Recetario' }).click();
+  await page.getByRole('button', { name: /Elegir con tarjetas/ }).click();
+  await expect(page.getByText('0 de 10 · Sí 0')).toBeVisible();
+  for (let i = 0; i < 10; i++) {
+    await page.getByRole('button', { name: i % 2 ? 'No' : 'Sí', exact: true }).click();
+    await expect(page.getByText((i + 1) + ' de 10 · Sí ' + Math.ceil((i + 1) / 2))).toBeVisible();
+  }
+  await expect(page.getByText('Ronda lista. Elegiste 5.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sí', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Acomodar mis elegidas (5)' })).toBeVisible();
+  await revisarPantalla(page);
+  await page.getByRole('button', { name: 'Otra ronda' }).click();
+  await expect(page.getByText(/^0 de \d+ · Sí 0$/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sí', exact: true })).toBeEnabled();
   expect(errores).toEqual([]);
 });

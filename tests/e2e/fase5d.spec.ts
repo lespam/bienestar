@@ -211,13 +211,13 @@ test('Tarjetas: deslizar, botones, deshacer y acomodar en la semana', async ({ p
   await page.getByRole('button', { name: 'Recetario' }).click();
   await page.getByRole('button', { name: /Elegir con tarjetas/ }).click();
   await expect(page.getByRole('heading', { name: 'Elegir con tarjetas', level: 2 })).toBeVisible();
-  await expect(page.getByText('Sí 0 · No 0 · Quedan 2')).toBeVisible();
+  await expect(page.getByText('0 de 2 · Sí 0')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Acomodar mis elegidas', exact: true })).toBeEnabled();
   await revisarPantalla(page);
 
   // Botón Sí en la primera, deslizar a la izquierda la segunda
   await page.getByRole('button', { name: 'Sí', exact: true }).click();
-  await expect(page.getByText('Sí 1 · No 0 · Quedan 1')).toBeVisible();
+  await expect(page.getByText('1 de 2 · Sí 1')).toBeVisible();
   const arriba = page.locator('.tj-card[data-pos="0"]');
   await expect(arriba).toContainText('Tinga de pollo');
   const caja = (await arriba.boundingBox())!;
@@ -225,15 +225,15 @@ test('Tarjetas: deslizar, botones, deshacer y acomodar en la semana', async ({ p
   await page.mouse.down();
   await page.mouse.move(caja.x + caja.width / 2 - 160, caja.y + 120, { steps: 8 });
   await page.mouse.up();
-  await expect(page.getByText('Sí 1 · No 1 · Quedan 0')).toBeVisible();
+  await expect(page.getByText('2 de 2 · Sí 1')).toBeVisible();
   await expect(page.getByText('No quedan tarjetas.')).toBeVisible();
 
   // Deshacer vuelve la última; con el teclado: flecha derecha es sí
   await page.getByRole('button', { name: 'Deshacer' }).click();
-  await expect(page.getByText('Sí 1 · No 0 · Quedan 1')).toBeVisible();
+  await expect(page.getByText('1 de 2 · Sí 1')).toBeVisible();
   await page.locator('.tj-card[tabindex]').focus();
   await page.keyboard.press('ArrowRight');
-  await expect(page.getByText('Sí 2 · No 0 · Quedan 0')).toBeVisible();
+  await expect(page.getByText('2 de 2 · Sí 2')).toBeVisible();
   await revisarPantalla(page);
 
   // Acomodar

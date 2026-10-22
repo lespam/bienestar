@@ -7,7 +7,7 @@
   import { leerPerfiles, listarRecetas, menuDe, ponerEnMenu, ponerVariosEnMenu, reponerMenu, sembrarRecetas, usoDeRecetas } from './datos';
   import { filtros, numerosVisibles, tarjetas } from './estado.svelte';
   import { LETRA_DIA, NOMBRE_LUGAR, etiquetaFecha, fechasDeSemana, indexar, itemDos, llave, nombreDia, numeroDia, platoTxt } from './semana';
-  import { CATS_TARJETA, cuentaTarjetas, elegidasTxt, mazoDe } from './tarjetas';
+  import { CATS_TARJETA, RONDA, cuentaRonda, elegidasTxt, mazoDe } from './tarjetas';
   import FiltrosRecetas from './FiltrosRecetas.svelte';
   import Plato from './Plato.svelte';
 
@@ -33,7 +33,14 @@
 
   const porId = $derived(new Map(recetas.map((r) => [r.id, r])));
   const mazo = $derived(mazoDe(recetas.filter((r) => pasaFiltros(r, { ...filtros, foto: 'todo' }, perfiles, uso)), tarjetas.liked, tarjetas.passed, tarjetas.cat, uso));
-  const visibles = $derived(mazo.slice(0, 3));
+  // La ronda: cuántas decidiste desde que empezó y cuántas tiene (menos si quedan pocas).
+  const inicio = $derived(Math.min(tarjetas.ronda, tarjetas.hist.length));
+  const enRonda = $derived(tarjetas.hist.slice(inicio));
+  const totalRonda = $derived(Math.min(RONDA, enRonda.length + mazo.length));
+  const rondaLista = $derived(listo && enRonda.length >= totalRonda);
+  const siRonda = $derived(enRonda.filter((h) => h.dir === 'yes').length);
+  const visibles = $derived(rondaLista ? [] : mazo.slice(0, 3));
+  function otraRonda() { tarjetas.ronda = tarjetas.hist.length; }
   const indice = $derived(indexar(items));
   const ver = $derived(numerosVisibles());
   const elegidas = $derived(tarjetas.liked.map((id) => porId.get(id)).filter((r): r is Receta => !!r));
@@ -54,7 +61,7 @@
   let decidiendo = false;
   async function decidir(dir: 'yes' | 'no') {
     const r = mazo[0];
-    if (!r || decidiendo) return;
+    if (!r || decidiendo || rondaLista) return;
     decidiendo = true;
     try { await decidirUna(r, dir); } finally { decidiendo = false; }
   }
@@ -171,6 +178,7 @@
   /** «Agregar» en un tiempo de comida: vuelve a las tarjetas de ese tipo. */
   function agregar(l: LugarMenu) {
     tarjetas.destino = { l, f: dia, desde: tarjetas.liked.length };
+    tarjetas.ronda = tarjetas.hist.length;
     tarjetas.cat = l === 'd' ? 'Desayuno' : l === 'c' ? 'Comida' : l === 'n' ? 'Cena' : 'todo';
     tarjetas.sel = null; moviendo = null;
     nav.cerrar();
@@ -285,7 +293,7 @@
   <div class="screen">
     <div class="tl-head">
       <h2 tabindex="-1">Elegir con tarjetas</h2>
-      <p class="seg-help">Derecha: sí. Izquierda: no. También hay botones.</p>
+      <p class="seg-help">Rondas de {RONDA} tarjetas para {semanaK ? 'la próxima semana' : 'esta semana'}. Derecha: sí. Izquierda: no.</p>
     </div>
     {#if tarjetas.destino}
       <div class="rc-pick"><span><small>Eliges para</small><b>{NOMBRE_LUGAR[tarjetas.destino.l]} · desde el {nombreDia(tarjetas.destino.f).toLowerCase()} {numeroDia(tarjetas.destino.f)}</b><em>Lo que digas que sí va a ese tiempo, en los días libres.</em></span><button onclick={() => (tarjetas.destino = null)}>Cancelar</button></div>
@@ -301,6 +309,12 @@
         <div class="tj-empty">
           <b>No quedan tarjetas{tarjetas.cat === 'todo' && filtros.origen === 'todo' && !filtros.sinLes && !filtros.sinJeff && filtros.uso === 'todo' ? '' : ' con estos filtros'}.</b>
           <p>{tarjetas.liked.length ? 'Ya puedes acomodar las que elegiste en la semana.' : 'Puedes cambiar los filtros o volver a ver las que dijiste que no.'}</p>
+        </div>
+      {:else if rondaLista}
+        <div class="tj-empty">
+          <b>Ronda lista. {siRonda ? 'Elegiste ' + siRonda + '.' : 'Esta vez no elegiste ninguna.'}</b>
+          <p>{tarjetas.destino ? 'Puedes ponerlas en el menú o hacer otra ronda.' : 'Puedes acomodar tus elegidas o hacer otra ronda.'}</p>
+          <button class="ghost" onclick={otraRonda}>Otra ronda</button>
         </div>
       {/if}
       {#each [...visibles].reverse() as r (r.id)}
@@ -334,16 +348,16 @@
         </article>
       {/each}
     </div>
-    <p class="tj-count" aria-live="polite">{cuentaTarjetas(tarjetas.liked.length, tarjetas.passed.length, mazo.length)}</p>
+    <p class="tj-count" aria-live="polite">{cuentaRonda(enRonda.length, totalRonda, siRonda)}</p>
     <div class="tj-btns">
-      <button class="tj-b no" disabled={!mazo.length} onclick={() => decidir('no')}>No</button>
+      <button class="tj-b no" disabled={!visibles.length} onclick={() => decidir('no')}>No</button>
       <button class="link-btn" disabled={!tarjetas.hist.length} onclick={deshacerUna}>Deshacer</button>
-      <button class="tj-b yes" disabled={!mazo.length} onclick={() => decidir('yes')}>Sí</button>
+      <button class="tj-b yes" disabled={!visibles.length} onclick={() => decidir('yes')}>Sí</button>
     </div>
     {#if tarjetas.destino}
       <button class="start" onclick={ponerDestino}>{nuevasDestino.length ? 'Poner en ' + NOMBRE_LUGAR[tarjetas.destino.l].toLowerCase() + ' (' + nuevasDestino.length + ')' : 'Volver sin agregar'}</button>
     {:else}
-      <button class="ghost" onclick={() => nav.abrirHoja('tj-acomodar')}>{elegidasTxt(tarjetas.liked.length)}</button>
+      <button class={rondaLista && tarjetas.liked.length ? 'start' : 'ghost'} onclick={() => nav.abrirHoja('tj-acomodar')}>{elegidasTxt(tarjetas.liked.length)}</button>
     {/if}
     <p class="tool-note">El tipo es opcional: unas quesadillas de cena también pueden ser desayuno. Con «Todas» ves todo. Elegir una receta aquí no cambia el menú hasta que la acomodas.</p>
   </div>

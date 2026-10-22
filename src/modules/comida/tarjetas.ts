@@ -24,5 +24,7 @@ export function mazoDe(recetas: Receta[], liked: string[], passed: string[], cat
   }
   return out;
 }
-export const cuentaTarjetas = (liked: number, passed: number, quedan: number) => 'Sí ' + liked + ' · No ' + passed + ' · Quedan ' + quedan;
+/** Una ronda corta: con cientos de recetas no hay dónde parar, así que se eligen de 10 en 10. */
+export const RONDA = 10;
+export const cuentaRonda = (hechas: number, total: number, si: number) => hechas + ' de ' + total + ' · Sí ' + si;
 export const elegidasTxt = (n: number) => 'Acomodar mis elegidas' + (n ? ' (' + n + ')' : '');
