@@ -7,7 +7,7 @@
   import { leerPerfiles, listarRecetas, menuDe, ponerEnMenu, ponerVariosEnMenu, reponerMenu, sembrarRecetas, usoDeRecetas } from './datos';
   import { filtros, numerosVisibles, tarjetas } from './estado.svelte';
   import { COMIDAS_MENU, LETRA_DIA, NOMBRE_LUGAR, cambiosRepetir, etiquetaFecha, fechasDeSemana, indexar, itemDecidir, itemDos, llave, nombreDia, numeroDia, platoTxt, rangoSemana } from './semana';
-  import { CATS_TARJETA, RONDA, cuentaRonda, elegidasTxt, mazoDe } from './tarjetas';
+  import { CATS_TARJETA, RONDA, TIEMPOS, cuentaRonda, elegidasTxt, mazoDe, repartirPorTiempos, tiemposTxt } from './tarjetas';
   import FiltrosRecetas from './FiltrosRecetas.svelte';
   import Plato from './Plato.svelte';
   import Hoja from '../../core/Hoja.svelte';
@@ -34,7 +34,9 @@
   })();
 
   const porId = $derived(new Map(recetas.map((r) => [r.id, r])));
-  const mazo = $derived(mazoDe(recetas.filter((r) => pasaFiltros(r, { ...filtros, foto: 'todo' }, perfiles, uso)), tarjetas.liked, tarjetas.passed, tarjetas.cat, uso));
+  // Por tiempos: solo las recetas de los tiempos elegidos (desayuno y cena, sin bases, por ejemplo).
+  const catsTiempos = $derived(tarjetas.porTiempos ? TIEMPOS.filter((t) => tarjetas.tiempos.includes(t.l)).map((t) => t.cat) : null);
+  const mazo = $derived(mazoDe(recetas.filter((r) => pasaFiltros(r, { ...filtros, foto: 'todo' }, perfiles, uso) && (!catsTiempos || catsTiempos.includes(r.cat))), tarjetas.liked, tarjetas.passed, catsTiempos ? 'todo' : tarjetas.cat, uso));
   // La ronda: cuántas decidiste desde que empezó y cuántas tiene (menos si quedan pocas).
   const inicio = $derived(Math.min(tarjetas.ronda, tarjetas.hist.length));
   const enRonda = $derived(tarjetas.hist.slice(inicio));
@@ -45,7 +47,9 @@
   function otraRonda() { tarjetas.ronda = tarjetas.hist.length; }
   const indice = $derived(indexar(items));
   const ver = $derived(numerosVisibles());
-  const elegidas = $derived(tarjetas.liked.map((id) => porId.get(id)).filter((r): r is Receta => !!r));
+  // En la bandeja solo las elegidas que todavía no están en esta semana.
+  const enSemana = $derived(new Set(items.flatMap((m) => [m.r, m.rl, m.rj]).filter((x): x is string => !!x)));
+  const elegidas = $derived(tarjetas.liked.filter((id) => !enSemana.has(id)).map((id) => porId.get(id)).filter((r): r is Receta => !!r));
   const noElegidas = $derived(tarjetas.passed.map((id) => porId.get(id)).filter((r): r is Receta => !!r));
   const sel = $derived(tarjetas.sel ? porId.get(tarjetas.sel) : undefined);
 
@@ -184,6 +188,7 @@
   }
   /** «Agregar» en un tiempo de comida: vuelve a las tarjetas de ese tipo. */
   function agregar(l: LugarMenu) {
+    tarjetas.porTiempos = null;
     tarjetas.destino = { l, f: dia, desde: tarjetas.liked.length };
     tarjetas.ronda = tarjetas.hist.length;
     tarjetas.cat = l === 'd' ? 'Desayuno' : l === 'c' ? 'Comida' : l === 'n' ? 'Cena' : 'todo';
@@ -207,6 +212,42 @@
     if (filas.length) avisos.deshacer(filas.length + (filas.length === 1 ? ' receta puesta en ' : ' recetas puestas en ') + NOMBRE_LUGAR[d.l].toLowerCase() + (sobran ? '. ' + sobran + ' quedaron en tus elegidas' : ''), async () => { await reponerMenu(dias, antes.filter((m) => dias.includes(m.fecha))); await cargarMenu(); });
     else avisos.mostrar('No hay ' + NOMBRE_LUGAR[d.l].toLowerCase() + ' libre desde ese día. Quedaron en tus elegidas.');
   }
+  // ---------- Planear por tiempos ----------
+  // Eliges qué tiempos planear; las tarjetas muestran solo esos y cada sí va a su tiempo en el siguiente día libre.
+  function alternarTiempo(l: LugarMenu) {
+    tarjetas.tiempos = tarjetas.tiempos.includes(l) ? tarjetas.tiempos.filter((x) => x !== l) : TIEMPOS.map((t) => t.l).filter((x) => x === l || tarjetas.tiempos.includes(x));
+  }
+  function elegirPorTiempos() {
+    if (!tarjetas.tiempos.length) { avisos.mostrar('Elige al menos un tiempo de comida'); return; }
+    tarjetas.destino = null; tarjetas.sel = null; moviendo = null;
+    tarjetas.porTiempos = { desde: tarjetas.liked.length };
+    tarjetas.ronda = tarjetas.hist.length;
+    if (base) nav.abrirHoja('tj-mazo'); else nav.cerrar();
+  }
+  const nuevasTiempos = $derived(tarjetas.porTiempos ? tarjetas.liked.slice(tarjetas.porTiempos.desde).map((id) => porId.get(id)).filter((r): r is Receta => !!r) : []);
+  async function ponerPorTiempos() {
+    const nuevas = nuevasTiempos;
+    tarjetas.porTiempos = null;
+    const libres = dias.filter((f) => f >= hoy);
+    const { puestas, sobran } = repartirPorTiempos(nuevas, libres, (f, l) => !!indice.get(llave(f, l)));
+    const antes = structuredClone($state.snapshot(items)) as ItemMenu[];
+    if (puestas.length) await ponerVariosEnMenu(puestas.map((p) => itemDos(p.f, p.l, p.r)));
+    await cargarMenu();
+    tarjetas.vista = 'semana';
+    irAcomodar();
+    await tick();
+    document.querySelector('.tj-tabla')?.scrollIntoView({ block: 'center' });
+    const extra = sobran.length ? '. ' + sobran.length + (sobran.length === 1 ? ' quedó en tus elegidas' : ' quedaron en tus elegidas') : '';
+    if (puestas.length) avisos.deshacer(puestas.length + (puestas.length === 1 ? ' receta puesta en la semana' : ' recetas puestas en la semana') + extra, async () => { await reponerMenu(libres, antes.filter((m) => libres.includes(m.fecha))); await cargarMenu(); });
+    else if (nuevas.length) avisos.mostrar('No quedaba lugar libre en esos tiempos. Quedaron en tus elegidas.');
+  }
+  /** En la tabla, un lugar libre sin nada elegido abre las tarjetas de ese tiempo para ese día. */
+  function tocaTabla(f: string, l: LugarMenu) {
+    if (!moviendo && !tarjetas.sel && !indice.get(llave(f, l))) { dia = f; agregar(l); return; }
+    tocaCelda(f, l);
+  }
+  const columnas = $derived(TIEMPOS.filter((t) => tarjetas.tiempos.includes(t.l)).length ? TIEMPOS.filter((t) => tarjetas.tiempos.includes(t.l)) : TIEMPOS);
+
   // ---------- Repetir la semana anterior y dejar lo libre por decidir ----------
   let modoRepetir = $state<'libres' | 'todo'>('libres');
   const cambiosRep = $derived(cambiosRepetir(pasada, items, hoy, modoRepetir));
@@ -307,6 +348,7 @@
   const ayudaAcomodar = $derived(
     moviendo ? 'Toca otro lugar o cambia de día para mover «' + platoTxt(indice.get(llave(moviendo.f, moviendo.l))!) + '».'
     : sel ? 'Toca el lugar para «' + sel.n + '».'
+    : tarjetas.vista === 'semana' ? 'Toca un lugar libre para elegir con tarjetas, o una de tus elegidas y luego su lugar. Para mover un plato, tócalo y luego toca otro lugar.'
     : 'Toca «Agregar» en un tiempo de comida para elegir con tarjetas. Arrastra un plato por ⠿ para moverlo de lugar o de día.'
   );
 
@@ -327,14 +369,17 @@
       <h2 tabindex="-1">Elegir con tarjetas</h2>
       <p class="seg-help">Rondas de {RONDA} tarjetas para {semanaK ? 'la próxima semana' : 'esta semana'}. Derecha: sí. Izquierda: no.</p>
     </div>
+    {#if tarjetas.porTiempos}
+      <div class="rc-pick"><span><small>Eliges para</small><b>{tiemposTxt(tarjetas.tiempos).replace(/^./, (c) => c.toUpperCase())} · {semanaK ? 'la próxima semana' : 'esta semana'}</b><em>Cada sí va a su tiempo, en el siguiente día libre.</em></span><button onclick={() => (tarjetas.porTiempos = null)}>Cancelar</button></div>
+    {/if}
     {#if tarjetas.destino}
       <div class="rc-pick"><span><small>Eliges para</small><b>{NOMBRE_LUGAR[tarjetas.destino.l]} · desde el {nombreDia(tarjetas.destino.f).toLowerCase()} {numeroDia(tarjetas.destino.f)}</b><em>Lo que digas que sí va a ese tiempo, en los días libres.</em></span><button onclick={() => (tarjetas.destino = null)}>Cancelar</button></div>
     {/if}
-    <div class="m-chips tj-cats" aria-label="Tipo de receta">
+    {#if !tarjetas.porTiempos}<div class="m-chips tj-cats" aria-label="Tipo de receta">
       {#each [['todo', 'Todas'], ...CATS_TARJETA.map((c) => [c, c === 'Base' ? 'Bases' : c])] as [k, t] (k)}
         <button class:on={tarjetas.cat === k} aria-pressed={tarjetas.cat === k} onclick={() => (tarjetas.cat = k)}>{t}</button>
       {/each}
-    </div>
+    </div>{/if}
     <FiltrosRecetas {recetas} {perfiles} />
     <div class="tj-stack">
       {#if listo && !mazo.length}
@@ -386,7 +431,9 @@
       <button class="link-btn" disabled={!tarjetas.hist.length} onclick={deshacerUna}>Deshacer</button>
       <button class="tj-b yes" disabled={!visibles.length} onclick={() => decidir('yes')}>Sí</button>
     </div>
-    {#if tarjetas.destino}
+    {#if tarjetas.porTiempos}
+      <button class="start" onclick={ponerPorTiempos}>{nuevasTiempos.length ? 'Poner en la semana (' + nuevasTiempos.length + ')' : 'Volver sin agregar'}</button>
+    {:else if tarjetas.destino}
       <button class="start" onclick={ponerDestino}>{nuevasDestino.length ? 'Poner en ' + NOMBRE_LUGAR[tarjetas.destino.l].toLowerCase() + ' (' + nuevasDestino.length + ')' : 'Volver sin agregar'}</button>
     {:else}
       <button class={rondaLista && tarjetas.liked.length ? 'start' : 'ghost'} onclick={irAcomodar}>{elegidasTxt(tarjetas.liked.length)}</button>
@@ -402,8 +449,48 @@
         {#each [[0, 'Esta semana'], [-1, 'Próxima semana']] as const as [k, t] (k)}<button role="radio" aria-checked={semanaK === k} class:on={semanaK === k} onclick={() => cambiarSemana(k)}>{t}</button>{/each}
       </div>
       <button class="ghost tj-rep" onclick={abrirRepetir}>{repetirTxt}</button>
-      <p class="seg-help" aria-live="polite">{ayudaAcomodar}</p>
     </div>
+    <section class="tj-plan" aria-labelledby="tj-plan-t">
+      <b id="tj-plan-t">¿Qué tiempos quieres planear?</b>
+      <div class="m-chips" role="group" aria-labelledby="tj-plan-t">
+        {#each TIEMPOS as t (t.l)}<button class:on={tarjetas.tiempos.includes(t.l)} aria-pressed={tarjetas.tiempos.includes(t.l)} onclick={() => alternarTiempo(t.l)}>{t.n}</button>{/each}
+      </div>
+      <button class="start" disabled={!tarjetas.tiempos.length} onclick={elegirPorTiempos}>Elegir con tarjetas</button>
+      <small>Cada sí va a su tiempo, en el siguiente día libre. Después lo acomodas como quieras.</small>
+    </section>
+    <div class="m-chips" role="radiogroup" aria-label="Cómo ver">
+      {#each [['semana', 'Toda la semana'], ['dia', 'Un día']] as const as [v, t] (v)}<button role="radio" aria-checked={tarjetas.vista === v} class:on={tarjetas.vista === v} onclick={() => { tarjetas.vista = v; moviendo = null; }}>{t}</button>{/each}
+    </div>
+    <p class="seg-help" aria-live="polite">{ayudaAcomodar}</p>
+    <!-- Fija arriba de la tabla al bajar: no hay que ir a buscar tus elegidas (y el aviso de Deshacer no la tapa). -->
+    {#if elegidas.length}<div class="tj-bandeja">
+      <h4 class="pat-sub">Tus elegidas</h4>
+      <div class="tj-pool" role="group" aria-label="Tus tarjetas elegidas">
+        {#each elegidas as r (r.id)}
+          {@const on = tarjetas.sel === r.id}
+          <button class="tj-chip" class:on data-id={r.id} aria-pressed={on} style:--c={CAT_COLOR[r.cat]}><i></i>{r.n}</button>
+        {/each}
+      </div>
+    </div>{/if}
+    {#if tarjetas.vista === 'semana'}
+      <div class="tj-tabla-w">
+        <table class="tj-tabla" style:--cols={columnas.length}>
+          <thead><tr><th scope="col"><span class="sr-only">Día</span></th>{#each columnas as t (t.l)}<th scope="col">{t.n}</th>{/each}</tr></thead>
+          <tbody>
+            {#each dias as f, i (f)}
+              <tr class:hoy={f === hoy}>
+                <th scope="row" class:past={f < hoy}>{LETRA_DIA[i]}<b>{numeroDia(f)}</b></th>
+                {#each columnas as t (t.l)}
+                  {@const m = indice.get(llave(f, t.l))}
+                  {@const mov = !!moviendo && moviendo.f === f && moviendo.l === t.l}
+                  <td style:--c={colorDe(m)}><button class="tj-cell tj-tc" class:f={!!m} class:on={mov} data-f={f} data-l={t.l} disabled={f < hoy} aria-pressed={m ? mov : undefined} aria-label={nombreDia(f) + ' ' + numeroDia(f) + ', ' + t.n.toLowerCase() + ': ' + (m ? platoTxt(m) : 'libre')} onclick={() => tocaTabla(f, t.l)}><span>{m ? platoTxt(m) : f < hoy ? '' : 'Libre'}</span></button></td>
+                {/each}
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    {:else}
     <div class="tj-dias" role="radiogroup" aria-label="Día">
       {#each dias as f, i (f)}
         {@const n = items.filter((m) => m.fecha === f).length}
@@ -426,16 +513,8 @@
       {/each}
     </div>
     {#if delDia.length && !pasado}<button class="link-btn" onclick={reiniciarDia}>Volver a planear el {nombreDia(dia).toLowerCase()}</button>{/if}
+    {/if}
     <button class="link-btn" onclick={libresPorDecidir}>Dejar lo libre por decidir</button>
-    <h4 class="pat-sub">Tus elegidas</h4>
-    <div class="tj-pool" role="group" aria-label="Tus tarjetas elegidas">
-      {#each elegidas as r (r.id)}
-        {@const on = tarjetas.sel === r.id}
-        <button class="tj-chip" class:on data-id={r.id} aria-pressed={on} style:--c={CAT_COLOR[r.cat]}><i></i>{r.n}</button>
-      {:else}
-        <p class="seg-help">Aún no elegiste ninguna. Toca «Agregar» en un tiempo de comida.</p>
-      {/each}
-    </div>
     {#if noElegidas.length}
       <h4 class="pat-sub">Las que dijiste que no</h4>
       <div class="group">

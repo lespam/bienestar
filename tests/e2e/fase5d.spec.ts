@@ -239,6 +239,7 @@ test('Tarjetas: deslizar, botones, deshacer y acomodar en la semana', async ({ p
   // Acomodar
   await page.getByRole('button', { name: 'Acomodar mis elegidas (2)' }).click();
   await expect(page.getByRole('heading', { name: 'Acomoda la semana', level: 2 })).toBeVisible();
+  await page.getByRole('radio', { name: 'Un día' }).click();
   const hoy = await page.evaluate(() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); });
   const cena = page.locator(`.tj-cell[data-f="${hoy}"][data-l="n"]`);
   const comida = page.locator(`.tj-cell[data-f="${hoy}"][data-l="c"]`);
@@ -254,7 +255,9 @@ test('Tarjetas: deslizar, botones, deshacer y acomodar en la semana', async ({ p
 
   // Arrastrar la otra tarjeta a la comida de hoy
   const chip = page.getByRole('button', { name: /Tinga de pollo/ });
-  await page.locator('.tj-pool').evaluate((e) => e.scrollIntoView({ block: 'end' }));
+  // La bandeja de elegidas queda fija arriba al bajar: basta con ver el lugar de destino
+  await comida.evaluate((e) => e.scrollIntoView({ block: 'center' }));
+  await chip.evaluate((e) => e.scrollIntoView({ inline: 'nearest', block: 'nearest' }));
   const c1 = (await chip.boundingBox())!, c2 = (await comida.boundingBox())!;
   await page.mouse.move(c1.x + c1.width / 2, c1.y + c1.height / 2);
   await page.mouse.down();

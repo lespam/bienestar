@@ -46,7 +46,8 @@ test('Menú: «Planear» lleva a Acomoda la semana, también la próxima; Agrega
   await expect(page.getByRole('heading', { name: 'Acomoda la semana', level: 2 })).toBeVisible();
   await expect(page.getByRole('radio', { name: 'Próxima semana' })).toHaveAttribute('aria-checked', 'true');
   await revisarPantalla(page);
-  await page.getByRole('button', { name: 'Agregar a cena con tarjetas' }).click();
+  // En la tabla, un lugar libre abre las tarjetas de ese tiempo
+  await page.locator('.tj-tabla tbody tr').first().getByRole('button', { name: /cena: libre/ }).click();
   await expect(page.getByRole('heading', { name: 'Elegir con tarjetas', level: 2 })).toBeVisible();
   await page.getByRole('button', { name: 'Sí', exact: true }).click();
   await page.getByRole('button', { name: /^Poner en cena/ }).click();
@@ -185,6 +186,7 @@ test('Tarjetas: un solo filtro de uso, sin foto, con Bases y para la próxima se
   await page.getByRole('button', { name: 'Sí', exact: true }).click();
   await page.getByRole('button', { name: 'Acomodar mis elegidas (1)' }).click();
   await page.getByRole('radio', { name: 'Próxima semana' }).click();
+  await page.getByRole('radio', { name: 'Un día' }).click();
   const lunes = new Date(); lunes.setDate(lunes.getDate() - ((lunes.getDay() + 6) % 7) + 7);
   await expect(page.locator('.tj-dia').first()).toContainText(String(lunes.getDate()));
   await expect(page.locator('.tj-cell').first()).toBeEnabled();
@@ -203,6 +205,7 @@ test('Acomoda la semana: por tiempos de comida, Agregar con tarjetas, mover y vo
   await page.getByRole('button', { name: 'Acomodar mis elegidas', exact: true }).click();
   // La próxima semana: todos los días se pueden planear
   await page.getByRole('radio', { name: 'Próxima semana' }).click();
+  await page.getByRole('radio', { name: 'Un día' }).click();
   const lunes = page.locator('.tj-dia').first();
   await lunes.click();
   await expect(page.locator('.tj-slot .tj-lug')).toHaveText(['Desayuno', 'Comida', 'Cena']);
@@ -226,7 +229,9 @@ test('Acomoda la semana: por tiempos de comida, Agregar con tarjetas, mover y vo
   await expect(page.locator('.tj-cell[data-l="c"]')).toHaveAttribute('aria-label', /comida: libre$/);
   await expect(page.locator('.tj-cell[data-l="n"]')).not.toHaveAttribute('aria-label', /libre$/);
   // Arrastrar la cena del martes al miércoles (por la asa, sobre el día)
-  await page.locator('.tj-dias').evaluate((e) => e.scrollIntoView({ block: 'start' }));
+  // El aviso de Deshacer tapa la parte de abajo: se espera a que se vaya
+  await expect(page.locator('.undo')).toBeHidden({ timeout: 12_000 });
+  await page.locator('.tj-dia-t').evaluate((e) => e.scrollIntoView({ block: 'center' }));
   const asa = page.locator('.tj-asa[data-ml="n"]');
   const miercoles = page.locator('.tj-dia').nth(2);
   const a1 = (await asa.boundingBox())!, a2 = (await miercoles.boundingBox())!;
@@ -395,5 +400,47 @@ test('Inicio: el enlace de Claude reemplaza a Apple Music, también con enlaces 
   const claude = page.getByRole('link', { name: 'Claude' });
   await expect(claude).toHaveAttribute('href', 'https://claude.ai');
   await expect(page.getByRole('link', { name: 'Apple Music' })).toHaveCount(0);
+  expect(errores).toEqual([]);
+});
+
+test('Acomoda la semana: planear por tiempos (desayuno y cena, sin bases) y ver la semana en tabla', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await sembrar(page, 'recetas', [receta('d1', 'Avena tibia', 'Desayuno'), receta('d2', 'Huevos al gusto', 'Desayuno'), receta('n1', 'Sopa de noche', 'Cena'), receta('b1', 'Salsa roja base', 'Base'), receta('c1', 'Caldo de mediodía', 'Comida')]);
+  await page.reload();
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Menú', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Semana siguiente' }).click();
+  await page.getByRole('button', { name: 'Planear', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Acomoda la semana', level: 2 })).toBeVisible();
+  await page.getByRole('button', { name: 'Comida', exact: true, pressed: true }).click();
+  await expect(page.getByRole('columnheader', { name: 'Comida' })).toHaveCount(0);
+  await expect(page.getByRole('columnheader', { name: 'Desayuno' })).toBeVisible();
+  await revisarPantalla(page);
+  await page.getByRole('button', { name: 'Elegir con tarjetas' }).click();
+  await expect(page.getByText('Desayuno y cena · la próxima semana')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Bases', exact: true })).toHaveCount(0);
+  // Solo salen desayunos y cenas; a todas les digo que sí
+  const si = page.getByRole('button', { name: 'Sí', exact: true });
+  let n = 0;
+  while (await si.isEnabled()) {
+    await expect(page.locator('.tj-card[data-pos="0"] .rc-ty')).toHaveText(/^(Desayuno|Cena)$/);
+    await si.click();
+    n++;
+    await expect(page.getByText(new RegExp(' · Sí ' + n + '$'))).toBeVisible();
+  }
+  expect(n).toBeGreaterThanOrEqual(3);
+  await page.getByRole('button', { name: 'Poner en la semana (' + n + ')' }).click();
+  await expect(page.getByRole('heading', { name: 'Acomoda la semana', level: 2 })).toBeVisible();
+  await expect(page.getByText(/^\d+ recetas? puestas? en la semana/)).toBeVisible();
+  const lunes = page.locator('.tj-tabla tbody tr').first();
+  await expect(lunes.getByRole('button', { name: /desayuno: (?!libre)/ })).toBeVisible();
+  await expect(lunes.getByRole('button', { name: /cena: (?!libre)/ })).toBeVisible();
+  // Lo que ya quedó en la semana sale de la bandeja de elegidas
+  await expect(page.locator('.tj-bandeja')).toHaveCount(0);
+  await revisarPantalla(page);
+  // Un lugar libre abre las tarjetas de ese tiempo para ese día
+  await page.locator('.tj-tabla tbody tr').last().getByRole('button', { name: /desayuno: libre/ }).click();
+  await expect(page.getByText(/^Desayuno · desde el domingo/)).toBeVisible();
   expect(errores).toEqual([]);
 });

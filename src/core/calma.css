@@ -1213,3 +1213,22 @@ a.mus-btn { text-decoration: none; color: var(--fg); }
 textarea { font: inherit; color: var(--fg); }
 .sheet > textarea { width: 100%; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); font-size: 15px; line-height: 1.45; padding: 10px 12px; resize: vertical; }
 .aj-link { width: auto; color: var(--fg); display: flex; align-items: center; justify-content: center; min-height: 44px; margin: 4px 16px 10px; text-decoration: none; }
+/* Acomoda la semana: planear por tiempos, tabla de la semana y bandeja fija de elegidas (backlog 24). */
+.tj-plan { display: grid; gap: 10px; padding: 14px 16px; border-radius: 20px; background: var(--panel); }
+.tj-plan small { color: var(--muted); font-size: 13px; line-height: 1.4; }
+.tj-tabla-w { overflow-x: auto; margin: 0 -4px; }
+.tj-tabla { width: 100%; border-collapse: separate; border-spacing: 4px; table-layout: fixed; }
+.tj-tabla th { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); text-align: left; padding: 0 4px; }
+.tj-tabla thead th:first-child, .tj-tabla tbody th { width: 40px; }
+.tj-tabla tbody th { display: grid; justify-items: center; letter-spacing: 0; text-transform: none; padding: 4px 0; }
+.tj-tabla tbody th b { font-size: 15px; color: var(--fg); } .tj-tabla tbody th.past b { color: var(--muted); font-weight: 500; }
+.tj-tabla tr.hoy th b { color: var(--accent); }
+.tj-tabla td { padding: 0; }
+.tj-tabla .tj-tc { min-height: 56px; display: flex; align-items: center; padding: 4px 8px; font-size: 13px; line-height: 1.25; color: var(--muted); text-align: left; }
+.tj-tabla .tj-tc span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.tj-tabla .tj-tc.f { color: var(--fg); background: color-mix(in srgb, var(--c) 14%, transparent); }
+.tj-tabla .tj-tc.on { outline: 2px solid var(--accent); background: var(--soft); }
+.tj-bandeja { position: sticky; top: -24px; margin: 0 -18px; padding: 10px 18px; background: var(--bg); border-bottom: 1px solid var(--line); display: grid; gap: 6px; z-index: 2; }
+.tj-bandeja .pat-sub { margin: 0; }
+.tj-bandeja .tj-pool { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.tj-bandeja .tj-chip { flex: none; white-space: nowrap; }

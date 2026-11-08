@@ -1,9 +1,33 @@
-import type { Receta } from '../../core/db';
+import type { LugarMenu, Receta } from '../../core/db';
 import { vecesUsada, type UsoReceta } from './calculos';
 
 // Elegir con tarjetas: derecha es sí, izquierda es no. Las que dices que sí se acomodan en la semana.
 // Salen desayunos, comidas, cenas y bases (Les las pidió de vuelta, 2026-10-15); las colaciones se arman aparte.
 export const CATS_TARJETA = ['Desayuno', 'Comida', 'Cena', 'Base'] as const;
+
+/** Planear por tiempos: cada tiempo de comida y el tipo de receta que le toca. Bases no es un tiempo. */
+export const TIEMPOS: { l: LugarMenu; cat: string; n: string }[] = [{ l: 'd', cat: 'Desayuno', n: 'Desayuno' }, { l: 'c', cat: 'Comida', n: 'Comida' }, { l: 'n', cat: 'Cena', n: 'Cena' }];
+export const lugarDeCat = (cat: string): LugarMenu | null => TIEMPOS.find((t) => t.cat === cat)?.l ?? null;
+export const tiemposTxt = (ls: LugarMenu[]) => {
+  const ns = TIEMPOS.filter((t) => ls.includes(t.l)).map((t) => t.n.toLowerCase());
+  return ns.length < 2 ? ns.join('') : ns.slice(0, -1).join(', ') + ' y ' + ns[ns.length - 1];
+};
+/**
+ * Cada receta va a su tiempo (un desayuno al desayuno) en el siguiente día libre, en orden.
+ * Lo que no cabe se queda en tus elegidas.
+ */
+export function repartirPorTiempos(recetas: Receta[], dias: string[], ocupado: (f: string, l: LugarMenu) => boolean): { puestas: { r: Receta; f: string; l: LugarMenu }[]; sobran: Receta[] } {
+  const tomado = new Set<string>();
+  const puestas: { r: Receta; f: string; l: LugarMenu }[] = [], sobran: Receta[] = [];
+  for (const r of recetas) {
+    const l = lugarDeCat(r.cat);
+    const f = l && dias.find((d) => !ocupado(d, l) && !tomado.has(d + l));
+    if (!l || !f) { sobran.push(r); continue; }
+    tomado.add(f + l);
+    puestas.push({ r, f, l });
+  }
+  return { puestas, sobran };
+}
 
 /**
  * Primero lo que ya sabes cocinar (lo más usado arriba) y, cada cuarta tarjeta, una que casi no usas,

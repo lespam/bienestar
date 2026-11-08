@@ -4,7 +4,7 @@ import { cargarContenido } from '../../src/core/contenido';
 import { crearZip, leerZip } from '../../src/core/respaldo';
 import { strToU8, zipSync } from 'fflate';
 import { aplicarCambio, ajustar, barra, partes, diaBreve, etiquetaDia, fechaDe, recientes, sinRepetir, sumas, alcanzaTxt, avisoConflicto, calBaja, calculadoraLibro, cantidadTxt, fmtQ, leerIngrediente, leerReceta, lineaIng, notaConflictos, pasaFiltros, usoTxt, porTxt, porcionDe, recetaDeEstimados } from '../../src/modules/comida/calculos';
-import { mazoDe } from '../../src/modules/comida/tarjetas';
+import { mazoDe, repartirPorTiempos, tiemposTxt } from '../../src/modules/comida/tarjetas';
 import { itemDeMenu, menuDe, ponerEnMenu, ponerVariosEnMenu, quitarDelMenu, reponerMenu, agregarAlimentos, alimentosDe, quitarAlimento, reponerDia, ultimosRegistrados, guardarPerfil, guardarReceta, leerPerfiles, listarRecetas, perfilInicial, quitarReceta, sembrarRecetas } from '../../src/modules/comida/datos';
 import { cargarPrefs } from '../../src/modules/ajustes';
 import type { ItemMenu, Receta } from '../../src/core/db';
@@ -334,5 +334,18 @@ describe('guardar como receta lo estimado con IA', () => {
     expect(r.ing.map((x) => x[2])).toEqual(['Quesadilla · 2 piezas', 'Yogur · 1 taza']);
     expect(recetaDeEstimados([], 'x'.repeat(80), 3).n).toHaveLength(58);
     expect(recetaDeEstimados([], 'cena', 3).cat).toBe('Cena');
+  });
+});
+
+describe('planear por tiempos', () => {
+  const r = (id: string, cat: Receta['cat']) => ({ id, n: id, cat } as Receta);
+  it('cada receta va a su tiempo en el siguiente día libre; lo que no cabe sobra', () => {
+    const dias = ['2026-11-09', '2026-11-10'];
+    const ocupado = (f: string, l: string) => f === '2026-11-09' && l === 'n';
+    const { puestas, sobran } = repartirPorTiempos([r('d1', 'Desayuno'), r('n1', 'Cena'), r('d2', 'Desayuno'), r('d3', 'Desayuno'), r('b1', 'Base')], dias, ocupado);
+    expect(puestas.map((p) => [p.r.id, p.f, p.l])).toEqual([['d1', '2026-11-09', 'd'], ['n1', '2026-11-10', 'n'], ['d2', '2026-11-10', 'd']]);
+    expect(sobran.map((x) => x.id)).toEqual(['d3', 'b1']);
+    expect(tiemposTxt(['n', 'd'])).toBe('desayuno y cena');
+    expect(tiemposTxt(['d', 'c', 'n'])).toBe('desayuno, comida y cena');
   });
 });
