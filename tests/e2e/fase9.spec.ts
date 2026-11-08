@@ -386,3 +386,14 @@ test('Ceros y detalles: sin «Llevas 0» al empezar y los cuadros de texto con l
   expect(fuentes[0]).toBe(fuentes[1]);
   expect(errores).toEqual([]);
 });
+
+test('Inicio: el enlace de Claude reemplaza a Apple Music, también con enlaces ya guardados', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await sembrar(page, 'ajustes', [{ k: 'enlaces', v: { yt: 'https://www.youtube.com', am: 'https://music.apple.com/mi-lista', ob: '' } }]);
+  await page.reload();
+  const claude = page.getByRole('link', { name: 'Claude' });
+  await expect(claude).toHaveAttribute('href', 'https://claude.ai');
+  await expect(page.getByRole('link', { name: 'Apple Music' })).toHaveCount(0);
+  expect(errores).toEqual([]);
+});

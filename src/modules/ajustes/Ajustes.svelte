@@ -75,10 +75,10 @@
   }
 
   // Editar enlace
-  const NOMBRES = { yt: 'YouTube', am: 'Apple Music', ob: 'Obsidian' } as const;
-  let enlace = $state<'yt' | 'am' | 'ob'>('ob');
+  const NOMBRES = { yt: 'YouTube', cl: 'Claude', ob: 'Obsidian', am: 'Música de entrenar' } as const;
+  let enlace = $state<'yt' | 'am' | 'ob' | 'cl'>('ob');
   let texto = $state('');
-  function editar(k: 'yt' | 'am' | 'ob') { enlace = k; texto = prefs.enlaces[k]; nav.abrirHoja('enlace'); }
+  function editar(k: 'yt' | 'am' | 'ob' | 'cl') { enlace = k; texto = prefs.enlaces[k]; nav.abrirHoja('enlace'); }
   async function guardarEnlace() {
     const v = texto.trim();
     if (!v) { avisos.mostrar('Escribe el enlace'); return; }
@@ -147,9 +147,9 @@
     </div>
   </section>
 
-  <section class="tp-sec"><h4>Enlaces de Inicio</h4>
+  <section class="tp-sec"><h4>Enlaces</h4>
     <div class="group aj-g">
-      {#each [['yt', prefs.enlaces.yt], ['am', prefs.enlaces.am], ['ob', prefs.enlaces.ob ? 'Bóveda: ' + prefs.enlaces.ob : 'Sin bóveda elegida']] as [k, sub] (k)}
+      {#each [['yt', prefs.enlaces.yt], ['cl', prefs.enlaces.cl], ['ob', prefs.enlaces.ob ? 'Bóveda: ' + prefs.enlaces.ob : 'Sin bóveda elegida'], ['am', prefs.enlaces.am + ' · en la sesión']] as [k, sub] (k)}
         <div class="aj-row"><span><b>{NOMBRES[k as 'yt']}</b><small>{sub}</small></span><button class="pf-ed" onclick={() => editar(k as 'yt')}>Editar</button></div>
       {/each}
     </div>

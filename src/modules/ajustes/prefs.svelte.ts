@@ -23,7 +23,8 @@ export interface Prefs {
   ocultarComida: boolean;
   ocultarEntreno: boolean;
   unidad: 'lb' | 'kg';
-  enlaces: { yt: string; am: string; ob: string };
+  /** yt, cl (Claude) y ob están en Inicio; am es la música de entrenar en la sesión. */
+  enlaces: { yt: string; am: string; ob: string; cl: string };
   recordarRespaldo: boolean;
   ultimoRespaldo: number | null;
   /** Desde cuándo cuenta el recordatorio si nunca hiciste un respaldo. */
@@ -38,7 +39,7 @@ export const PREFS_INICIALES: Prefs = {
   ocultarComida: true,
   ocultarEntreno: false,
   unidad: 'lb',
-  enlaces: { yt: 'https://www.youtube.com', am: 'https://music.apple.com', ob: '' },
+  enlaces: { yt: 'https://www.youtube.com', am: 'https://music.apple.com', ob: '', cl: 'https://claude.ai' },
   recordarRespaldo: true,
   ultimoRespaldo: null,
   primerRegistro: null,
@@ -53,6 +54,8 @@ export async function cargarPrefs() {
   const filas = await db.ajustes.toArray();
   const p = structuredClone(PREFS_INICIALES) as unknown as Record<string, unknown>;
   for (const f of filas) if (f.k in p) p[f.k] = f.v;
+  // Enlaces nuevos (como Claude) llegan con su valor inicial aunque ya hubieras guardado otros.
+  p.enlaces = { ...PREFS_INICIALES.enlaces, ...(p.enlaces as object) };
   Object.assign(prefs, p);
   aplicarPaleta(prefs.paleta);
 }

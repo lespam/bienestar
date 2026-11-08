@@ -186,7 +186,7 @@
     <h4>Enlaces</h4>
     <div class="quick q3">
       <a href={prefs.enlaces.yt} target="_blank" rel="noopener"><Icono nombre="youtube" />YouTube</a>
-      <a href={prefs.enlaces.am} target="_blank" rel="noopener"><Icono nombre="musica" />Apple Music</a>
+      <a href={prefs.enlaces.cl} target="_blank" rel="noopener"><Icono nombre="chat" />Claude</a>
       <a href={enlaceObsidian(prefs.enlaces.ob)}><Icono nombre="obsidian" />Obsidian</a>
     </div>
   </section>
