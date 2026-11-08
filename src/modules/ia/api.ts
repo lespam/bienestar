@@ -13,6 +13,9 @@ export const SISTEMA = 'Eres un apoyo de cocina para una persona que planea sus 
   'Das ideas prácticas, no consejos médicos ni de dieta, y no juzgas lo que come. No menciones bajar de peso, culpa ni castigos. ' +
   'Responde SOLO con un objeto JSON válido, sin texto antes ni después.';
 
+/** Quien quiera saber cuántos tokens usó cada respuesta (Ajustes > consumo). */
+export const ganchos: { uso: ((modelo: string, usage: unknown) => void) | null } = { uso: null };
+
 export interface Imagen { tipo: string; base64: string }
 export interface Pregunta { modelo: string; texto: string; imagen?: Imagen; max?: number }
 
@@ -39,7 +42,8 @@ export async function preguntar(p: Pregunta, clave: string, f: typeof fetch = fe
   if (r.status === 401 || r.status === 403) throw new ErrorIA('clave');
   if (r.status === 429) throw new ErrorIA('limite');
   if (!r.ok) throw new ErrorIA('otro', 'HTTP ' + r.status);
-  const j = (await r.json()) as { content?: { type: string; text?: string }[] };
+  const j = (await r.json()) as { content?: { type: string; text?: string }[]; usage?: unknown };
+  try { ganchos.uso?.(p.modelo, j.usage); } catch { /* contar no debe romper el pedido */ }
   const t = (j.content ?? []).filter((x) => x.type === 'text').map((x) => x.text ?? '').join('');
   if (!t.trim()) throw new ErrorIA('otro', 'vacío');
   return t;

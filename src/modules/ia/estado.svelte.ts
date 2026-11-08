@@ -1,4 +1,7 @@
 import { db } from '../../core/db';
+import { iso } from '../../core/fechas';
+import { ganchos } from './api';
+import { anotar, tokensDe, usoVacio, type UsoIA } from './uso';
 
 // La IA es opcional y empieza apagada. Todo vive en tu teléfono: la clave nunca sale en el respaldo
 // (CLAVES_PRIVADAS) y la pantalla solo guarda si hay una y sus últimos 4 caracteres.
@@ -50,6 +53,16 @@ export async function guardarClave(v: string) {
   await poner('ia.clave', c);
   ia.tieneClave = true; ia.fin = c.slice(-4);
 }
+/** Consumo de la API desde que la app empezó a contarlo. */
+export async function leerUso(): Promise<UsoIA | null> { return leer<UsoIA | null>('ia.uso', null); }
+let cola = Promise.resolve();
+ganchos.uso = (modelo, usage) => {
+  const t = tokensDe(usage);
+  if (!t) return;
+  // En cola: dos respuestas a la vez (ideas del Menú) no se pisan.
+  cola = cola.then(async () => { const hoy = iso(new Date()); await poner('ia.uso', anotar((await leerUso()) ?? usoVacio(hoy), modelo, t, hoy)); }).catch(() => {});
+};
+
 export async function quitarClave() {
   await db.ajustes.delete('ia.clave');
   ia.tieneClave = false; ia.fin = '';

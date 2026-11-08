@@ -1212,3 +1212,4 @@ a.mus-btn { text-decoration: none; color: var(--fg); }
 /* Ningún cuadro de texto usa la letra de máquina de escribir del navegador. */
 textarea { font: inherit; color: var(--fg); }
 .sheet > textarea { width: 100%; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); font-size: 15px; line-height: 1.45; padding: 10px 12px; resize: vertical; }
+.aj-link { width: auto; color: var(--fg); display: flex; align-items: center; justify-content: center; min-height: 44px; margin: 4px 16px 10px; text-decoration: none; }

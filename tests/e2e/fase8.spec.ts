@@ -24,7 +24,7 @@ async function simular(page: Page, texto: string | (() => string), enviados: { h
   await page.route('https://api.anthropic.com/v1/messages', async (route: Route) => {
     const req = route.request();
     enviados.push({ headers: req.headers(), body: req.postData() ?? '' });
-    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ content: [{ type: 'text', text: typeof texto === 'function' ? texto() : texto }] }) });
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ content: [{ type: 'text', text: typeof texto === 'function' ? texto() : texto }], usage: { input_tokens: 20000, output_tokens: 4000 } }) });
   });
   return enviados;
 }
@@ -232,7 +232,9 @@ test('Comida: describir lo que comiste con IA, revisar y agregar', async ({ page
   await page.getByRole('button', { name: 'Guardar como receta' }).click();
   await expect(page.getByText('Guardada en tu Recetario: Dos quesadillas de champiñón y un yogur con fruta')).toBeVisible();
   await page.getByRole('button', { name: 'Recetario' }).click();
-  await page.locator('.rc-fuente select').first().selectOption('Guardado');
+  const fuente = page.getByRole('combobox', { name: 'Fuente' });
+  await expect(fuente.locator('option', { hasText: 'Guardado' })).toBeAttached();
+  await fuente.selectOption('Guardado');
   await expect(page.getByRole('button', { name: /^Dos quesadillas de champiñón/ })).toBeVisible();
   expect(errores).toEqual([]);
 });
@@ -262,6 +264,11 @@ test('Comida: escanear un plato con contexto, revisar y agregar', async ({ page 
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByText('Barra de granola')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Guardar como receta' })).toBeVisible();
+  // Ajustes cuenta lo que gastó la app: 20 000 de entrada y 4 000 de salida en Sonnet = $0.08
+  await page.getByRole('button', { name: 'Inicio', exact: true }).click();
+  await page.getByRole('button', { name: 'Ajustes' }).first().click();
+  await expect(page.getByText(/^Este mes: \$0\.08 aprox\. · 1 pedido$/)).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Abrir la consola de Anthropic' })).toBeVisible();
   expect(errores).toEqual([]);
 });
 
