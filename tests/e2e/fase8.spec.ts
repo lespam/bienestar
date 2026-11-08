@@ -225,8 +225,15 @@ test('Comida: describir lo que comiste con IA, revisar y agregar', async ({ page
   expect(enviados[0].body).not.toContain('Tinga');
   await revisarPantalla(page);
   await page.getByRole('button', { name: /^Agregar todo a/ }).click();
+  // La hoja de agregar se cierra sola y el aviso ofrece guardarlo como receta
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByText('Quesadilla de champiñón')).toBeVisible();
   await expect(page.getByText('Yogur con fruta')).toBeVisible();
+  await page.getByRole('button', { name: 'Guardar como receta' }).click();
+  await expect(page.getByText('Guardada en tu Recetario: Dos quesadillas de champiñón y un yogur con fruta')).toBeVisible();
+  await page.getByRole('button', { name: 'Recetario' }).click();
+  await page.locator('.rc-fuente select').first().selectOption('Guardado');
+  await expect(page.getByRole('button', { name: /^Dos quesadillas de champiñón/ })).toBeVisible();
   expect(errores).toEqual([]);
 });
 
@@ -252,7 +259,9 @@ test('Comida: escanear un plato con contexto, revisar y agregar', async ({ page 
   expect(enviados[0].body).toContain('media porción');
   expect(enviados[0].body).not.toContain('Tinga');
   await page.getByRole('button', { name: /^Agregar a/ }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByText('Barra de granola')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Guardar como receta' })).toBeVisible();
   expect(errores).toEqual([]);
 });
 

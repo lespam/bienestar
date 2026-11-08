@@ -3,7 +3,7 @@ import { BaseBienestar, usarBase, db } from '../../src/core/db';
 import { cargarContenido } from '../../src/core/contenido';
 import { crearZip, leerZip } from '../../src/core/respaldo';
 import { strToU8, zipSync } from 'fflate';
-import { aplicarCambio, ajustar, barra, partes, diaBreve, etiquetaDia, fechaDe, recientes, sinRepetir, sumas, alcanzaTxt, avisoConflicto, calBaja, calculadoraLibro, cantidadTxt, fmtQ, leerIngrediente, leerReceta, lineaIng, notaConflictos, pasaFiltros, usoTxt, porTxt, porcionDe } from '../../src/modules/comida/calculos';
+import { aplicarCambio, ajustar, barra, partes, diaBreve, etiquetaDia, fechaDe, recientes, sinRepetir, sumas, alcanzaTxt, avisoConflicto, calBaja, calculadoraLibro, cantidadTxt, fmtQ, leerIngrediente, leerReceta, lineaIng, notaConflictos, pasaFiltros, usoTxt, porTxt, porcionDe, recetaDeEstimados } from '../../src/modules/comida/calculos';
 import { mazoDe } from '../../src/modules/comida/tarjetas';
 import { itemDeMenu, menuDe, ponerEnMenu, ponerVariosEnMenu, quitarDelMenu, reponerMenu, agregarAlimentos, alimentosDe, quitarAlimento, reponerDia, ultimosRegistrados, guardarPerfil, guardarReceta, leerPerfiles, listarRecetas, perfilInicial, quitarReceta, sembrarRecetas } from '../../src/modules/comida/datos';
 import { cargarPrefs } from '../../src/modules/ajustes';
@@ -324,5 +324,15 @@ describe('uso de cada receta', () => {
     const uso = { e: { e: 5, r: 0 }, f: { e: 3, r: 1 }, g: { e: 2, r: 0 }, d: { e: 2, r: 2 } };
     expect(mazoDe(todas, [], [], 'todo', uso).map((x: { id: string }) => x.id)).toEqual(['e', 'd', 'f', 'a', 'g', 'b', 'c']);
     expect(mazoDe(todas, [], [], 'todo').map((x: { id: string }) => x.id)).toEqual(['a', 'b', 'c', 'd', 'e', 'f', 'g']);
+  });
+});
+
+describe('guardar como receta lo estimado con IA', () => {
+  it('una porción con la suma de lo agregado, de origen Guardado', () => {
+    const r = recetaDeEstimados([{ n: 'Quesadilla', por: '2 piezas', k: 420, p: 18, c: 40, g: 20 }, { n: 'Yogur', por: '1 taza', k: 180.4, p: 10, c: 25, g: 4 }], 'dos quesadillas y un yogur', 0, 'g1');
+    expect(r).toMatchObject({ id: 'g1', n: 'Dos quesadillas y un yogur', cat: 'Desayuno', y: 1, k: 600, p: 28, c: 65, g: 24, origen: 'Guardado' });
+    expect(r.ing.map((x) => x[2])).toEqual(['Quesadilla · 2 piezas', 'Yogur · 1 taza']);
+    expect(recetaDeEstimados([], 'x'.repeat(80), 3).n).toHaveLength(58);
+    expect(recetaDeEstimados([], 'cena', 3).cat).toBe('Cena');
   });
 });

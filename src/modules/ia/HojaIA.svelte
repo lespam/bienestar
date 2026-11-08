@@ -12,6 +12,8 @@
   let intro = $state('');
   let items = $state<ItemIA[]>([]);
   let todos = $state<{ act: string; aplicar: () => void | Promise<void> } | undefined>();
+  let alTerminar: ((usados: ItemIA[]) => void) | undefined;
+  const usados: ItemIA[] = [];
   let falla = $state('');
   let vivo = true;
   $effect(() => () => { vivo = false; });
@@ -43,7 +45,7 @@
       const r = await p.ejecutar(await leerClave());
       if (!vivo) return;
       if (r.cerrar) { nav.cerrar(); return; }
-      intro = r.intro; items = r.items; todos = r.todos; fase = 'listo';
+      intro = r.intro; items = r.items; todos = r.todos; alTerminar = r.alTerminar; fase = 'listo';
     } catch (e) {
       if (!vivo) return;
       const t = e instanceof ErrorIA ? e.tipo : 'otro';
@@ -52,16 +54,19 @@
   }
   async function aplicar(i: ItemIA) {
     await i.aplicar?.();
+    usados.push(i);
     quitar(i);
   }
   async function aplicarTodos() {
     await todos?.aplicar();
-    nav.cerrar();
+    usados.push(...items);
+    terminar();
   }
   function quitar(i: ItemIA) {
     items = items.filter((x) => x !== i);
-    if (!items.length) nav.cerrar();
+    if (!items.length) terminar();
   }
+  function terminar() { nav.cerrar(); alTerminar?.(usados); }
   function manual() { nav.cerrar(); p.manual?.hacer(); }
   function ajustes() { nav.cerrar(); nav.abrir('ajustes'); }
 </script>

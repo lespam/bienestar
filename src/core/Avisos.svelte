@@ -6,5 +6,5 @@
 <div class="undo" role="status" hidden={!avisos.deshacerFn}
   onfocusin={() => avisos.pausar()} onpointerdown={() => avisos.pausar()} onpointerenter={() => avisos.pausar()}
   onfocusout={() => avisos.armar()} onpointerleave={() => avisos.armar()}>
-  <span>{avisos.deshacerTexto}</span><button onclick={() => avisos.usar()}>Deshacer</button>
+  <span>{avisos.deshacerTexto}</span><button onclick={() => avisos.usar()}>{avisos.deshacerAccion}</button>
 </div>

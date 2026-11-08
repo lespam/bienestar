@@ -6,6 +6,8 @@ class Avisos {
   texto = $state('');
   visible = $state(false);
   deshacerTexto = $state('');
+  /** El botón del aviso: «Deshacer», o otra acción como «Guardar como receta». */
+  deshacerAccion = $state('Deshacer');
   deshacerFn = $state<null | (() => void)>(null);
   private t1: ReturnType<typeof setTimeout> | undefined;
   private t2: ReturnType<typeof setTimeout> | undefined;
@@ -15,9 +17,9 @@ class Avisos {
     clearTimeout(this.t1);
     this.t1 = setTimeout(() => { this.visible = false; }, AVISO_MS);
   }
-  deshacer(t: string, fn: () => void) {
+  deshacer(t: string, fn: () => void, accion = 'Deshacer') {
     this.visible = false;
-    this.deshacerTexto = t; this.deshacerFn = fn;
+    this.deshacerTexto = t; this.deshacerFn = fn; this.deshacerAccion = accion;
     this.armar();
   }
   armar() { clearTimeout(this.t2); this.t2 = setTimeout(() => this.quitar(), DESHACER_MS); }

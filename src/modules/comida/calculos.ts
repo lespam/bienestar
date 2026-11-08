@@ -228,6 +228,18 @@ export const diaCorto = (f: string) => +f.slice(8, 10) + ' ' + MES_CORTO[+f.slic
 
 // ---------- Registro del día ----------
 export const COMIDAS = ['Desayuno', 'Comida', 'Colaciones', 'Cena'] as const;
+
+/** Lo que describiste o escaneaste con IA, como receta de 1 porción. Sus números son estimados. */
+export function recetaDeEstimados(lista: { n: string; por: string; k: number; p: number; c: number; g: number }[], nombre: string, comida: 0 | 1 | 2 | 3, id = 'g' + Date.now()): Receta {
+  const suma = (k: 'k' | 'p' | 'c' | 'g') => Math.round(lista.reduce((t, a) => t + (a[k] || 0), 0) * 10) / 10;
+  const limpio = nombre.trim().replace(/\s+/g, ' ');
+  const n = limpio.length > 60 ? limpio.slice(0, 57).trimEnd() + '…' : limpio;
+  return {
+    id, n: n.charAt(0).toUpperCase() + n.slice(1), cat: (['Desayuno', 'Comida', 'Colación', 'Cena'] as const)[comida], y: 1, t: '',
+    src: 'Estimada con IA · revísala', u1: '1 porción', k: Math.round(suma('k')), p: suma('p'), c: suma('c'), g: suma('g'),
+    ing: lista.map((a) => [null, '', a.n + (a.por ? ' · ' + a.por : '')] as Ingrediente), steps: [], est: ['k', 'p', 'c', 'g'], origen: 'Guardado'
+  };
+}
 export const DIAS_ATRAS = 30;
 const DIA_LARGO = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 

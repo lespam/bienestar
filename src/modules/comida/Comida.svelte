@@ -7,8 +7,8 @@
   import { aBase64, AnfitrionIA, estimarComida, estimarDeFoto, iaLista, pedirIA } from '../ia';
   import { reducirFoto } from '../../core/imagen';
   import type { AlimentoEstimado } from '../ia';
-  import { COMIDAS, DIAS_ATRAS, registradoTxt, barra, partes, diaBreve, etiquetaDia, fechaDe, fmtN, fraseDia, kRango, macroLinea, porTxt, porcionDe, r1, recientes, sinRepetir, sumas, type Plato } from './calculos';
-  import { agregarAlimentos, alimentosDe, guardarAlimento, leerPerfiles, flexibleDe, leerPrep, listarRecetas, menuDe, quitarAlimento, reponerDia, sembrarRecetas, ultimosRegistrados } from './datos';
+  import { COMIDAS, DIAS_ATRAS, recetaDeEstimados, registradoTxt, barra, partes, diaBreve, etiquetaDia, fechaDe, fmtN, fraseDia, kRango, macroLinea, porTxt, porcionDe, r1, recientes, sinRepetir, sumas, type Plato } from './calculos';
+  import { agregarAlimentos, alimentosDe, guardarAlimento, guardarReceta, leerPerfiles, flexibleDe, leerPrep, listarRecetas, menuDe, quitarAlimento, reponerDia, sembrarRecetas, ultimosRegistrados } from './datos';
   import { filaDeTanda } from './preparacion';
   import { NOMBRE_LUGAR, fechasDeSemana, indexar, llave, nombreDia } from './semana';
   import { eleccion, reiniciarVista, vista } from './estado.svelte';
@@ -140,7 +140,8 @@
     avisos.mostrar('Agregado a ' + COMIDAS[c]);
   }
   /** Estimaciones de la IA (texto o foto): se revisa cada alimento antes de agregarlo. */
-  function revisarEstimados(fn: 'comida' | 'escaner', titulo: string, envia: string, obtener: (clave: string) => Promise<AlimentoEstimado[]>) {
+  // Al terminar, la hoja de agregar se cierra y el aviso ofrece guardar lo agregado como receta («Guardado»).
+  function revisarEstimados(fn: 'comida' | 'escaner', titulo: string, envia: string, obtener: (clave: string) => Promise<AlimentoEstimado[]>, nombre?: string) {
     const c = cual, f = fecha;
     const fila = (a: AlimentoEstimado) => ({ fecha: f, comida: c, n: a.n, por: a.por + ' · estimado con IA', k: a.k, p: a.p, c: a.c, g: a.g });
     const poner1 = async (a: AlimentoEstimado) => { await agregarAlimentos([fila(a)]); await cargar(); };
@@ -152,7 +153,14 @@
         return {
           intro: 'Esto entendí. Son estimaciones: cámbialas después si quieres.',
           todos: { act: 'Agregar todo a ' + COMIDAS[c].toLowerCase(), aplicar: async () => { await agregarAlimentos(lista.map(fila)); await cargar(); avisos.mostrar('Agregado a ' + COMIDAS[c]); } },
-          items: lista.map((a) => ({ t: a.n, sub: a.por + (ver ? ' · ' + a.k + ' kcal aprox. · P ' + a.p + ' · C ' + a.c + ' · G ' + a.g : ''), act: 'Agregar a ' + COMIDAS[c].toLowerCase(), aplicar: async () => { await poner1(a); avisos.mostrar('Agregado a ' + COMIDAS[c]); } }))
+          items: lista.map((a) => ({ t: a.n, sub: a.por + (ver ? ' · ' + a.k + ' kcal aprox. · P ' + a.p + ' · C ' + a.c + ' · G ' + a.g : ''), act: 'Agregar a ' + COMIDAS[c].toLowerCase(), aplicar: async () => { await poner1(a); avisos.mostrar('Agregado a ' + COMIDAS[c]); } })),
+          alTerminar: (usados) => {
+            const agregados = lista.filter((_, i) => usados.some((u) => u.t === lista[i].n));
+            if (!agregados.length) return;
+            if (nav.hojaAbierta('fd-add')) nav.cerrar();
+            const receta = recetaDeEstimados(agregados, nombre ?? agregados.map((a) => a.n).join(' y '), c);
+            avisos.deshacer('Agregado a ' + COMIDAS[c], async () => { await guardarReceta(receta); avisos.mostrar('Guardada en tu Recetario: ' + receta.n); }, 'Guardar como receta');
+          }
         };
       }
     });
@@ -160,7 +168,7 @@
   function describirConIA() {
     const texto = descripcion.trim();
     if (!texto) { document.getElementById('ia-desc')?.focus(); avisos.mostrar('Cuéntame primero qué comiste'); return; }
-    revisarEstimados('comida', 'Registrar con IA', 'solo el texto que escribiste sobre lo que comiste', (clave) => estimarComida(clave, texto));
+    revisarEstimados('comida', 'Registrar con IA', 'solo el texto que escribiste sobre lo que comiste', (clave) => estimarComida(clave, texto), texto);
   }
 
   // ---------- Escáner (IA opcional): la foto no se guarda ----------
