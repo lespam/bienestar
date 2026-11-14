@@ -22,7 +22,11 @@
   let campoPeso = $state('');
 
   async function leer() {
-    [zonas, filas, peso] = await Promise.all([leerZonas(), todasLasMedidas(), ultimoPeso()]);
+    try {
+      [zonas, filas, peso] = await Promise.all([leerZonas(), todasLasMedidas(), ultimoPeso()]);
+    } catch (e) {
+      console.warn('No se pudieron leer las medidas', e);
+    }
     if (!zonas.visibles.some((z) => mismaZona(z, zona))) { zona = zonas.visibles[0] ?? ''; sel = null; }
     cargado = true;
   }
@@ -44,6 +48,10 @@
     campos = {}; campoPeso = '';
     nav.abrirHoja('medidas');
   }
+  function abrirPeso() {
+    campos = {}; campoPeso = '';
+    nav.abrirHoja('peso');
+  }
   async function guardarMedidas() {
     const valores: Record<string, number> = {};
     for (const z of zonas.visibles) {
@@ -51,9 +59,18 @@
       if (n != null) valores[z] = n;
     }
     const p = leerNumero(campoPeso, 0, 600);
+    // Un peso escrito que no se entiende no se descarta en silencio.
+    if (campoPeso.trim() && p == null) { avisos.mostrar('Revisa el peso: escribe solo el número, por ejemplo 62.5'); return; }
     const n = Object.keys(valores).length;
-    if (!n && p == null) { avisos.mostrar('Escribe al menos una medida'); return; }
-    const u = await guardarDelDia(iso(new Date()), valores, p, prefs.unidad);
+    if (!n && p == null) { avisos.mostrar(nav.hojaAbierta('peso') ? 'Escribe tu peso' : 'Escribe al menos una medida'); return; }
+    let u;
+    try {
+      u = await guardarDelDia(iso(new Date()), valores, p, prefs.unidad);
+    } catch (e) {
+      console.warn('No se pudo guardar', e);
+      avisos.mostrar('No se pudo guardar. Intenta otra vez.');
+      return;
+    }
     nav.cerrar();
     await leer();
     sel = null;
@@ -88,7 +105,10 @@
       <span class="w-lab">Peso{peso ? ' · ' + etiquetaFecha(peso.fecha) : ''}</span>
       <b>{#if !peso}Sin registro{:else if verPeso}<Numero valor={peso.valor} unidad={peso.unidad} oculto={false} />{:else}Oculto{/if}</b>
     </div>
-    <button class="ghost w-btn" aria-pressed={verPeso} onclick={() => (verPeso = !verPeso)}>{verPeso ? 'Ocultar' : 'Mostrar'}</button>
+    <div class="w-acc">
+      <button class="ghost w-btn" onclick={abrirPeso}>Anotar</button>
+      <button class="ghost w-btn" aria-pressed={verPeso} onclick={() => (verPeso = !verPeso)}>{verPeso ? 'Ocultar' : 'Mostrar'}</button>
+    </div>
   </div>
   <p class="tool-note left">El número del peso queda oculto hasta que tú decidas verlo. Tus medidas y tu fuerza también cuentan tu progreso.</p>
 
@@ -136,9 +156,17 @@
       </div>
       <button class="add" onclick={() => nav.abrirHoja('zonas')}>+ Agregar o quitar medidas</button>
     </div>
-    <button class="start" onclick={abrirRegistro}>Registrar medidas de hoy</button>
   {/if}
+  {#if cargado}<button class="start" onclick={abrirRegistro}>Registrar medidas de hoy</button>{/if}
 </div>
+
+{#if nav.hojaAbierta('peso')}
+  <Hoja titulo="Peso de hoy">
+    <div class="man"><label for="ps-peso">Peso ({prefs.unidad})</label><input id="ps-peso" type="text" inputmode="decimal" placeholder="Queda oculto" bind:value={campoPeso} /></div>
+    <p class="tool-note left">Se guarda oculto hasta que tú lo muestres. Si ya anotaste hoy, se cambia por este. La unidad se cambia en Ajustes.</p>
+    <button class="start" onclick={guardarMedidas}>Guardar</button>
+  </Hoja>
+{/if}
 
 {#if nav.hojaAbierta('medidas')}
   <Hoja titulo="Medidas de hoy">

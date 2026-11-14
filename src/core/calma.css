@@ -289,6 +289,8 @@ h4 { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-t
 .w-lab { display: block; font-size: 12px; font-weight: 700; color: var(--muted); }
 .weight b { font-size: 22px; font-variant-numeric: tabular-nums; }
 .w-btn { width: auto; min-height: 44px; padding: 0 18px; font-size: 14px; }
+.w-acc { display: flex; gap: 8px; }
+.w-acc .w-btn { padding: 0 14px; }
 .m-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .m-chips button { border: 1px solid var(--soft); background: var(--panel); border-radius: 99px; padding: 8px 14px; min-height: 40px; font-size: 13px; font-weight: 600; color: var(--muted); }
 .m-chips button.on { background: var(--accent); border-color: var(--accent); color: var(--ink); }
