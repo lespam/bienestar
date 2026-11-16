@@ -436,11 +436,24 @@ test('Acomoda la semana: planear por tiempos (desayuno y cena, sin bases) y ver 
   const lunes = page.locator('.tj-tabla tbody tr').first();
   await expect(lunes.getByRole('button', { name: /desayuno: (?!libre)/ })).toBeVisible();
   await expect(lunes.getByRole('button', { name: /cena: (?!libre)/ })).toBeVisible();
-  // Lo que ya quedó en la semana sale de la bandeja de elegidas
-  await expect(page.locator('.tj-bandeja')).toHaveCount(0);
+  // Las elegidas siguen todas en la bandeja, con cuántas veces están en la semana
+  const avena = page.locator('.tj-bandeja').getByRole('button', { name: /Avena tibia/ });
+  await expect(avena).toContainText('×1');
+  await expect(page.locator('.tj-bandeja').getByRole('button', { name: /Huevos al gusto/ })).toBeVisible();
   await revisarPantalla(page);
+  // Una elegida se repite en varios días sin salir de la bandeja; se suelta tocándola otra vez
+  await avena.click();
+  const filas = page.locator('.tj-tabla tbody tr');
+  await filas.nth(4).getByRole('button', { name: /desayuno: libre/ }).click();
+  await expect(avena).toContainText('×2');
+  await filas.nth(5).getByRole('button', { name: /desayuno: libre/ }).click();
+  await expect(avena).toContainText('×3');
+  await expect(filas.nth(5).getByRole('button', { name: /desayuno: .*Avena tibia/ })).toBeVisible();
+  await avena.click();
+  await expect(avena).toHaveAttribute('aria-pressed', 'false');
   // Un lugar libre abre las tarjetas de ese tiempo para ese día
   await page.locator('.tj-tabla tbody tr').last().getByRole('button', { name: /desayuno: libre/ }).click();
   await expect(page.getByText(/^Desayuno · desde el domingo/)).toBeVisible();
   expect(errores).toEqual([]);
 });
+

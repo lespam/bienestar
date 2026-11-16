@@ -247,10 +247,16 @@ test('Tarjetas: deslizar, botones, deshacer y acomodar en la semana', async ({ p
   await cena.click();
   await expect(page.getByText('Toca «Agregar» o primero una de tus elegidas')).toBeVisible();
   await page.getByRole('button', { name: /Tacos de champiñón/ }).click();
-  await expect(page.getByText('Toca el lugar para «Tacos de champiñón».')).toBeVisible();
+  await expect(page.getByText(/^Toca uno o varios lugares para «Tacos de champiñón»/)).toBeVisible();
   await cena.click();
   await expect(page.getByText(/^Tacos de champiñón: .+, cena$/)).toBeVisible();
   await expect(cena).toHaveAttribute('aria-label', /cena: .*Tacos de champiñón/);
+  // Sigue en tus elegidas (con cuántas veces está) y sigue elegida para repetirla; se suelta tocándola.
+  const tacos = page.locator('.tj-bandeja').getByRole('button', { name: /Tacos de champiñón/ });
+  await expect(tacos).toContainText('×1');
+  await expect(tacos).toHaveAttribute('aria-pressed', 'true');
+  await tacos.click();
+  await expect(tacos).toHaveAttribute('aria-pressed', 'false');
   await revisarPantalla(page);
 
   // Arrastrar la otra tarjeta a la comida de hoy

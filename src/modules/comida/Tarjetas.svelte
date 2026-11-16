@@ -47,9 +47,9 @@
   function otraRonda() { tarjetas.ronda = tarjetas.hist.length; }
   const indice = $derived(indexar(items));
   const ver = $derived(numerosVisibles());
-  // En la bandeja solo las elegidas que todavía no están en esta semana.
-  const enSemana = $derived(new Set(items.flatMap((m) => [m.r, m.rl, m.rj]).filter((x): x is string => !!x)));
-  const elegidas = $derived(tarjetas.liked.filter((id) => !enSemana.has(id)).map((id) => porId.get(id)).filter((r): r is Receta => !!r));
+  // La bandeja muestra siempre todas tus elegidas; una puede ir en varios lugares. Se ve cuántas veces está en la semana.
+  const enSemana = $derived(items.filter((m) => dias.includes(m.fecha)).flatMap((m) => [...new Set([m.r, m.rl, m.rj])]).filter((x): x is string => !!x).reduce((c, id) => c.set(id, (c.get(id) ?? 0) + 1), new Map<string, number>()));
+  const elegidas = $derived(tarjetas.liked.map((id) => porId.get(id)).filter((r): r is Receta => !!r));
   const noElegidas = $derived(tarjetas.passed.map((id) => porId.get(id)).filter((r): r is Receta => !!r));
   const sel = $derived(tarjetas.sel ? porId.get(tarjetas.sel) : undefined);
 
@@ -152,7 +152,7 @@
     const antes = structuredClone($state.snapshot(items.filter((m) => m.fecha === f))) as ItemMenu[];
     await ponerEnMenu(itemDos(f, l, r));
     await cargarMenu();
-    tarjetas.sel = null;
+    // Sigue elegida: puedes tocar más lugares para repetirla. Tócala otra vez para soltarla.
     avisos.deshacer(r.n + ': ' + nombreDia(f).toLowerCase() + ', ' + NOMBRE_LUGAR[l].toLowerCase(), async () => { await reponerMenu([f], antes); await cargarMenu(); });
   }
   /** Mueve un plato puesto; si el lugar de destino tiene algo, se intercambian. */
@@ -347,7 +347,7 @@
   function tocaDia(f: string) { dia = f; }
   const ayudaAcomodar = $derived(
     moviendo ? 'Toca otro lugar o cambia de día para mover «' + platoTxt(indice.get(llave(moviendo.f, moviendo.l))!) + '».'
-    : sel ? 'Toca el lugar para «' + sel.n + '».'
+    : sel ? 'Toca uno o varios lugares para «' + sel.n + '». Tócala otra vez para soltarla.'
     : tarjetas.vista === 'semana' ? 'Toca un lugar libre para elegir con tarjetas, o una de tus elegidas y luego su lugar. Para mover un plato, tócalo y luego toca otro lugar.'
     : 'Toca «Agregar» en un tiempo de comida para elegir con tarjetas. Arrastra un plato por ⠿ para moverlo de lugar o de día.'
   );
@@ -468,7 +468,7 @@
       <div class="tj-pool" role="group" aria-label="Tus tarjetas elegidas">
         {#each elegidas as r (r.id)}
           {@const on = tarjetas.sel === r.id}
-          <button class="tj-chip" class:on data-id={r.id} aria-pressed={on} style:--c={CAT_COLOR[r.cat]}><i></i>{r.n}</button>
+          <button class="tj-chip" class:on data-id={r.id} aria-pressed={on} style:--c={CAT_COLOR[r.cat]}><i></i>{r.n}{#if enSemana.get(r.id)}<small class="tj-veces">×{enSemana.get(r.id)}<span class="sr-only"> en la semana</span></small>{/if}</button>
         {/each}
       </div>
     </div>{/if}
