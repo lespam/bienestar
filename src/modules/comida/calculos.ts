@@ -216,6 +216,18 @@ export function alcanzaTxt(n: number, porLes: number, porJeff: number): string {
   return 'Alcanza para ' + m + (m > 1 ? ' comidas' : ' comida') + ' de los dos' + (resto >= 0.25 ? ' y ' + (resto > 1 ? 'sobran ' : 'sobra ') + porTxt(resto) : '') + '.';
 }
 
+// ---------- Escalar la receta cambiando un ingrediente ----------
+/** Por cuánto se multiplica todo si un ingrediente pasa de `original` a `nueva`. null si no se puede. */
+export const factorAncla = (original: number | null, nueva: number): number | null => (original && original > 0 && nueva > 0 && Number.isFinite(nueva) ? nueva / original : null);
+/** Lo que no escala parejo: se avisa y ella decide. */
+export const alGusto = (nombre: string): boolean => /\b(sal|levadura|polvo para hornear|bicarbonato|pimienta|canela|comino|oregano|especias?|chile en polvo|vainilla)\b/.test(norm(nombre));
+export const pctTxt = (f: number): string => (Math.round(f * 1000) / 10).toString().replace('.', ',') + ' %';
+/** La receta con todas sus cantidades multiplicadas por f (lo «al gusto» se queda igual). El rendimiento sigue a las cantidades. */
+export function escalarReceta(r: Receta, f: number): Receta {
+  const ing = r.ing.map((it) => (it[0] == null || alGusto(it[2]) ? it : ([Math.round(it[0] * f * 100) / 100, it[1], it[2], it[3]] as Ingrediente)));
+  return { ...r, ing, y: Math.round(r.y * f * 100) / 100 };
+}
+
 // ---------- Ajustar a una referencia ----------
 export type Ref = 'k' | 'p';
 export interface OpcionPorcion { f: number }
