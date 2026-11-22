@@ -3,7 +3,7 @@
   import type { ItemMenu, LugarMenu, PerfilComida, Receta } from '../../core/db';
   import { avisos } from '../../core/aviso.svelte';
   import { nav } from '../../core/nav.svelte';
-  import { CAT_COLOR, fechaDe, pasaFiltros, type UsoReceta } from './calculos';
+  import { CAT_COLOR, fechaDe, norm, pasaFiltros, type UsoReceta } from './calculos';
   import { leerPerfiles, listarRecetas, menuDe, ponerEnMenu, ponerVariosEnMenu, reponerMenu, sembrarRecetas, usoDeRecetas } from './datos';
   import { filtros, numerosVisibles, tarjetas } from './estado.svelte';
   import { COMIDAS_MENU, LETRA_DIA, NOMBRE_LUGAR, cambiosRepetir, etiquetaFecha, fechasDeSemana, indexar, itemDecidir, itemDos, llave, nombreDia, numeroDia, platoTxt, rangoSemana } from './semana';
@@ -36,7 +36,9 @@
   const porId = $derived(new Map(recetas.map((r) => [r.id, r])));
   // Por tiempos: solo las recetas de los tiempos elegidos (desayuno y cena, sin bases, por ejemplo).
   const catsTiempos = $derived(tarjetas.porTiempos ? TIEMPOS.filter((t) => tarjetas.tiempos.includes(t.l)).map((t) => t.cat) : null);
-  const mazo = $derived(mazoDe(recetas.filter((r) => pasaFiltros(r, { ...filtros, foto: 'todo', guardadas: false }, perfiles, uso) && (!catsTiempos || catsTiempos.includes(r.cat))), tarjetas.liked, tarjetas.passed, catsTiempos ? 'todo' : tarjetas.cat, uso));
+  let buscar = $state('');
+  const qBuscar = $derived(norm(buscar.trim()));
+  const mazo = $derived(mazoDe(recetas.filter((r) => pasaFiltros(r, { ...filtros, foto: 'todo', guardadas: false }, perfiles, uso) && (!qBuscar || norm(r.n).includes(qBuscar)) && (!catsTiempos || catsTiempos.includes(r.cat))), tarjetas.liked, tarjetas.passed, catsTiempos ? 'todo' : tarjetas.cat, uso));
   // La ronda: cuántas decidiste desde que empezó y cuántas tiene (menos si quedan pocas).
   const inicio = $derived(Math.min(tarjetas.ronda, tarjetas.hist.length));
   const enRonda = $derived(tarjetas.hist.slice(inicio));
@@ -380,11 +382,15 @@
         <button class:on={tarjetas.cat === k} aria-pressed={tarjetas.cat === k} onclick={() => (tarjetas.cat = k)}>{t}</button>
       {/each}
     </div>{/if}
+    <label class="rc-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
+      <input type="search" placeholder="Buscar por nombre" aria-label="Buscar receta por nombre" bind:value={buscar} />
+    </label>
     <FiltrosRecetas {recetas} {perfiles} />
     <div class="tj-stack">
       {#if listo && !mazo.length}
         <div class="tj-empty">
-          <b>No quedan tarjetas{tarjetas.cat === 'todo' && filtros.origen === 'todo' && !filtros.sinLes && !filtros.sinJeff && filtros.uso === 'todo' ? '' : ' con estos filtros'}.</b>
+          <b>No quedan tarjetas{tarjetas.cat === 'todo' && filtros.origen === 'todo' && !filtros.sinLes && !filtros.sinJeff && filtros.uso === 'todo' ? '' : ' con estos filtros'}{qBuscar ? ' con «' + buscar.trim() + '»' : ''}.</b>
           <p>{tarjetas.liked.length ? 'Ya puedes acomodar las que elegiste en la semana.' : 'Puedes cambiar los filtros o volver a ver las que dijiste que no.'}</p>
         </div>
       {:else if rondaLista}
