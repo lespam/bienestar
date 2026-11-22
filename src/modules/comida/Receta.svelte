@@ -5,7 +5,7 @@
   import { avisos } from '../../core/aviso.svelte';
   import { reducirFoto } from '../../core/imagen';
   import { nav } from '../../core/nav.svelte';
-  import { lineaIng, aplicarCambio, ajustar, alcanzaTxt, fmtQ, cantidadTxt, efectoTxt, notaConflictos, porTxt, porcionDe, r1 } from './calculos';
+  import { etiquetasCalculadas, norm, lineaIng, aplicarCambio, ajustar, alcanzaTxt, fmtQ, cantidadTxt, efectoTxt, notaConflictos, porTxt, porcionDe, r1 } from './calculos';
   import { guardarReceta, leerPerfiles, quitarReceta, verReceta } from './datos';
   import { eleccion, numerosVisibles, vista } from './estado.svelte';
   import { NOMBRE_LUGAR, COMIDAS_MENU, etiquetaFecha, fechasDeSemana, indexar, itemCada, itemDos, llave, lugarDe, nombreDia, numeroDia, LETRA_DIA, platoTxt, rangoSemana } from './semana';
@@ -47,6 +47,16 @@
     r = x;
     await guardarReceta($state.snapshot(x) as Receta);
   }
+  let etqNueva = $state('');
+  function agregarEtq() {
+    const t = etqNueva.trim().toLowerCase();
+    if (!t || !r) return;
+    const x = copia();
+    if (!(x.etq ?? []).some((e) => norm(e) === norm(t)) && !etiquetasCalculadas(x).some((e) => norm(e) === norm(t))) x.etq = [...(x.etq ?? []), t.charAt(0).toUpperCase() + t.slice(1)];
+    etqNueva = '';
+    poner(x);
+  }
+  function quitarEtq(e: string) { const x = copia(); x.etq = (x.etq ?? []).filter((y) => y !== e); poner(x); }
   const copia = () => structuredClone($state.snapshot(r!)) as Receta;
   const gr = (v: number | null) => (v == null ? '–' : r1(v) + ' g');
 
@@ -280,6 +290,18 @@
       {#if fotoUrl}<button class="link-btn ampliable" aria-label="Ver la foto en grande" onclick={() => visor.abrir([{ src: fotoUrl, alt: "Foto del platillo" }])}><img class="rc-page" src={fotoUrl} alt="Foto del platillo" /></button>{:else}<p class="seg-help">Aún no tiene. Se ve en las tarjetas si activas las fotos.</p>{/if}
       <button class="add" onclick={() => archivo?.click()}>{r.img ? 'Cambiar foto' : '+ Agregar foto'}</button>
       <input bind:this={archivo} type="file" accept="image/*" hidden onchange={elegirFoto} aria-label="Elegir la foto del platillo" />
+    </section>
+
+    <section class="rc-sec" aria-labelledby="rc-h6">
+      <h4 id="rc-h6">Etiquetas</h4>
+      <div class="pf-chips">
+        {#each etiquetasCalculadas(r) as e (e)}<span class="pf-chip" style="padding-right:14px">{e}</span>{/each}
+        {#each r.etq ?? [] as e (e)}<span class="pf-chip">{e}<button aria-label={'Quitar etiqueta ' + e} onclick={() => quitarEtq(e)}>×</button></span>{/each}
+      </div>
+      <div class="pf-add">
+        <input type="text" aria-label="Nueva etiqueta" placeholder="Ej. Para recibir" bind:value={etqNueva} onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); agregarEtq(); } }} />
+        <button onclick={agregarEtq}>Agregar</button>
+      </div>
     </section>
 
     <section class="rc-sec" aria-labelledby="rc-h4">

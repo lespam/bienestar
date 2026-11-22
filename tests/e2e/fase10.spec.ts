@@ -65,3 +65,20 @@ test('Recetario: guardar recetas por origen, buscarlas por nombre y deshacer', a
   await expect(page.getByText(/Mostrando 0 de 2/)).toBeVisible();
   expect(errores).toEqual([]);
 });
+
+test('Etiquetas: se ponen en la receta y se filtran en el Recetario', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Recetario' }).click();
+  await page.getByRole('button', { name: /Tinga de pollo/ }).click();
+  await page.getByLabel('Nueva etiqueta').fill('para recibir');
+  await page.getByLabel('Nueva etiqueta').press('Enter');
+  await expect(page.getByRole('button', { name: 'Quitar etiqueta Para recibir' })).toBeVisible();
+  await page.getByRole('button', { name: 'Volver' }).click();
+  await page.getByLabel('Etiqueta').selectOption('Para recibir');
+  await expect(page.getByText(/Mostrando 1 de 2/)).toBeVisible();
+  await page.getByRole('button', { name: 'Quitar filtro: Etiqueta: Para recibir' }).click();
+  await expect(page.getByText(/Mostrando 2 de 2/)).toBeVisible();
+  expect(errores).toEqual([]);
+});

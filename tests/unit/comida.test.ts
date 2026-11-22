@@ -3,7 +3,7 @@ import { BaseBienestar, usarBase, db } from '../../src/core/db';
 import { cargarContenido } from '../../src/core/contenido';
 import { crearZip, leerZip } from '../../src/core/respaldo';
 import { strToU8, zipSync } from 'fflate';
-import { aplicarCambio, ajustar, barra, partes, diaBreve, etiquetaDia, fechaDe, recientes, sinRepetir, sumas, alcanzaTxt, avisoConflicto, calBaja, calculadoraLibro, cantidadTxt, fmtQ, leerIngrediente, leerReceta, lineaIng, notaConflictos, pasaFiltros, nivelDe, prefiereEvitar, exclusionesDuras, usoTxt, porTxt, porcionDe, recetaDeEstimados } from '../../src/modules/comida/calculos';
+import { aplicarCambio, ajustar, barra, partes, diaBreve, etiquetaDia, fechaDe, recientes, sinRepetir, sumas, alcanzaTxt, avisoConflicto, calBaja, calculadoraLibro, cantidadTxt, fmtQ, leerIngrediente, leerReceta, lineaIng, notaConflictos, pasaFiltros, etiquetasDe, minutosDe, nivelDe, prefiereEvitar, exclusionesDuras, usoTxt, porTxt, porcionDe, recetaDeEstimados } from '../../src/modules/comida/calculos';
 import { mazoDe, repartirPorTiempos, tiemposTxt } from '../../src/modules/comida/tarjetas';
 import { itemDeMenu, menuDe, ponerEnMenu, ponerVariosEnMenu, quitarDelMenu, reponerMenu, agregarAlimentos, alimentosDe, quitarAlimento, reponerDia, ultimosRegistrados, guardarPerfil, guardarReceta, leerPerfiles, listarRecetas, perfilInicial, quitarReceta, sembrarRecetas } from '../../src/modules/comida/datos';
 import { cargarPrefs } from '../../src/modules/ajustes';
@@ -383,5 +383,28 @@ describe('recetas guardadas', () => {
     expect(pasaFiltros(r, f, perf)).toBe(false);
     expect(pasaFiltros(r, { ...f, guardadas: true }, perf)).toBe(true);
     expect(pasaFiltros({ id: 'y', n: 'Normal' }, f, perf)).toBe(true);
+  });
+});
+
+describe('etiquetas', () => {
+  const base = { cat: 'Desayuno' as const, origen: 'Reto', t: '10 min', steps: ['Mezcla.'], ing: [[1, 'taza', 'Avena', 'C']] as never };
+  it('calcula rápida, sin horno y vegana por reglas', () => {
+    expect(etiquetasDe(base)).toEqual(['Desayuno', 'Reto', 'Rápida', 'Sin horno', 'Vegana']);
+    expect(etiquetasDe({ ...base, t: '40 min', steps: ['Hornea 20 min.'], ing: [[2, 'pieza', 'Huevo', 'P']] as never })).toEqual(['Desayuno', 'Reto']);
+  });
+  it('suma las que pone ella y entiende los minutos', () => {
+    expect(etiquetasDe({ ...base, etq: ['Para recibir'] })).toContain('Para recibir');
+    expect(minutosDe('1 h')).toBe(60);
+    expect(minutosDe('15 min')).toBe(15);
+    expect(minutosDe('al gusto')).toBeNull();
+  });
+  it('filtra por etiqueta y por tiempo', () => {
+    const f = { origen: 'todo', sinLes: false, sinJeff: false };
+    const perf = { les: { no: [] as string[] }, jeff: { no: [] as string[] } };
+    const r = { id: 'x', n: 'Avena', ...base };
+    expect(pasaFiltros(r, { ...f, etq: 'Vegana' }, perf)).toBe(true);
+    expect(pasaFiltros(r, { ...f, etq: 'Para recibir' }, perf)).toBe(false);
+    expect(pasaFiltros(r, { ...f, hasta: 10 }, perf)).toBe(true);
+    expect(pasaFiltros({ ...r, t: '40 min' }, { ...f, hasta: 30 }, perf)).toBe(false);
   });
 });
