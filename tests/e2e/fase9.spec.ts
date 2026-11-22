@@ -455,6 +455,17 @@ test('Acomoda la semana: planear por tiempos (desayuno y cena, sin bases) y ver 
   await expect(filas.nth(5).getByRole('button', { name: /desayuno: .*Avena tibia/ })).toBeVisible();
   await avena.click();
   await expect(avena).toHaveAttribute('aria-pressed', 'false');
+  // Copiar un plato puesto a otro día: el original se queda (backlog 31)
+  await filas.nth(5).getByRole('button', { name: /desayuno: .*Avena tibia/ }).click();
+  await page.getByRole('button', { name: 'Copiar en vez de mover' }).click();
+  await filas.nth(6).getByRole('button', { name: /desayuno: libre/ }).click();
+  await expect(filas.nth(5).getByRole('button', { name: /desayuno: .*Avena tibia/ })).toBeVisible();
+  await expect(filas.nth(6).getByRole('button', { name: /desayuno: .*Avena tibia/ })).toBeVisible();
+  // Quitar un plato de un día sin sacarlo de las elegidas
+  await filas.nth(6).getByRole('button', { name: /desayuno: .*Avena tibia/ }).click();
+  await page.getByRole('button', { name: 'Quitar de este día' }).click();
+  await expect(filas.nth(6).getByRole('button', { name: /desayuno: libre/ })).toBeVisible();
+  await expect(avena).toBeVisible();
   // Un lugar libre abre las tarjetas de ese tiempo para ese día
   await page.locator('.tj-tabla tbody tr').last().getByRole('button', { name: /desayuno: libre/ }).click();
   await expect(page.getByText(/^Desayuno · desde el domingo/)).toBeVisible();

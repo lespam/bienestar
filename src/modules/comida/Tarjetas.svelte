@@ -147,6 +147,23 @@
   const delDia = $derived(items.filter((m) => m.fecha === dia));
   /** Un plato ya puesto que tocaste para moverlo a otro lugar o a otro día. */
   let moviendo = $state<{ f: string; l: LugarMenu } | null>(null);
+  /** Con un plato tomado: copiarlo en vez de moverlo (el original se queda). */
+  let copiando = $state(false);
+  /** Días de la semana donde entra lo que eliges con tarjetas por tiempos. Vacío = todos los que faltan. */
+  let diasPlan = $state<string[]>([]);
+  const diasElegidos = $derived(diasPlan.filter((f) => dias.includes(f) && f >= hoy));
+  function alternarDiaPlan(f: string) { diasPlan = diasPlan.includes(f) ? diasPlan.filter((x) => x !== f) : [...diasPlan, f]; }
+  async function quitarPlato() {
+    const de = moviendo;
+    moviendo = null;
+    if (!de) return;
+    const m = indice.get(llave(de.f, de.l));
+    if (!m || de.f < hoy) return;
+    const antes = structuredClone($state.snapshot(items.filter((x) => x.fecha === de.f))) as ItemMenu[];
+    await reponerMenu([de.f], antes.filter((x) => x.lugar !== de.l));
+    await cargarMenu();
+    avisos.deshacer(platoTxt(m) + ' salió de ' + nombreDia(de.f).toLowerCase() + ' (sigue en tus elegidas)', async () => { await reponerMenu([de.f], antes); await cargarMenu(); });
+  }
 
   async function colocar(id: string, f: string, l: LugarMenu) {
     const r = porId.get(id);
@@ -160,18 +177,20 @@
   /** Mueve un plato puesto; si el lugar de destino tiene algo, se intercambian. */
   async function mover(de: { f: string; l: LugarMenu }, f: string, l: LugarMenu) {
     moviendo = null;
-    if (f < hoy || de.f < hoy || (de.f === f && de.l === l)) return;
+    const copia = copiando;
+    copiando = false;
+    if (f < hoy || (!copia && de.f < hoy) || (de.f === f && de.l === l)) return;
     const m = indice.get(llave(de.f, de.l));
     if (!m) return;
     const fechas = [...new Set([de.f, f])];
     const antes = structuredClone($state.snapshot(items.filter((x) => fechas.includes(x.fecha)))) as ItemMenu[];
     const otro = indice.get(llave(f, l));
-    const quedan = antes.filter((x) => !(x.fecha === de.f && x.lugar === de.l) && !(x.fecha === f && x.lugar === l));
+    const quedan = antes.filter((x) => !(!copia && x.fecha === de.f && x.lugar === de.l) && !(x.fecha === f && x.lugar === l));
     const nuevos = [...quedan, { ...structuredClone($state.snapshot(m)), fecha: f, lugar: l } as ItemMenu];
-    if (otro) nuevos.push({ ...structuredClone($state.snapshot(otro)), fecha: de.f, lugar: de.l } as ItemMenu);
+    if (otro && !copia) nuevos.push({ ...structuredClone($state.snapshot(otro)), fecha: de.f, lugar: de.l } as ItemMenu);
     await reponerMenu(fechas, nuevos);
     await cargarMenu();
-    avisos.deshacer(platoTxt(m) + ': ' + nombreDia(f).toLowerCase() + ', ' + NOMBRE_LUGAR[l].toLowerCase(), async () => { await reponerMenu(fechas, antes); await cargarMenu(); });
+    avisos.deshacer((copia ? 'Copiado: ' : '') + platoTxt(m) + ': ' + nombreDia(f).toLowerCase() + ', ' + NOMBRE_LUGAR[l].toLowerCase(), async () => { await reponerMenu(fechas, antes); await cargarMenu(); });
   }
   function tocaCelda(f: string, l: LugarMenu) {
     if (moviendo) { mover(moviendo, f, l); return; }
@@ -230,7 +249,7 @@
   async function ponerPorTiempos() {
     const nuevas = nuevasTiempos;
     tarjetas.porTiempos = null;
-    const libres = dias.filter((f) => f >= hoy);
+    const libres = dias.filter((f) => f >= hoy && (!diasElegidos.length || diasElegidos.includes(f)));
     const { puestas, sobran } = repartirPorTiempos(nuevas, libres, (f, l) => !!indice.get(llave(f, l)));
     const antes = structuredClone($state.snapshot(items)) as ItemMenu[];
     if (puestas.length) await ponerVariosEnMenu(puestas.map((p) => itemDos(p.f, p.l, p.r)));
@@ -348,7 +367,7 @@
   }
   function tocaDia(f: string) { dia = f; }
   const ayudaAcomodar = $derived(
-    moviendo ? 'Toca otro lugar o cambia de día para mover «' + platoTxt(indice.get(llave(moviendo.f, moviendo.l))!) + '».'
+    moviendo ? 'Toca otro lugar o cambia de día para ' + (copiando ? 'copiar' : 'mover') + ' «' + platoTxt(indice.get(llave(moviendo.f, moviendo.l))!) + '».'
     : sel ? 'Toca uno o varios lugares para «' + sel.n + '». Tócala otra vez para soltarla.'
     : tarjetas.vista === 'semana' ? 'Toca un lugar libre para elegir con tarjetas, o una de tus elegidas y luego su lugar. Para mover un plato, tócalo y luego toca otro lugar.'
     : 'Toca «Agregar» en un tiempo de comida para elegir con tarjetas. Arrastra un plato por ⠿ para moverlo de lugar o de día.'
@@ -461,6 +480,11 @@
       <div class="m-chips" role="group" aria-labelledby="tj-plan-t">
         {#each TIEMPOS as t (t.l)}<button class:on={tarjetas.tiempos.includes(t.l)} aria-pressed={tarjetas.tiempos.includes(t.l)} onclick={() => alternarTiempo(t.l)}>{t.n}</button>{/each}
       </div>
+      <b id="tj-dias-t">¿En qué días?</b>
+      <div class="m-chips" role="group" aria-labelledby="tj-dias-t">
+        {#each dias as f, i (f)}<button class:on={diasElegidos.includes(f)} aria-pressed={diasElegidos.includes(f)} disabled={f < hoy} aria-label={nombreDia(f) + ' ' + numeroDia(f)} onclick={() => alternarDiaPlan(f)}>{LETRA_DIA[i]} {numeroDia(f)}</button>{/each}
+      </div>
+      <small>{diasElegidos.length ? diasElegidos.length + (diasElegidos.length === 1 ? ' día elegido.' : ' días elegidos.') : 'Sin elegir días, entran en los que faltan de la semana.'}</small>
       <button class="start" disabled={!tarjetas.tiempos.length} onclick={elegirPorTiempos}>Elegir con tarjetas</button>
       <small>Cada sí va a su tiempo, en el siguiente día libre. Después lo acomodas como quieras.</small>
     </section>
@@ -468,6 +492,12 @@
       {#each [['semana', 'Toda la semana'], ['dia', 'Un día']] as const as [v, t] (v)}<button role="radio" aria-checked={tarjetas.vista === v} class:on={tarjetas.vista === v} onclick={() => { tarjetas.vista = v; moviendo = null; }}>{t}</button>{/each}
     </div>
     <p class="seg-help" aria-live="polite">{ayudaAcomodar}</p>
+    {#if moviendo}
+      <div class="tj-acc" role="group" aria-label="Qué hacer con este plato">
+        <button class="ghost" aria-pressed={copiando} class:on={copiando} onclick={() => (copiando = !copiando)}>{copiando ? 'Se copiará: toca el lugar' : 'Copiar en vez de mover'}</button>
+        <button class="link-btn" onclick={quitarPlato}>Quitar de este día</button>
+      </div>
+    {/if}
     <!-- Fija arriba de la tabla al bajar: no hay que ir a buscar tus elegidas (y el aviso de Deshacer no la tapa). -->
     {#if elegidas.length}<div class="tj-bandeja">
       <h4 class="pat-sub">Tus elegidas</h4>
