@@ -7,7 +7,7 @@ import type { FiltrosReceta } from './calculos';
 export const vista = $state({ ver: false, cat: 'todo', q: '', vin: false, cambio: 0 });
 
 /** Filtros de fuente y de lo que no le gusta a alguien: los mismos en el Recetario y en las Tarjetas. */
-export const filtros = $state<FiltrosReceta>({ origen: 'todo', sinLes: false, sinJeff: false, uso: 'todo', foto: 'todo', guardadas: false });
+export const filtros = $state<FiltrosReceta>({ origen: 'todo', sinLes: false, sinJeff: false, uso: 'todo', foto: 'todo', guardadas: false, etq: '', hasta: 0 });
 
 export const numerosVisibles = () => !prefs.ocultarComida || vista.ver;
 

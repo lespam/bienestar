@@ -83,6 +83,28 @@ export function noLeGustaPrincipal(r: Pick<Receta, 'n' | 'alt'>, no: string[], w
     return !!sx && nombre.split(/[^a-z0-9]+/).some((p) => raiz(p) === sx || (sx.includes(' ') && nombre.includes(sx))) && !(r.alt && r.alt.w === w && raiz(r.alt.x) === sx);
   });
 }
+// ---------- Etiquetas ----------
+/** Minutos de «15 min» o «1 h»; null si no se entiende. */
+export function minutosDe(t: string): number | null {
+  const m = norm(t).match(/(\d+(?:[.,]\d+)?)\s*(h|hora|horas|min|minutos)\b/);
+  if (!m) return null;
+  const n = parseFloat(m[1].replace(',', '.'));
+  return Math.round(m[2].startsWith('h') ? n * 60 : n);
+}
+const ANIMAL = /\b(pollo|pechuga|res|carne|cerdo|jamon|tocino|chorizo|atun|salmon|pescado|camaron|huevo|queso|leche|yogur|yogurt|crema|mantequilla|requeson|panela|miel|pavo|bacalao|sardina|mariscos?)\b/;
+const HORNO = /\bhorno|hornea|hornear\b/;
+/** Etiquetas que la app calcula por reglas, sin IA. */
+export function etiquetasCalculadas(r: Pick<Receta, 'cat' | 'origen' | 't' | 'ing' | 'steps'>): string[] {
+  const out: string[] = [r.cat];
+  if (r.origen) out.push(r.origen);
+  const min = minutosDe(r.t);
+  if (min != null && min <= 20) out.push('Rápida');
+  if (!HORNO.test(norm(r.steps.join(' ')))) out.push('Sin horno');
+  if (r.ing.length && !r.ing.some((it) => ANIMAL.test(norm(it[2])))) out.push('Vegana');
+  return out;
+}
+export const etiquetasDe = (r: Pick<Receta, 'cat' | 'origen' | 't' | 'ing' | 'steps'> & Partial<Pick<Receta, 'etq'>>): string[] => [...new Set([...etiquetasCalculadas(r), ...(r.etq ?? [])])];
+
 /** e: veces que la elegiste en el menú. r: días que la registraste. */
 export interface UsoReceta { e: number; r: number }
 export const vecesUsada = (u?: UsoReceta) => (u ? u.e + u.r : 0);
@@ -91,9 +113,12 @@ export function usoTxt(u?: UsoReceta): string {
   const vez = (n: number) => n + (n === 1 ? ' vez' : ' veces');
   return [u!.e ? 'En el menú ' + vez(u!.e) : '', u!.r ? 'Registrada ' + vez(u!.r) : ''].filter(Boolean).join(' · ');
 }
-export interface FiltrosReceta { origen: string; sinLes: boolean; sinJeff: boolean; uso?: 'todo' | 'nunca' | 'usadas'; foto?: 'todo' | 'con' | 'sin'; guardadas?: boolean }
-export function pasaFiltros(r: Pick<Receta, 'id' | 'n' | 'alt' | 'origen' | 'img'> & Partial<Pick<Receta, 'vis'>> & Partial<Pick<Receta, 'ing'>>, f: FiltrosReceta, perfiles: Record<'les' | 'jeff', PerfilNo>, uso: Record<string, UsoReceta> = {}): boolean {
+export interface FiltrosReceta { origen: string; sinLes: boolean; sinJeff: boolean; uso?: 'todo' | 'nunca' | 'usadas'; foto?: 'todo' | 'con' | 'sin'; guardadas?: boolean; etq?: string; hasta?: number }
+const etiquetasEn = (r: object): string[] => ('cat' in r && 'steps' in r && 'ing' in r ? etiquetasDe(r as never) : ((r as { etq?: string[] }).etq ?? []));
+export function pasaFiltros(r: Pick<Receta, 'id' | 'n' | 'alt' | 'origen' | 'img'> & Partial<Pick<Receta, 'vis' | 'ing' | 'etq' | 't' | 'cat' | 'steps'>>, f: FiltrosReceta, perfiles: Record<'les' | 'jeff', PerfilNo>, uso: Record<string, UsoReceta> = {}): boolean {
   if (r.vis === 'guardada' && !f.guardadas) return false;
+  if (f.etq && !(etiquetasEn(r)).includes(f.etq)) return false;
+  if (f.hasta) { const m = 't' in r && typeof r.t === 'string' ? minutosDe(r.t) : null; if (m == null || m > f.hasta) return false; }
   if (f.origen !== 'todo' && (r.origen ?? 'Mías') !== f.origen) return false;
   if (f.uso === 'nunca' && vecesUsada(uso[r.id])) return false;
   if (f.uso === 'usadas' && !vecesUsada(uso[r.id])) return false;

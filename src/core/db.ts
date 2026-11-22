@@ -146,6 +146,8 @@ export interface Receta {
   origen?: string;
   /** «guardada»: archivada. No sale en las vistas diarias; solo en el Recetario con «Ver guardadas» o al buscarla por nombre. */
   vis?: 'guardada';
+  /** Etiquetas que pone ella (por ejemplo «para recibir»). Las demás las calcula la app. */
+  etq?: string[];
   page?: Blob;
   /** La receta como estaba antes de aplicar cambios, para "Volver a la receta original". */
   orig?: string;

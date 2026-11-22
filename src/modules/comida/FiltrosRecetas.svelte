@@ -1,8 +1,10 @@
 <script lang="ts">
   import type { PerfilComida, Receta } from '../../core/db';
   import { filtros } from './estado.svelte';
+  import { etiquetasDe } from './calculos';
 
   let { recetas, perfiles, foto = false, mostrando, total }: { recetas: Receta[]; perfiles: Record<'les' | 'jeff', Pick<PerfilComida, 'no'> & { niveles?: PerfilComida['niveles'] }>; foto?: boolean; mostrando?: number; total?: number } = $props();
+  const etiquetas = $derived([...new Set(recetas.flatMap((r) => etiquetasDe(r)))].sort((a, b) => a.localeCompare(b, 'es')));
   const hayGuardadas = $derived(recetas.some((r) => r.vis === 'guardada'));
   const activos = $derived([
     filtros.origen !== 'todo' ? { t: 'De ' + filtros.origen, q: () => (filtros.origen = 'todo') } : null,
@@ -10,9 +12,11 @@
     filtros.foto === 'con' ? { t: 'Con foto', q: () => (filtros.foto = 'todo') } : filtros.foto === 'sin' ? { t: 'Sin foto', q: () => (filtros.foto = 'todo') } : null,
     filtros.sinLes ? { t: 'Sin lo que no te gusta', q: () => (filtros.sinLes = false) } : null,
     filtros.sinJeff ? { t: 'Sin lo que no le gusta a Jeff', q: () => (filtros.sinJeff = false) } : null,
+    filtros.etq ? { t: 'Etiqueta: ' + filtros.etq, q: () => (filtros.etq = '') } : null,
+    filtros.hasta ? { t: 'Hasta ' + filtros.hasta + ' min', q: () => (filtros.hasta = 0) } : null,
     filtros.guardadas ? { t: 'Con guardadas', q: () => (filtros.guardadas = false) } : null
   ].filter((x) => x !== null));
-  function quitarTodos() { filtros.origen = 'todo'; filtros.uso = 'todo'; filtros.foto = 'todo'; filtros.sinLes = false; filtros.sinJeff = false; filtros.guardadas = false; }
+  function quitarTodos() { filtros.origen = 'todo'; filtros.uso = 'todo'; filtros.foto = 'todo'; filtros.sinLes = false; filtros.sinJeff = false; filtros.guardadas = false; filtros.etq = ''; filtros.hasta = 0; }
 
   const fuentes = $derived([...new Set(recetas.map((r) => r.origen ?? 'Mías'))].sort((a, b) => a.localeCompare(b, 'es')));
   $effect(() => { if (filtros.origen !== 'todo' && fuentes.length && !fuentes.includes(filtros.origen)) filtros.origen = 'todo'; });
@@ -32,6 +36,20 @@
       <option value="todo">Todas</option>
       <option value="usadas">Las que ya usas</option>
       <option value="nunca">Nunca usadas</option>
+    </select>
+  </label>
+  <label class="rc-fuente"><span>Etiqueta</span>
+    <select bind:value={filtros.etq}>
+      <option value="">Todas</option>
+      {#each etiquetas as e (e)}<option value={e}>{e}</option>{/each}
+    </select>
+  </label>
+  <label class="rc-fuente"><span>Tiempo</span>
+    <select bind:value={filtros.hasta}>
+      <option value={0}>Cualquiera</option>
+      <option value={10}>Hasta 10 min</option>
+      <option value={20}>Hasta 20 min</option>
+      <option value={30}>Hasta 30 min</option>
     </select>
   </label>
   {#if foto}
