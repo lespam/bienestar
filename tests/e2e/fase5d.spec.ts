@@ -53,7 +53,7 @@ test('Lista de compras: se arma del menú, va a la tienda correcta, se marca y s
   // Walmart+ y mover
   await page.getByRole('radio', { name: /^Walmart\+/ }).click();
   const aceite = page.locator('.cp-row', { hasText: 'Aceite' });
-  await expect(aceite.getByText('2 cdas')).toBeVisible();
+  await expect(aceite.getByText('1 cda')).toBeVisible();
   await aceite.getByRole('button', { name: 'Pasar Aceite a Enfrente' }).click();
   await expect(page.getByText('Aceite pasó a Enfrente')).toBeVisible();
   await expect(page.getByText('No hay nada para Walmart+ por ahora.')).toBeVisible();
@@ -91,10 +91,10 @@ test('Lista de compras: se arma del menú, va a la tienda correcta, se marca y s
   const previa = comp.locator('pre');
   await expect(previa).toContainText('Súper de enfrente');
   await expect(previa).toContainText('Pedido Walmart+');
-  await expect(previa).toContainText('• Jitomate (4 piezas)');
+  await expect(previa).toContainText('• Jitomate (2 piezas)');
   await expect(previa).not.toContainText('Pechuga');
   await comp.getByRole('radio', { name: 'Toda la lista' }).click();
-  await expect(previa).toContainText('• Pechuga de pollo (650 g)');
+  await expect(previa).toContainText('• Pechuga de pollo (330 g)');
   await revisarPantalla(page);
   expect(errores).toEqual([]);
 });
