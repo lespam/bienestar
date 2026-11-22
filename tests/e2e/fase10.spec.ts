@@ -82,3 +82,21 @@ test('Etiquetas: se ponen en la receta y se filtran en el Recetario', async ({ p
   await expect(page.getByText(/Mostrando 2 de 2/)).toBeVisible();
   expect(errores).toEqual([]);
 });
+
+test('Receta: cambiar un ingrediente reescala todo, sin guardar, y se puede guardar como mi versión', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Recetario' }).click();
+  await page.getByRole('button', { name: /Tinga de pollo/ }).click();
+  await page.getByRole('button', { name: /Cambiar la cantidad de pechuga de pollo/ }).click();
+  await page.getByLabel(/Cantidad/).fill('250');
+  await expect(page.getByText('Todo quedaría al 50 %.')).toBeVisible();
+  await page.getByRole('button', { name: 'Ajustar la receta' }).click();
+  await expect(page.getByText(/Cantidades al 50 %\. Equivale a 2 porciones de las 4/)).toBeVisible();
+  await expect(page.getByRole('button', { name: /Cambiar la cantidad de jitomate: 2 piezas/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Guardar como mi versión' }).click();
+  await expect(page.getByText('Rinde 2 porciones')).toBeVisible();
+  await expect(page.getByText('Tu versión', { exact: true })).toBeVisible();
+  expect(errores).toEqual([]);
+});

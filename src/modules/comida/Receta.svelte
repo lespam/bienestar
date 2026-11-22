@@ -5,7 +5,7 @@
   import { avisos } from '../../core/aviso.svelte';
   import { reducirFoto } from '../../core/imagen';
   import { nav } from '../../core/nav.svelte';
-  import { etiquetasCalculadas, norm, lineaIng, aplicarCambio, ajustar, alcanzaTxt, fmtQ, cantidadTxt, efectoTxt, notaConflictos, porTxt, porcionDe, r1 } from './calculos';
+  import { alGusto, escalarReceta, factorAncla, pctTxt, etiquetasCalculadas, norm, lineaIng, aplicarCambio, ajustar, alcanzaTxt, fmtQ, cantidadTxt, efectoTxt, notaConflictos, porTxt, porcionDe, r1 } from './calculos';
   import { guardarReceta, leerPerfiles, quitarReceta, verReceta } from './datos';
   import { eleccion, numerosVisibles, vista } from './estado.svelte';
   import { NOMBRE_LUGAR, COMIDAS_MENU, etiquetaFecha, fechasDeSemana, indexar, itemCada, itemDos, llave, lugarDe, nombreDia, numeroDia, LETRA_DIA, platoTxt, rangoSemana } from './semana';
@@ -33,7 +33,28 @@
   const les = $derived(r && perfiles ? porcionDe(r, 'les', perfiles) : 1);
   const jeff = $derived(r && perfiles ? porcionDe(r, 'jeff', perfiles) : 1);
   const nota = $derived(r && perfiles ? notaConflictos(r, perfiles) : '');
-  const f = $derived(r ? y / r.y : 1);
+  // Cambiar un ingrediente reescala toda la receta (sin guardarla). `ancla` es el factor; el contador de porciones lo quita.
+  let ancla = $state<number | null>(null);
+  const f = $derived(ancla ?? (r ? y / r.y : 1));
+  const yEf = $derived(ancla != null && r ? Math.round(r.y * ancla * 100) / 100 : y);
+  let aI = $state(0);
+  let aValor = $state('');
+  const aNum = $derived(parseFloat(aValor.replace(',', '.')));
+  function abrirAncla(i: number) { aI = i; aValor = String(r!.ing[i][0] ?? ''); nav.abrirHoja('rc-ancla'); }
+  function aplicarAncla() {
+    const fa = factorAncla(r!.ing[aI][0], aNum);
+    if (fa == null) { avisos.mostrar('Escribe una cantidad mayor que cero'); return; }
+    ancla = Math.abs(fa - 1) < 1e-9 ? null : fa;
+    nav.cerrar();
+  }
+  async function guardarMiVersion() {
+    if (ancla == null || !r) return;
+    const antes = copia(), x = escalarReceta(copia(), ancla);
+    x.orig = r.orig ?? JSON.stringify({ ...$state.snapshot(r), img: undefined, page: undefined, nts: undefined, por: undefined });
+    ancla = null;
+    await poner(x); y = x.y;
+    avisos.deshacer('Guardaste tu versión', async () => { await poner(antes); y = antes.y; });
+  }
   let fotoUrl = $state('');
   $effect(() => {
     if (!r?.img) { fotoUrl = ''; return; }
@@ -266,15 +287,18 @@
       <div class="rc-yield">
         <span>Porciones</span>
         <div class="stepper">
-          <button aria-label="Menos porciones" disabled={y <= 1} onclick={() => y--}>−</button>
+          <button aria-label="Menos porciones" disabled={y <= 1} onclick={() => { ancla = null; y--; }}>−</button>
           <b aria-live="polite">{y}</b>
-          <button aria-label="Más porciones" disabled={y >= 12} onclick={() => y++}>+</button>
+          <button aria-label="Más porciones" disabled={y >= 12} onclick={() => { ancla = null; y++; }}>+</button>
         </div>
       </div>
-      <p class="rc-fit">{alcanzaTxt(y, les, jeff)}</p>
-      {#if y !== r.y}<p class="seg-help">Cantidades para {y}{y > 1 ? ' porciones' : ' porción'}. La receta guardada no cambia.</p>{/if}
+      <p class="rc-fit">{alcanzaTxt(yEf, les, jeff)}</p>
+      {#if ancla != null}
+        <p class="seg-help" aria-live="polite">Cantidades al {pctTxt(ancla)}. Equivale a {yEf} porciones de las {r.y} de la receta. La receta guardada no cambia.</p>
+        <div class="rc-ancla"><button class="ghost" onclick={guardarMiVersion}>Guardar como mi versión</button><button class="link-btn" onclick={() => (ancla = null)}>Quitar el cambio</button></div>
+      {:else if y !== r.y}<p class="seg-help">Cantidades para {y}{y > 1 ? ' porciones' : ' porción'}. La receta guardada no cambia.</p>{/if}
       {#if r.ing.length}
-        <div class="rc-ing">{#each r.ing as it, i (i)}<div><span>{it[2]}</span><span>{cantidadTxt(it, f)}</span></div>{/each}</div>
+        <div class="rc-ing">{#each r.ing as it, i (i)}<div><span>{it[2]}</span>{#if it[0] != null}<button class="rc-q" aria-label={'Cambiar la cantidad de ' + it[2].toLowerCase() + ': ' + cantidadTxt(it, f)} onclick={() => abrirAncla(i)}>{ancla != null && alGusto(it[2]) ? 'al gusto' : cantidadTxt(it, f)}</button>{:else}<span>{cantidadTxt(it, f)}</span>{/if}</div>{/each}</div>
       {:else}<p class="seg-help">Sin ingredientes. Agrégalos con Editar.</p>{/if}
     </section>
 
@@ -415,5 +439,15 @@
     </div>
     <p class="am-now" aria-live="polite">{amAhora ? 'Ahí está ' + amAhora + '. Se cambia por esta receta y puedes deshacerlo.' : 'Ese lugar está libre.'} Porciones: tú {fmtQ(les)}, Jeff {fmtQ(jeff)}.</p>
     <button class="start" onclick={agregarAlMenu}>Agregar</button>
+  </Hoja>
+{/if}
+
+{#if nav.hojaAbierta('rc-ancla') && r}
+  <Hoja titulo="Cambiar una cantidad">
+    <p class="seg-help">Escribe cuánto tienes de «{r.ing[aI][2].toLowerCase()}» y toda la receta se ajusta. No cambia la receta guardada.</p>
+    <label class="pf-lbl" for="rc-anc-v">Cantidad{r.ing[aI][1] ? ' (' + r.ing[aI][1] + ')' : ''}</label>
+    <input id="rc-anc-v" type="text" inputmode="decimal" bind:value={aValor} onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); aplicarAncla(); } }} />
+    {#if factorAncla(r.ing[aI][0], aNum) != null}<p class="seg-help">Todo quedaría al {pctTxt(factorAncla(r.ing[aI][0], aNum)!)}.</p>{/if}
+    <button class="start" onclick={aplicarAncla}>Ajustar la receta</button>
   </Hoja>
 {/if}

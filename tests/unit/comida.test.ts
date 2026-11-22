@@ -3,7 +3,7 @@ import { BaseBienestar, usarBase, db } from '../../src/core/db';
 import { cargarContenido } from '../../src/core/contenido';
 import { crearZip, leerZip } from '../../src/core/respaldo';
 import { strToU8, zipSync } from 'fflate';
-import { aplicarCambio, ajustar, barra, partes, diaBreve, etiquetaDia, fechaDe, recientes, sinRepetir, sumas, alcanzaTxt, avisoConflicto, calBaja, calculadoraLibro, cantidadTxt, fmtQ, leerIngrediente, leerReceta, lineaIng, notaConflictos, pasaFiltros, etiquetasDe, minutosDe, nivelDe, prefiereEvitar, exclusionesDuras, usoTxt, porTxt, porcionDe, recetaDeEstimados } from '../../src/modules/comida/calculos';
+import { aplicarCambio, ajustar, barra, partes, diaBreve, etiquetaDia, fechaDe, recientes, sinRepetir, sumas, alcanzaTxt, avisoConflicto, calBaja, calculadoraLibro, cantidadTxt, fmtQ, leerIngrediente, leerReceta, lineaIng, notaConflictos, pasaFiltros, escalarReceta, factorAncla, pctTxt, alGusto, etiquetasDe, minutosDe, nivelDe, prefiereEvitar, exclusionesDuras, usoTxt, porTxt, porcionDe, recetaDeEstimados } from '../../src/modules/comida/calculos';
 import { mazoDe, repartirPorTiempos, tiemposTxt } from '../../src/modules/comida/tarjetas';
 import { itemDeMenu, menuDe, ponerEnMenu, ponerVariosEnMenu, quitarDelMenu, reponerMenu, agregarAlimentos, alimentosDe, quitarAlimento, reponerDia, ultimosRegistrados, guardarPerfil, guardarReceta, leerPerfiles, listarRecetas, perfilInicial, quitarReceta, sembrarRecetas } from '../../src/modules/comida/datos';
 import { cargarPrefs } from '../../src/modules/ajustes';
@@ -406,5 +406,26 @@ describe('etiquetas', () => {
     expect(pasaFiltros(r, { ...f, etq: 'Para recibir' }, perf)).toBe(false);
     expect(pasaFiltros(r, { ...f, hasta: 10 }, perf)).toBe(true);
     expect(pasaFiltros({ ...r, t: '40 min' }, { ...f, hasta: 30 }, perf)).toBe(false);
+  });
+});
+
+describe('escalar cambiando un ingrediente', () => {
+  const r = { id: 'p', n: 'Pan', cat: 'Desayuno', y: 4, ing: [[400, 'g', 'Harina', 'C'], [2, 'pieza', 'Huevo', 'P'], [1, 'cdita', 'Sal', 'D'], [null, '', 'Agua', 'D']] } as never;
+  it('calcula el factor y lo dice en porcentaje', () => {
+    const f = factorAncla(400, 350)!;
+    expect(f).toBeCloseTo(0.875);
+    expect(pctTxt(f)).toBe('87,5 %');
+    expect(factorAncla(null, 3)).toBeNull();
+    expect(factorAncla(400, 0)).toBeNull();
+  });
+  it('multiplica todo, rinde 3.5 porciones y deja «al gusto» la sal', () => {
+    const e = escalarReceta(r, 0.875);
+    expect(e.y).toBe(3.5);
+    expect(e.ing[0][0]).toBe(350);
+    expect(e.ing[1][0]).toBe(1.75);
+    expect(e.ing[2][0]).toBe(1);
+    expect(e.ing[3][0]).toBeNull();
+    expect(alGusto('Sal de mar')).toBe(true);
+    expect(alGusto('Salsa roja')).toBe(false);
   });
 });
