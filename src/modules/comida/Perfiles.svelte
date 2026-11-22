@@ -1,26 +1,37 @@
 <script lang="ts">
-  import type { PerfilComida } from '../../core/db';
+  import { db, type PerfilComida } from '../../core/db';
   import Hoja from '../../core/Hoja.svelte';
   import { nav } from '../../core/nav.svelte';
   import { avisos } from '../../core/aviso.svelte';
   import { iso } from '../../core/fechas';
   import { prefs } from '../ajustes';
-  import { calBaja, calculadoraLibro, cap, diaCorto, fmtN, kRango, norm, porTxt, textoOrigen } from './calculos';
+  import { calBaja, calculadoraLibro, cap, diaCorto, fmtN, kRango, NIVELES, nivelDe, norm, porTxt, textoOrigen, type Nivel } from './calculos';
   import { guardarPerfil, leerPerfiles, perfilInicial } from './datos';
   import { numerosVisibles, vista } from './estado.svelte';
 
   type Quien = 'les' | 'jeff';
   let perfiles = $state<Record<Quien, PerfilComida>>({ les: perfilInicial('les'), jeff: perfilInicial('jeff') });
   let listo = $state(false);
-  let quien = $state<Quien>('les');
+  let quien = $state<Quien | 'los2'>('les');
+  // Hoja «+ Algo que no me gusta»: un paso, con el nivel ya en «No me gusta».
+  let nNombre = $state('');
+  let nPara = $state<'les' | 'jeff' | 'ambos'>('les');
+  let nNivel = $state<Nivel>('nogusta');
+  let nEdita = $state(false);
+  let sugerencias = $state<string[]>([]);
+  db.recetas.toArray().then((rs) => {
+    const vistos: Record<string, string> = {};
+    for (const r of rs) for (const it of r.ing) { const k = norm(it[2]); if (k && !vistos[k]) vistos[k] = cap(it[2].toLowerCase()); }
+    sugerencias = Object.values(vistos).sort((a, b) => a.localeCompare(b, 'es')).slice(0, 600);
+  });
   let agregando = $state<'gustos' | 'no' | null>(null);
   let nuevo = $state('');
   let temporizador: ReturnType<typeof setTimeout> | undefined;
 
   leerPerfiles().then((p) => { perfiles = p; listo = true; });
 
-  const P = $derived(perfiles[quien]);
-  const yo = $derived(quien === 'les');
+  const P = $derived(perfiles[quien === 'los2' ? 'les' : quien]);
+  const yo = $derived(quien !== 'jeff');
   const ver = $derived(numerosVisibles());
 
   /** Guarda un perfil completo (los datos pasan a texto plano para la base). */
@@ -46,10 +57,30 @@
     agregando = null; nuevo = '';
     await poner(p);
   }
+  function abrirNo(para: Quien | 'ambos', x?: string, nivel?: Nivel) {
+    nNombre = x ?? ''; nPara = para; nNivel = nivel ?? 'nogusta'; nEdita = !!x;
+    nav.abrirHoja('pf-no');
+  }
+  async function guardarNo() {
+    const t = nNombre.trim();
+    if (!t) { document.getElementById('pf-no-n')?.focus(); return; }
+    const quienes: Quien[] = nPara === 'ambos' ? ['les', 'jeff'] : [nPara];
+    const antes = quienes.map((w) => copia(perfiles[w]));
+    for (const w of quienes) {
+      const p = copia(perfiles[w]);
+      const ya = p.no.findIndex((x) => norm(x) === norm(t));
+      if (ya < 0) p.no.push(cap(t));
+      p.niveles = { ...(p.niveles ?? {}), [norm(t)]: nNivel };
+      await poner(p);
+    }
+    nav.cerrar();
+    avisos.deshacer('Guardado: «' + cap(t) + '»', async () => { for (const a of antes) await poner(a); });
+  }
   function quitarItem(clave: 'gustos' | 'no', i: number) {
     const antes = copia(P), x = P[clave][i];
     const p = copia(P);
     p[clave].splice(i, 1);
+    if (clave === 'no' && p.niveles) delete p.niveles[norm(x)];
     poner(p);
     avisos.deshacer('Se quitó «' + x + '»', () => poner(antes));
   }
@@ -57,7 +88,7 @@
   function escribirNota(e: Event) {
     const texto = (e.target as HTMLTextAreaElement).value, p = copia(P);
     p.nota = texto;
-    perfiles[quien] = p;
+    perfiles[p.quien] = p;
     clearTimeout(temporizador);
     temporizador = setTimeout(() => guardarPerfil($state.snapshot(p) as PerfilComida), 400);
   }
@@ -118,17 +149,41 @@
   <div class="tl-head">
     <h2 tabindex="-1">Perfiles</h2>
     <p class="seg-help">Lo que la app sabe de ti y de Jeff para armar el menú, las porciones y la lista de compras.</p>
-    <div class="seg seg2" role="tablist" aria-label="Perfil">
-      <button class:on={yo} role="tab" aria-selected={yo} onclick={() => { quien = 'les'; agregando = null; }}>Tú</button>
-      <button class:on={!yo} role="tab" aria-selected={!yo} onclick={() => { quien = 'jeff'; agregando = null; }}>Jeff</button>
+    <div class="seg" role="tablist" aria-label="Perfil">
+      <button class:on={quien === 'les'} role="tab" aria-selected={quien === 'les'} onclick={() => { quien = 'les'; agregando = null; }}>Tú</button>
+      <button class:on={quien === 'jeff'} role="tab" aria-selected={quien === 'jeff'} onclick={() => { quien = 'jeff'; agregando = null; }}>Jeff</button>
+      <button class:on={quien === 'los2'} role="tab" aria-selected={quien === 'los2'} onclick={() => { quien = 'los2'; agregando = null; }}>Los dos</button>
     </div>
   </div>
 
-  {#if listo}
+  {#if listo && quien === 'los2'}
+    <div class="pf-body">
+      <section class="pf-card" aria-label="Lo que no se come, los dos">
+        <h4>Lo que no se come</h4>
+        <div class="pf-dos">
+          {#each ['les', 'jeff'] as const as w (w)}
+            <div>
+              <h5>{w === 'les' ? 'Tú' : 'Jeff'}</h5>
+              {#each NIVELES as [nv, nombreNv] (nv)}
+                {@const xs = perfiles[w].no.filter((x) => nivelDe(perfiles[w], x) === nv)}
+                {#if xs.length}
+                  <p class="pf-nv">{nombreNv}</p>
+                  <div class="pf-chips">{#each xs as x (x)}<button class="pf-chip pf-chip-b" aria-label={'Cambiar: ' + x + ' (' + (w === 'les' ? 'tú' : 'Jeff') + ')'} onclick={() => abrirNo(w, x, nv)}>{x}</button>{/each}</div>
+                {/if}
+              {/each}
+              {#if !perfiles[w].no.length}<p class="pf-none">Nada por ahora.</p>{/if}
+            </div>
+          {/each}
+        </div>
+        <button class="add" onclick={() => abrirNo('ambos')}>+ Algo que no me gusta</button>
+        <p class="seg-help">Con «Los dos», los filtros usan lo de ambos.</p>
+      </section>
+    </div>
+  {:else if listo}
     <div class="pf-body">
       <section class="pf-card" aria-labelledby="pf-rh">
         <div class="pf-h"><h4 id="pf-rh">Referencias</h4>{#if ver}<button class="pf-ed" onclick={abrirReferencias}>Editar</button>{/if}</div>
-        <p class="pf-src">{P.src ? textoOrigen(P.src, quien) + (P.fecha ? ' · ' + diaCorto(P.fecha) : '') : yo ? 'Aún no escribes tus referencias.' : 'Aún no escribes las de Jeff.'}</p>
+        <p class="pf-src">{P.src ? textoOrigen(P.src, P.quien) + (P.fecha ? ' · ' + diaCorto(P.fecha) : '') : yo ? 'Aún no escribes tus referencias.' : 'Aún no escribes las de Jeff.'}</p>
         {#if ver}
           <div class="pf-rows">
             {#each [['Calorías al día', P.k ? kRango(P.k) : null], ['Proteína', P.p ? P.p + ' g' : null], ['Carbohidratos', P.c ? P.c + ' g' : null], ['Grasa', P.g ? P.g + ' g' : null]] as [l, v] (l)}
@@ -166,7 +221,7 @@
           <h4>{titulo}</h4>
           {#if lista.length}
             <div class="pf-chips">
-              {#each lista as x, i (x)}<span class="pf-chip">{x}<button aria-label={'Quitar ' + x} onclick={() => quitarItem(clave as 'gustos' | 'no', i)}>×</button></span>{/each}
+              {#each lista as x, i (x)}<span class="pf-chip">{#if clave === 'no'}<button class="pf-chip-n" aria-label={'Cambiar: ' + x} onclick={() => abrirNo(quien as Quien, x, nivelDe(P, x))}>{x}<small>{NIVELES.find(([k]) => k === nivelDe(P, x))![1]}</small></button>{:else}{x}{/if}<button aria-label={'Quitar ' + x} onclick={() => quitarItem(clave as 'gustos' | 'no', i)}>×</button></span>{/each}
             </div>
           {:else}<p class="pf-none">Nada por ahora.</p>{/if}
           {#if agregando === clave}
@@ -174,10 +229,12 @@
               <input type="text" id="pf-new" aria-label={titulo + ': escribe uno nuevo'} placeholder={clave === 'gustos' ? 'Ej. Pescado' : 'Ej. Cilantro'} bind:value={nuevo} onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); agregarItem(); } }} />
               <button onclick={agregarItem}>Agregar</button>
             </div>
+          {:else if clave === 'no'}
+            <button class="add" onclick={() => abrirNo(quien as Quien)}>+ Algo que no me gusta</button>
           {:else}
             <button class="add" onclick={async () => { agregando = clave as 'gustos' | 'no'; nuevo = ''; await Promise.resolve(); setTimeout(() => document.getElementById('pf-new')?.focus(), 0); }}>+ Agregar</button>
           {/if}
-          {#if clave === 'no'}<p class="seg-help">Son gustos, no reglas. El menú y el recetario avisan y proponen otra opción.</p>{/if}
+          {#if clave === 'no'}<p class="seg-help">«Prefiero no» nunca oculta recetas, solo las manda al final. «No me gusta» las oculta si está en el nombre del plato. «Lo odio» y «No lo como» las ocultan si está en cualquier ingrediente.</p>{/if}
         </section>
       {/each}
 
@@ -257,5 +314,26 @@
     </div>
     <p class="tool-note left">Son referencias de partida, no un consejo médico. No tienes que cumplirlas exactas cada día. Si tu nutrióloga te dio otras, usa las suyas.</p>
     <button class="start" disabled={!calc.ok} onclick={usarCalculo}>Usar como mi referencia</button>
+  </Hoja>
+{/if}
+
+{#if nav.hojaAbierta('pf-no')}
+  <Hoja titulo={nEdita ? 'Cambiar nivel' : 'Algo que no me gusta'}>
+    <label class="pf-lbl" for="pf-no-n">Ingrediente</label>
+    <input type="text" id="pf-no-n" list="pf-sug" placeholder="Ej. Cilantro" autocomplete="off" bind:value={nNombre} readonly={nEdita} onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); guardarNo(); } }} />
+    <datalist id="pf-sug">{#each sugerencias as s (s)}<option value={s}></option>{/each}</datalist>
+    {#if !nEdita}
+      <div class="seg" role="radiogroup" aria-label="Quién">
+        {#each [['les', 'Yo'], ['jeff', 'Jeff'], ['ambos', 'Los dos']] as [v, n] (v)}
+          <button role="radio" aria-checked={nPara === v} class:on={nPara === v} onclick={() => (nPara = v as typeof nPara)}>{n}</button>
+        {/each}
+      </div>
+    {/if}
+    <div class="pf-niveles" role="radiogroup" aria-label="Nivel">
+      {#each NIVELES as [v, n] (v)}
+        <button role="radio" aria-checked={nNivel === v} class:on={nNivel === v} onclick={() => (nNivel = v)}>{n}</button>
+      {/each}
+    </div>
+    <button class="start" onclick={guardarNo}>Guardar</button>
   </Hoja>
 {/if}

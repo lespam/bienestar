@@ -174,10 +174,21 @@ test('Perfiles: referencias que escribes tú, calculadora del libro y lo que no 
   await page.getByRole('tab', { name: 'Jeff' }).click();
   await page.getByRole('button', { name: 'Porción más grande' }).click();
   await expect(page.getByText('1½ porciones')).toBeVisible();
-  await page.getByRole('button', { name: '+ Agregar' }).nth(1).click();
-  await page.getByLabel('Lo que no come: escribe uno nuevo').fill('champiñón');
-  await page.getByLabel('Lo que no come: escribe uno nuevo').press('Enter');
+  await page.getByRole('button', { name: '+ Algo que no me gusta' }).click();
+  await page.getByLabel('Ingrediente').fill('champiñón');
+  await expect(page.getByRole('radio', { name: 'No me gusta' })).toHaveAttribute('aria-checked', 'true');
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click();
   await expect(page.locator('.pf-chip', { hasText: 'Champiñón' })).toBeVisible();
+  // Los dos perfiles lado a lado, con un nivel distinto para cada quien
+  await page.getByRole('tab', { name: 'Los dos' }).click();
+  await page.getByRole('button', { name: '+ Algo que no me gusta' }).click();
+  await page.getByLabel('Ingrediente').fill('cilantro');
+  await page.getByRole('radio', { name: 'Los dos' }).click();
+  await page.getByRole('radio', { name: 'Lo odio' }).click();
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Cambiar: Cilantro (Jeff)' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Cambiar: Cilantro (tú)' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Jeff' }).click();
   await page.getByLabel('Notas (opcional)').fill('Lleva comida al trabajo');
   await page.waitForTimeout(600);
 

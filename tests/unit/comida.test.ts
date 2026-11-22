@@ -3,7 +3,7 @@ import { BaseBienestar, usarBase, db } from '../../src/core/db';
 import { cargarContenido } from '../../src/core/contenido';
 import { crearZip, leerZip } from '../../src/core/respaldo';
 import { strToU8, zipSync } from 'fflate';
-import { aplicarCambio, ajustar, barra, partes, diaBreve, etiquetaDia, fechaDe, recientes, sinRepetir, sumas, alcanzaTxt, avisoConflicto, calBaja, calculadoraLibro, cantidadTxt, fmtQ, leerIngrediente, leerReceta, lineaIng, notaConflictos, pasaFiltros, usoTxt, porTxt, porcionDe, recetaDeEstimados } from '../../src/modules/comida/calculos';
+import { aplicarCambio, ajustar, barra, partes, diaBreve, etiquetaDia, fechaDe, recientes, sinRepetir, sumas, alcanzaTxt, avisoConflicto, calBaja, calculadoraLibro, cantidadTxt, fmtQ, leerIngrediente, leerReceta, lineaIng, notaConflictos, pasaFiltros, nivelDe, prefiereEvitar, exclusionesDuras, usoTxt, porTxt, porcionDe, recetaDeEstimados } from '../../src/modules/comida/calculos';
 import { mazoDe, repartirPorTiempos, tiemposTxt } from '../../src/modules/comida/tarjetas';
 import { itemDeMenu, menuDe, ponerEnMenu, ponerVariosEnMenu, quitarDelMenu, reponerMenu, agregarAlimentos, alimentosDe, quitarAlimento, reponerDia, ultimosRegistrados, guardarPerfil, guardarReceta, leerPerfiles, listarRecetas, perfilInicial, quitarReceta, sembrarRecetas } from '../../src/modules/comida/datos';
 import { cargarPrefs } from '../../src/modules/ajustes';
@@ -347,5 +347,30 @@ describe('planear por tiempos', () => {
     expect(sobran.map((x) => x.id)).toEqual(['d3', 'b1']);
     expect(tiemposTxt(['n', 'd'])).toBe('desayuno y cena');
     expect(tiemposTxt(['d', 'c', 'n'])).toBe('desayuno, comida y cena');
+  });
+});
+
+describe('niveles de lo que no se come', () => {
+  const crepas = { id: 'x', n: 'Crepas de avena', ing: [[2, 'pieza', 'Huevo', 'P'], [1, 'taza', 'Avena', 'C']] as never };
+  const tacos = { id: 'y', n: 'Tacos de huevo', ing: [[2, 'pieza', 'Huevo', 'P']] as never };
+  const f = { origen: 'todo', sinLes: false, sinJeff: true };
+  const con = (nivel?: 'prefiero' | 'nogusta' | 'odio' | 'nocomo') => ({ les: { no: [] as string[] }, jeff: { no: ['Huevo'], niveles: nivel ? { huevo: nivel } : undefined } });
+  it('sin nivel guardado vale «No me gusta»: oculta solo si está en el nombre', () => {
+    expect(nivelDe(con().jeff, 'Huevo')).toBe('nogusta');
+    expect(pasaFiltros(tacos, f, con())).toBe(false);
+    expect(pasaFiltros(crepas, f, con())).toBe(true);
+  });
+  it('«Prefiero no» nunca oculta, solo marca', () => {
+    expect(pasaFiltros(tacos, f, con('prefiero'))).toBe(true);
+    expect(prefiereEvitar(crepas, con('prefiero').jeff)).toBe(true);
+    expect(prefiereEvitar(crepas, con('nogusta').jeff)).toBe(false);
+  });
+  it('«Lo odio» y «No lo como» ocultan en cualquier ingrediente, salvo que haya versión alternativa', () => {
+    for (const n of ['odio', 'nocomo'] as const) {
+      expect(pasaFiltros(crepas, f, con(n))).toBe(false);
+      expect(pasaFiltros({ ...crepas, alt: { w: 'jeff', x: 'huevo', by: 'tofu' } }, f, con(n))).toBe(true);
+    }
+    expect(exclusionesDuras(con('odio').jeff)).toEqual(['Huevo']);
+    expect(exclusionesDuras(con('prefiero').jeff)).toEqual([]);
   });
 });
