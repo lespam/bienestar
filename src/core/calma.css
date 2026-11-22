@@ -1267,3 +1267,5 @@ textarea { font: inherit; color: var(--fg); }
 /* Receta: escalar cambiando un ingrediente (versión 2) */
 .rc-q { border: 0; background: none; color: var(--fg); font: inherit; min-height: 44px; min-width: 44px; padding: 0 6px; text-align: right; text-decoration: underline dotted var(--muted); text-underline-offset: 4px; }
 .rc-ancla { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.tj-acc { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.tj-acc .ghost.on { border-color: var(--accent); background: var(--soft); }

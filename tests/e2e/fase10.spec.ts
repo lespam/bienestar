@@ -114,3 +114,19 @@ test('Elegir con tarjetas: buscar recetas por nombre', async ({ page }) => {
   await expect(page.getByText(/No quedan tarjetas con «zzz»/)).toBeVisible();
   expect(errores).toEqual([]);
 });
+
+test('Acomoda la semana: elegir los días donde entra lo que eliges con tarjetas (#30)', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Menú', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Semana siguiente' }).click();
+  await page.getByRole('button', { name: 'Planear', exact: true }).click();
+  const dias = page.getByRole('group', { name: '¿En qué días?' }).getByRole('button');
+  await expect(dias).toHaveCount(7);
+  await dias.nth(2).click();
+  await expect(page.getByText('1 día elegido.')).toBeVisible();
+  await dias.nth(2).click();
+  await expect(page.getByText(/Sin elegir días/)).toBeVisible();
+  expect(errores).toEqual([]);
+});
