@@ -416,6 +416,10 @@ test('Acomoda la semana: planear por tiempos (desayuno y cena, sin bases) y ver 
   await page.getByRole('button', { name: 'Comida', exact: true, pressed: true }).click();
   await expect(page.getByRole('columnheader', { name: 'Comida' })).toHaveCount(0);
   await expect(page.getByRole('columnheader', { name: 'Desayuno' })).toBeVisible();
+  // Backlog 33: las columnas no se aprietan; si no caben, la tabla se desplaza a los lados con los días fijos
+  const tabla = await page.evaluate(() => { const w = document.querySelector('.tj-tabla-w')!, t = document.querySelector('.tj-tabla')!; return { ancho: Math.round(t.getBoundingClientRect().width), caja: w.clientWidth, celda: Math.round(t.querySelector('td')!.getBoundingClientRect().width), fija: getComputedStyle(t.querySelector('tbody th')!).position }; });
+  expect(tabla.celda).toBeGreaterThanOrEqual(100);
+  expect(tabla.fija).toBe('sticky');
   await revisarPantalla(page);
   await page.getByRole('button', { name: 'Elegir con tarjetas' }).click();
   await expect(page.getByText('Desayuno y cena · la próxima semana')).toBeVisible();

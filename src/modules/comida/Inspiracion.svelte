@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Receta } from '../../core/db';
+  import { visor } from '../../core/visor.svelte';
 
   // Tus fotos de platillos y unas ideas dibujadas, para mirar antes de planear. Empieza cerrada.
   let { recetas }: { recetas: Receta[] } = $props();
@@ -22,7 +23,7 @@
   <div class="insp" id="insp" hidden={!abierta}>
     {#each fotos as r (r.id)}
       <figure>
-        {#if urls[r.id]}<img src={urls[r.id]} alt={'Tu foto de ' + r.n} style="width:148px;height:148px;object-fit:cover;display:block" />{/if}
+        {#if urls[r.id]}<button class="ampliable" style="padding:0;border:0;background:none;display:block" aria-label={'Ver en grande: ' + r.n} onclick={() => visor.abrir(fotos.filter((f) => urls[f.id]).map((f) => ({ src: urls[f.id], alt: 'Tu foto de ' + f.n })), fotos.filter((f) => urls[f.id]).findIndex((f) => f.id === r.id))}><img src={urls[r.id]} alt={'Tu foto de ' + r.n} style="width:148px;height:148px;object-fit:cover;display:block" /></button>{/if}
         <figcaption><span class="tag t">Tu foto</span>{r.n}</figcaption>
       </figure>
     {/each}

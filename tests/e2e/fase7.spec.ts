@@ -91,17 +91,17 @@ test('Tablero de visión: una meta con sus cuatro pasos, se guarda sola y aparec
   await page.getByLabel('4. Plan: si pasa eso, ¿qué haces?').fill('Si llego cansada, 15 minutos en vez de 30');
   await revisarPantalla(page);
   await page.getByRole('button', { name: 'Guardar meta' }).click();
-  await expect(page.getByRole('button', { name: 'Fundar una beca' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Editar: Fundar una beca' })).toBeVisible();
 
   // Se guarda mientras escribes
-  await page.getByRole('button', { name: 'Fundar una beca' }).click();
+  await page.getByRole('button', { name: 'Editar: Fundar una beca' }).click();
   await page.getByLabel('3. Obstáculo: lo que más te puede frenar').fill('Las dudas');
   await page.waitForTimeout(300);
   await page.getByRole('button', { name: 'Cerrar' }).click();
   await page.reload();
   await page.getByRole('button', { name: /Tablero de visión/ }).click();
-  await expect(page.getByRole('button', { name: 'Fundar una beca' })).toBeVisible();
-  await page.getByRole('button', { name: 'Fundar una beca' }).click();
+  await expect(page.getByRole('button', { name: 'Editar: Fundar una beca' })).toBeVisible();
+  await page.getByRole('button', { name: 'Editar: Fundar una beca' }).click();
   await expect(page.getByLabel('3. Obstáculo: lo que más te puede frenar')).toHaveValue('Las dudas');
   await expect(page.getByLabel('4. Plan: si pasa eso, ¿qué haces?')).toHaveValue('Si llego cansada, 15 minutos en vez de 30');
 
@@ -111,11 +111,11 @@ test('Tablero de visión: una meta con sus cuatro pasos, se guarda sola y aparec
   await page.getByRole('button', { name: 'Volver', exact: true }).click();
 
   // Quitar y deshacer
-  await page.getByRole('button', { name: 'Fundar una beca' }).click();
+  await page.getByRole('button', { name: 'Editar: Fundar una beca' }).click();
   await page.getByRole('button', { name: 'Quitar de mi tablero' }).click();
-  await expect(page.getByRole('button', { name: 'Fundar una beca' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Editar: Fundar una beca' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Deshacer' }).click();
-  await expect(page.getByRole('button', { name: 'Fundar una beca' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Editar: Fundar una beca' })).toBeVisible();
 
   // Inicio muestra la meta
   await page.getByRole('button', { name: 'Volver a Inicio' }).click();

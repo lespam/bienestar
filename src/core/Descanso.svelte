@@ -4,13 +4,18 @@
   import { avisos } from './aviso.svelte';
   import { mantenerEncendida } from './pantalla';
   import { avisoDeFin } from './sonido';
+  import { visor } from './visor.svelte';
 
   // Descanso: pieza compartida. Cuenta con la hora real, así que no se atrasa si el teléfono la pausa un momento.
   // Entreno la usa entre series y Herramientas la usará sola. Quien la abre decide qué hacer con los segundos descansados.
-  let { siguiente = '', automatico = false, frase = null, largoInicial = 60, alElegirLargo, alSalir }: {
+  let { siguiente = '', automatico = false, frase = null, imagen = null, alAgregarImagen, largoInicial = 60, alElegirLargo, alSalir }: {
     siguiente?: string;
     automatico?: boolean;
     frase?: { texto: string; origen: string } | null;
+    /** Una imagen de tu colección o tablero (ya como dirección que se puede mostrar). */
+    imagen?: { src: string; titulo: string; origen: string } | null;
+    /** Qué hacer si no hay imágenes: ir a agregar una. */
+    alAgregarImagen?: () => void;
     /** Duración con la que empieza (la que elegiste la última vez). */
     largoInicial?: number;
     alElegirLargo?: (seg: number) => void;
@@ -123,8 +128,14 @@
       </div>
     {:else}
       <div class="dis-panel">
-        <div class="dis-img"><span>Imagen de tu colección</span></div>
-        <p class="dis-cap">Aquí aparece una imagen de tu tablero de visión.</p>
+        {#if imagen}
+          <button class="dis-foto" aria-label={'Ver en grande: ' + imagen.titulo} onclick={() => visor.abrir([{ src: imagen.src, alt: imagen.titulo }])}><img src={imagen.src} alt={imagen.titulo} /><span>{imagen.titulo}</span></button>
+          <p class="dis-cap">De {imagen.origen.toLowerCase()}. Tócala para verla en grande.</p>
+        {:else}
+          <div class="dis-img"><span>Aún no tienes imágenes</span></div>
+          <p class="dis-cap">Agrega una a tu colección o a tu tablero de visión y aparecerá aquí.</p>
+          {#if alAgregarImagen}<button class="ghost" onclick={alAgregarImagen}>Agregar una imagen</button>{/if}
+        {/if}
       </div>
     {/if}
   </section>
