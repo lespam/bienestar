@@ -1,5 +1,5 @@
-import type { ItemMenu, Receta } from '../../core/db';
-import { norm } from './calculos';
+import type { ItemMenu, PerfilComida, Receta } from '../../core/db';
+import { norm, porcionDe } from './calculos';
 
 // La lista de compras sale del menú de la semana y de los ingredientes de cada receta.
 // Lo que agregas tú se queda aparte. Todo es una cuenta: no hay nada que cumplir.
@@ -67,25 +67,35 @@ export const comprasVacias = (): EstadoCompras => ({ chk: {}, dest: {}, extras: 
 
 const mayus = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 
-/** Cuántas porciones de cada receta pide el menú: los dos suman 2, cada quien suma 1. */
-export function usosDelMenu(items: ItemMenu[]): Map<string, number> {
+export type PorcionesPerfiles = Record<'les' | 'jeff', Pick<PerfilComida, 'por'>>;
+/**
+ * Cuántas porciones de cada receta pide el menú. Con los perfiles, cada quien cuenta su porción
+ * (la de la receta si la cambiaste, si no la de su perfil). Sin perfiles: los dos suman 2, cada quien 1.
+ */
+export function usosDelMenu(items: ItemMenu[], recetas: Receta[] = [], perfiles?: PorcionesPerfiles): Map<string, number> {
   const usos = new Map<string, number>();
-  const suma = (id: string | undefined, n: number) => { if (id) usos.set(id, (usos.get(id) ?? 0) + n); };
+  const porId = new Map(recetas.map((r) => [r.id, r]));
+  const suma = (id: string | undefined, w: 'les' | 'jeff') => {
+    if (!id) return;
+    const n = perfiles ? porcionDe(porId.get(id) ?? {}, w, perfiles) : 1;
+    usos.set(id, (usos.get(id) ?? 0) + n);
+  };
   for (const m of items) {
-    if (m.t === 'dos') suma(m.r, 2);
-    else if (m.t === 'cada') { suma(m.rl, 1); suma(m.rj, 1); }
+    if (m.t === 'dos') { suma(m.r, 'les'); suma(m.r, 'jeff'); }
+    else if (m.t === 'cada') { suma(m.rl, 'les'); suma(m.rj, 'jeff'); }
   }
   return usos;
 }
 
 /** Junta los ingredientes de las recetas del menú y las colaciones armadas por partes. */
-export function armarLista(items: ItemMenu[], recetas: Receta[]): FilaCompra[] {
+export function armarLista(items: ItemMenu[], recetas: Receta[], perfiles?: PorcionesPerfiles): FilaCompra[] {
   const porId = new Map(recetas.map((r) => [r.id, r]));
   const acc = new Map<string, { n: string; u: string; q: number | null; para: string[]; crudo: boolean }>();
-  for (const [id, usos] of usosDelMenu(items)) {
+  for (const [id, usos] of usosDelMenu(items, recetas, perfiles)) {
     const r = porId.get(id);
     if (!r) continue;
-    const tandas = Math.max(1, Math.ceil(usos / (r.y || 1)));
+    // Con los perfiles se compra lo que de verdad se come (porciones ÷ rendimiento); sin ellos, tandas enteras.
+    const tandas = perfiles ? usos / (r.y || 1) : Math.max(1, Math.ceil(usos / (r.y || 1)));
     for (const g of r.ing) {
       if (/^agua/i.test(g[2])) continue;
       const crudo = g[0] != null && esCruda(g[2], g[1]);

@@ -1,11 +1,11 @@
 <script lang="ts">
-  import type { ItemMenu, Receta } from '../../core/db';
+  import type { ItemMenu, PerfilComida, Receta } from '../../core/db';
   import Hoja from '../../core/Hoja.svelte';
   import { avisos } from '../../core/aviso.svelte';
   import { nav } from '../../core/nav.svelte';
   import { fechaDe, norm } from './calculos';
   import { NOMBRE_TIENDA, SECCIONES, armarLista, comprasVacias, conteos, marcada, plantillaMarcada, repartir, seccionDe, sugerencias, textoCompartir, type Destino, type Extra, type FilaCompra, type Pestana } from './compras';
-  import { guardarCompras, leerCompras, listarRecetas, menuDe, sembrarRecetas } from './datos';
+  import { guardarCompras, leerCompras, leerPerfiles, listarRecetas, menuDe, sembrarRecetas } from './datos';
   import { fechasDeSemana, rangoSemana } from './semana';
 
   const semana = ((nav.pantalla?.datos as { k?: number } | undefined)?.k ?? 0);
@@ -15,12 +15,13 @@
   let items = $state<ItemMenu[]>([]);
   let recetas = $state<Receta[]>([]);
   let estado = $state(comprasVacias());
+  let perfiles = $state<Record<'les' | 'jeff', PerfilComida> | undefined>(undefined);
   let listo = $state(false);
   let pestana = $state<Pestana>('enfrente');
 
   (async () => {
     await sembrarRecetas();
-    [items, recetas, estado] = await Promise.all([menuDe(dias), listarRecetas(), leerCompras(lunes)]);
+    [items, recetas, estado, perfiles] = await Promise.all([menuDe(dias), listarRecetas(), leerCompras(lunes), leerPerfiles()]);
     listo = true;
   })();
 
@@ -29,7 +30,7 @@
   let rango = $state<'semana' | '1' | '3'>('semana');
   const hoyIso = fechaDe(0);
   const delRango = $derived(semana !== 0 || rango === 'semana' ? items : items.filter((m) => m.fecha >= hoyIso && m.fecha <= fechaDe(Number(rango))));
-  const lista = $derived(repartir(armarLista(delRango, recetas), estado));
+  const lista = $derived(repartir(armarLista(delRango, recetas, perfiles), estado));
   const filas = $derived(lista.filas);
   const cuenta = $derived(conteos(filas, estado));
   const visibles = $derived(filas.filter((f) => pestana === 'todo' || f.dest === pestana));
