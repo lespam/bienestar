@@ -100,3 +100,17 @@ test('Receta: cambiar un ingrediente reescala todo, sin guardar, y se puede guar
   await expect(page.getByText('Tu versión', { exact: true })).toBeVisible();
   expect(errores).toEqual([]);
 });
+
+test('Elegir con tarjetas: buscar recetas por nombre', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Recetario' }).click();
+  await page.getByRole('button', { name: /Elegir con tarjetas/ }).click();
+  await page.getByRole('searchbox', { name: 'Buscar receta por nombre' }).fill('champiñón');
+  await expect(page.locator('.tj-card[data-pos="0"]')).toContainText('Tacos de champiñón');
+  await expect(page.locator('.tj-card', { hasText: 'Tinga de pollo' })).toHaveCount(0);
+  await page.getByRole('searchbox', { name: 'Buscar receta por nombre' }).fill('zzz');
+  await expect(page.getByText(/No quedan tarjetas con «zzz»/)).toBeVisible();
+  expect(errores).toEqual([]);
+});
