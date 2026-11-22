@@ -1,6 +1,7 @@
 <script lang="ts">
   import Descanso from '../../core/Descanso.svelte';
-  import { fraseAlAzar } from '../mente';
+  import { onDestroy } from 'svelte';
+  import { fraseAlAzar, imagenAlAzar } from '../mente';
   import { guardarLargoDescanso, leerLargoDescanso } from '../herramientas';
   import { nav } from '../../core/nav.svelte';
   import { registrarDescanso, sesionAbierta } from './datos';
@@ -15,11 +16,15 @@
   let largo = $state<number | null>(null);
   leerLargoDescanso().then((l) => (largo = l));
   fraseAlAzar().then((f) => (frase = f));
+  let imagen = $state<{ src: string; titulo: string; origen: string } | null>(null);
+  imagenAlAzar().then((x) => { if (x) imagen = { src: URL.createObjectURL(x.imagen), titulo: x.titulo, origen: x.origen }; });
+  onDestroy(() => { if (imagen) URL.revokeObjectURL(imagen.src); });
+  const agregarImagen = () => { nav.cerrar(); nav.abrir('mente', { tab: 'vis' }); };
   if (sesion == null) sesionAbierta().then((s) => (sesion = s?.id));
   // El id puede llegar un momento después; se usa el último valor al salir.
   const alSalir = (seg: number) => { void registrarDescanso(sesion, despues, seg); };
 </script>
 
 {#if largo != null}
-  <Descanso largoInicial={largo} alElegirLargo={guardarLargoDescanso} siguiente={typeof d.siguiente === 'string' ? d.siguiente : ''} automatico={d.automatico === true} {frase} {alSalir} />
+  <Descanso largoInicial={largo} alElegirLargo={guardarLargoDescanso} siguiente={typeof d.siguiente === 'string' ? d.siguiente : ''} automatico={d.automatico === true} {frase} {imagen} alAgregarImagen={agregarImagen} {alSalir} />
 {/if}

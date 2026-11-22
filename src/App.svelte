@@ -3,6 +3,7 @@
   import Perezoso from './core/Perezoso.svelte';
   import Pronto from './core/Pronto.svelte';
   import Avisos from './core/Avisos.svelte';
+  import Visor from './core/Visor.svelte';
   import { nav, type Tab } from './core/nav.svelte';
   import { plataforma } from './core/plataforma.svelte';
   import { prefs, Ajustes, Bienvenida } from './modules/ajustes';
@@ -73,5 +74,6 @@
       {/if}
     {/if}
   {/key}
+  {#if nav.hojaAbierta('visor')}<Visor />{/if}
   <Avisos />
 </div>

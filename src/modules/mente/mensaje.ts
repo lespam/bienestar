@@ -36,6 +36,16 @@ export async function mensajeDelDia(hoy = new Date()): Promise<ItemColeccion | n
   return it;
 }
 
+/** Una imagen al azar de tu Colección o de tu Tablero de visión, para el descanso. */
+export async function imagenAlAzar(): Promise<{ imagen: Blob; titulo: string; origen: string } | null> {
+  const [col, metas] = await Promise.all([db.coleccion.toArray(), db.metas.toArray()]);
+  const todas = [
+    ...col.filter((x) => x.tipo === 'imagen' && x.imagen).map((x) => ({ imagen: x.imagen!, titulo: x.texto, origen: 'Tu colección' })),
+    ...metas.filter((m) => m.imagen).map((m) => ({ imagen: m.imagen!, titulo: m.titulo, origen: 'Tu tablero de visión' })),
+  ];
+  return todas.length ? todas[Math.floor(Math.random() * todas.length)] : null;
+}
+
 /** Una frase al azar de tu Colección, para el descanso. */
 export async function fraseAlAzar(): Promise<{ texto: string; origen: string } | null> {
   await sembrar();

@@ -6,6 +6,7 @@
   import { avisos } from '../../core/aviso.svelte';
   import { reducirFoto } from '../../core/imagen';
   import { nav } from '../../core/nav.svelte';
+  import { visor } from '../../core/visor.svelte';
   import { agregarItem, agregarMeta, devolverItem, devolverMeta, guardarItem, guardarMeta, ICONOS_META, listarColeccion, listarMetas, otraFrase, quitarItem, quitarMeta, TIPOS, urlSegura, type TipoColeccion } from './datos';
   import { mensajeDelDia } from './mensaje';
 
@@ -35,6 +36,13 @@
 
   const vistos = $derived(filtro === 'todo' ? items : items.filter((x) => x.tipo === filtro));
   const cuenta = (t: TipoColeccion | 'todo') => (t === 'todo' ? items.length : items.filter((x) => x.tipo === t).length);
+  /** Todas las imágenes de la pestaña, en orden, para pasar de una a otra en el visor. */
+  function verImagen(clave: string) {
+    const lista = [
+      ...(pestana === 'col' ? vistos.filter((x) => x.tipo === 'imagen' && urls['i' + x.id]).map((x) => ({ k: 'i' + x.id, alt: x.texto })) : metas.filter((m) => urls['m' + m.id]).map((m) => ({ k: 'm' + m.id, alt: m.titulo }))),
+    ];
+    visor.abrir(lista.map((l) => ({ src: urls[l.k], alt: l.alt })), lista.findIndex((l) => l.k === clave));
+  }
   const tono = (id?: number) => 't' + (((id ?? 0) % 3) + 1);
   const SUB: Record<string, string> = { imagen: 'Imagen · también en descansos', video: 'Video · YouTube', cancion: 'Canción · Apple Music' };
   const limpio = <T,>(x: T): T => $state.snapshot(x) as T;
@@ -217,12 +225,15 @@
         {#each vistos as x (x.id)}
           {@const esLetra = x.tipo !== 'frase' && !!x.semilla}
           <div class="me-it">
+            {#if x.tipo === 'imagen'}
+            <div class="me-main">
+              <button class={'me-th tile ' + tono(x.id)} style="border:0;padding:0" disabled={!urls['i' + x.id]} aria-label={'Ver en grande: ' + x.texto} onclick={() => verImagen('i' + x.id)}>{#if urls['i' + x.id]}<img src={urls['i' + x.id]} alt="" />{:else}<Icono nombre="imagen" />{/if}</button>
+              <span><b>{x.texto}</b><small>{SUB[x.tipo]}</small></span>
+            </div>
+            <button class="me-edit" aria-label={'Editar: ' + x.texto} onclick={() => abrirEditar(x)}>Editar</button>
+            {:else}
             <button class="me-main" aria-label={'Editar: ' + x.texto} onclick={() => abrirEditar(x)}>
-              {#if x.tipo === 'imagen'}
-                <span class={'me-th tile ' + tono(x.id)}>{#if urls['i' + x.id]}<img src={urls['i' + x.id]} alt="" />{:else}<Icono nombre="imagen" />{/if}</span>
-              {:else}
-                <span class="me-th"><Icono nombre={x.tipo} /></span>
-              {/if}
+              <span class="me-th"><Icono nombre={x.tipo} /></span>
               <span>
                 {#if x.tipo === 'frase' || esLetra}
                   <span class="me-q">“{x.texto}”</span><small>{x.tipo === 'frase' ? 'Frase' + (x.origen && x.origen !== 'Mía' ? ' · ' + x.origen : '') : x.origen}</small>
@@ -231,22 +242,24 @@
                 {/if}
               </span>
             </button>
+            {/if}
             {#if x.url}<a class="me-open" href={x.url} target="_blank" rel="noopener" aria-label={'Abrir: ' + x.texto}>Abrir</a>{/if}
           </div>
         {/each}
         {#if listo && !vistos.length}<p class="al-none">Aquí no hay nada todavía. Toca «+ Agregar».</p>{/if}
       </div>
-      <p class="tool-note">Toca un elemento para editarlo o quitarlo.</p>
+      <p class="tool-note">Toca una imagen para verla en grande. «Editar» sirve para cambiarla o quitarla.</p>
     </section>
   {:else}
     <section class="me-sec" aria-label="Tablero de visión">
-      <p class="seg-help">Tus metas, cada una con una imagen. Toca una para escribir tu deseo, el resultado, el obstáculo y tu plan.</p>
+      <p class="seg-help">Tus metas, cada una con una imagen. Toca la imagen para verla en grande y «Editar» para escribir tu deseo, el resultado, el obstáculo y tu plan.</p>
       <div class="me-board">
         {#each metas as m (m.id)}
-          <button class="me-goal" onclick={() => abrirMeta(m)}>
-            <span class={'tile ' + tono(m.id)}>{#if urls['m' + m.id]}<img src={urls['m' + m.id]} alt="" />{:else}<Icono nombre={m.icono} />{/if}</span>
+          <div class="me-goal">
+            <button class={'tile ' + tono(m.id)} style="border:0;padding:0" disabled={!urls['m' + m.id]} aria-hidden={!urls['m' + m.id] || undefined} tabindex={urls['m' + m.id] ? undefined : -1} aria-label={urls['m' + m.id] ? 'Ver en grande: ' + m.titulo : undefined} onclick={() => verImagen('m' + m.id)}>{#if urls['m' + m.id]}<img src={urls['m' + m.id]} alt="" />{:else}<Icono nombre={m.icono} />{/if}</button>
             <b>{m.titulo}</b>
-          </button>
+            <button class="me-edit" aria-label={'Editar: ' + m.titulo} onclick={() => abrirMeta(m)}>Editar</button>
+          </div>
         {/each}
         <button class="me-goal add-goal" onclick={() => abrirMeta(null)}>+ Agregar meta</button>
       </div>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { PerfilComida, Receta } from '../../core/db';
   import Hoja from '../../core/Hoja.svelte';
+  import { visor } from '../../core/visor.svelte';
   import { avisos } from '../../core/aviso.svelte';
   import { reducirFoto } from '../../core/imagen';
   import { nav } from '../../core/nav.svelte';
@@ -276,7 +277,7 @@
 
     <section class="rc-sec" aria-labelledby="rc-h5">
       <h4 id="rc-h5">Foto del platillo</h4>
-      {#if fotoUrl}<img class="rc-page" src={fotoUrl} alt="Foto del platillo" />{:else}<p class="seg-help">Aún no tiene. Se ve en las tarjetas si activas las fotos.</p>{/if}
+      {#if fotoUrl}<button class="link-btn ampliable" aria-label="Ver la foto en grande" onclick={() => visor.abrir([{ src: fotoUrl, alt: "Foto del platillo" }])}><img class="rc-page" src={fotoUrl} alt="Foto del platillo" /></button>{:else}<p class="seg-help">Aún no tiene. Se ve en las tarjetas si activas las fotos.</p>{/if}
       <button class="add" onclick={() => archivo?.click()}>{r.img ? 'Cambiar foto' : '+ Agregar foto'}</button>
       <input bind:this={archivo} type="file" accept="image/*" hidden onchange={elegirFoto} aria-label="Elegir la foto del platillo" />
     </section>

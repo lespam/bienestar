@@ -3,7 +3,7 @@ import { diaDePlan, esFinDeSemana, lunesDeSemana } from './semanas';
 import { listarMetas, planDeHoy } from './datos';
 import type { Meta } from '../../core/db';
 
-export { mensajeDelDia, fraseAlAzar, sembrar } from './mensaje';
+export { mensajeDelDia, fraseAlAzar, imagenAlAzar, sembrar } from './mensaje';
 export const Mente = () => import('./Mente.svelte');
 export const Alma = () => import('./Alma.svelte');
 export const Comparar = () => import('./Comparar.svelte');
