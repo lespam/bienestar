@@ -144,6 +144,8 @@ export interface Receta {
   img_tipo?: string;
   /** De qué libro o recetario viene la receta. */
   origen?: string;
+  /** «guardada»: archivada. No sale en las vistas diarias; solo en el Recetario con «Ver guardadas» o al buscarla por nombre. */
+  vis?: 'guardada';
   page?: Blob;
   /** La receta como estaba antes de aplicar cambios, para "Volver a la receta original". */
   orig?: string;
