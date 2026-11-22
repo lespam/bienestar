@@ -1253,3 +1253,14 @@ textarea { font: inherit; color: var(--fg); }
 /* Acomoda la semana: la tabla se desplaza a los lados con la columna de los días fija (backlog 33). */
 .tj-tabla { width: calc(48px + var(--cols, 3) * 108px); min-width: 100%; }
 .tj-tabla thead th:first-child, .tj-tabla tbody th { position: sticky; left: 0; z-index: 1; background: var(--bg); }
+/* Perfiles: niveles y vista «Los dos» (versión 2, fase 2) */
+.pf-chip-n { width: auto; height: auto; min-height: 44px; border-radius: 99px; padding: 0 6px 0 0; display: grid; text-align: left; align-content: center; font-size: 14px; font-weight: 600; color: var(--fg); }
+.pf-chip-n small { font-size: 12px; font-weight: 500; color: var(--muted); }
+.pf-chip-b { border: 0; padding: 0 14px; color: var(--fg); }
+.pf-dos { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.pf-dos h5 { margin: 0 0 6px; font-size: 14px; }
+.pf-nv { margin: 8px 0 4px; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .03em; }
+.pf-niveles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pf-niveles button { min-height: 48px; border-radius: 14px; border: 1.5px solid var(--line); background: none; color: var(--fg); font-weight: 600; }
+.pf-niveles button.on { border-color: var(--accent); background: var(--soft); }
+.pf-lbl { font-size: 13px; font-weight: 700; color: var(--muted); }

@@ -164,6 +164,8 @@ export interface PerfilComida {
   por: number;
   gustos: string[];
   no: string[];
+  /** Qué tanto pesa cada ingrediente de `no` (clave: nombre sin acentos ni mayúsculas). Lo que falta es «No me gusta». */
+  niveles?: Record<string, 'prefiero' | 'nogusta' | 'odio' | 'nocomo'>;
   nota: string;
 }
 /** Comida: ajustes y marcas propias (por ejemplo, qué recetas del archivo ya se copiaron). */

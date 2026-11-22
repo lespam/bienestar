@@ -29,8 +29,32 @@ export const CAT_COLOR: Record<string, string> = { Desayuno: 'var(--rose)', Comi
 // ---------- Lo que alguien no come ----------
 const raiz = (t: string) => norm(t).replace(/(es|s)$/, '');
 
+/**
+ * Niveles de lo que alguien no come. Suave: nunca oculta, solo manda al final. Medio (el de siempre): oculta si está en el nombre
+ * del plato. Duro (odio, no lo como): oculta si está en cualquier ingrediente. Sin nivel guardado vale «No me gusta».
+ */
+export type Nivel = 'prefiero' | 'nogusta' | 'odio' | 'nocomo';
+export const NIVELES: readonly (readonly [Nivel, string])[] = [['prefiero', 'Prefiero no'], ['nogusta', 'No me gusta'], ['odio', 'Lo odio'], ['nocomo', 'No lo como']];
+export type PerfilNo = Pick<PerfilComida, 'no'> & { niveles?: PerfilComida['niveles'] };
+export const nivelDe = (p: PerfilNo, x: string): Nivel => p.niveles?.[norm(x)] ?? 'nogusta';
+const sinAlt = (r: Pick<Receta, 'alt'>, w: 'les' | 'jeff', sx: string) => !!r.alt && r.alt.w === w && raiz(r.alt.x) === sx;
+const enIngredientes = (r: Partial<Pick<Receta, 'ing'>>, sx: string) => !!sx && !!r.ing && r.ing.some((it) => raiz(it[2]).includes(sx));
+/** La receta se oculta con el filtro «sin lo que no le gusta» según el nivel de cada ingrediente. */
+export function ocultaPorNivel(r: Pick<Receta, 'n' | 'alt'> & Partial<Pick<Receta, 'ing'>>, p: PerfilNo, w: 'les' | 'jeff'): boolean {
+  return p.no.some((x) => {
+    const n = nivelDe(p, x), sx = raiz(x);
+    if (n === 'prefiero') return false;
+    if (n === 'nogusta') return noLeGustaPrincipal(r, [x], w);
+    return enIngredientes(r, sx) && !sinAlt(r, w, sx);
+  });
+}
+/** Hay algo que prefiere evitar: no se oculta, pero va al final y se marca con un punto. */
+export const prefiereEvitar = (r: Pick<Receta, 'ing'>, p: PerfilNo): boolean => p.no.some((x) => nivelDe(p, x) === 'prefiero' && enIngredientes(r, raiz(x)));
+/** Ingredientes de nivel duro: la IA nunca los sugiere y el doble seguro descarta lo que los traiga. */
+export const exclusionesDuras = (p: PerfilNo): string[] => p.no.filter((x) => { const n = nivelDe(p, x); return n === 'odio' || n === 'nocomo'; });
+
 export interface Conflicto { w: 'les' | 'jeff'; x: string }
-export function conflictos(r: Pick<Receta, 'ing'>, perfiles: Record<'les' | 'jeff', Pick<PerfilComida, 'no'>>): Conflicto[] {
+export function conflictos(r: Pick<Receta, 'ing'>, perfiles: Record<'les' | 'jeff', PerfilNo>): Conflicto[] {
   const out: Conflicto[] = [];
   for (const w of ['les', 'jeff'] as const) {
     for (const x of perfiles[w].no) {
@@ -42,7 +66,7 @@ export function conflictos(r: Pick<Receta, 'ing'>, perfiles: Record<'les' | 'jef
 }
 const tieneAlt = (r: Pick<Receta, 'alt'>, c: Conflicto) => !!r.alt && r.alt.w === c.w && raiz(r.alt.x) === raiz(c.x);
 
-export function notaConflictos(r: Pick<Receta, 'ing' | 'alt'>, perfiles: Record<'les' | 'jeff', Pick<PerfilComida, 'no'>>): string {
+export function notaConflictos(r: Pick<Receta, 'ing' | 'alt'>, perfiles: Record<'les' | 'jeff', PerfilNo>): string {
   return conflictos(r, perfiles).map((c) => {
     const yo = c.w === 'les';
     return (yo ? 'No comes ' : 'Jeff no come ') + lc(c.x) + (tieneAlt(r, c) ? ': ' + (yo ? 'tu' : 'su') + ' versión va con ' + r.alt!.by + '.' : '. Cambia ese ingrediente en ' + (yo ? 'tu' : 'su') + ' porción.');
@@ -68,17 +92,17 @@ export function usoTxt(u?: UsoReceta): string {
   return [u!.e ? 'En el menú ' + vez(u!.e) : '', u!.r ? 'Registrada ' + vez(u!.r) : ''].filter(Boolean).join(' · ');
 }
 export interface FiltrosReceta { origen: string; sinLes: boolean; sinJeff: boolean; uso?: 'todo' | 'nunca' | 'usadas'; foto?: 'todo' | 'con' | 'sin' }
-export function pasaFiltros(r: Pick<Receta, 'id' | 'n' | 'alt' | 'origen' | 'img'>, f: FiltrosReceta, perfiles: Record<'les' | 'jeff', Pick<PerfilComida, 'no'>>, uso: Record<string, UsoReceta> = {}): boolean {
+export function pasaFiltros(r: Pick<Receta, 'id' | 'n' | 'alt' | 'origen' | 'img'> & Partial<Pick<Receta, 'ing'>>, f: FiltrosReceta, perfiles: Record<'les' | 'jeff', PerfilNo>, uso: Record<string, UsoReceta> = {}): boolean {
   if (f.origen !== 'todo' && (r.origen ?? 'Mías') !== f.origen) return false;
   if (f.uso === 'nunca' && vecesUsada(uso[r.id])) return false;
   if (f.uso === 'usadas' && !vecesUsada(uso[r.id])) return false;
   if (f.foto === 'con' && !r.img) return false;
   if (f.foto === 'sin' && r.img) return false;
-  if (f.sinLes && noLeGustaPrincipal(r, perfiles.les.no, 'les')) return false;
-  if (f.sinJeff && noLeGustaPrincipal(r, perfiles.jeff.no, 'jeff')) return false;
+  if (f.sinLes && ocultaPorNivel(r, perfiles.les, 'les')) return false;
+  if (f.sinJeff && ocultaPorNivel(r, perfiles.jeff, 'jeff')) return false;
   return true;
 }
-export function avisoConflicto(r: Pick<Receta, 'ing' | 'alt'>, perfiles: Record<'les' | 'jeff', Pick<PerfilComida, 'no'>>): string {
+export function avisoConflicto(r: Pick<Receta, 'ing' | 'alt'>, perfiles: Record<'les' | 'jeff', PerfilNo>): string {
   const c = conflictos(r, perfiles)[0];
   if (!c) return '';
   const yo = c.w === 'les';
