@@ -374,3 +374,14 @@ describe('niveles de lo que no se come', () => {
     expect(exclusionesDuras(con('prefiero').jeff)).toEqual([]);
   });
 });
+
+describe('recetas guardadas', () => {
+  const perf = { les: { no: [] as string[] }, jeff: { no: [] as string[] } };
+  const f = { origen: 'todo', sinLes: false, sinJeff: false };
+  it('no salen salvo que pidas ver las guardadas', () => {
+    const r = { id: 'x', n: 'Rara', vis: 'guardada' as const };
+    expect(pasaFiltros(r, f, perf)).toBe(false);
+    expect(pasaFiltros(r, { ...f, guardadas: true }, perf)).toBe(true);
+    expect(pasaFiltros({ id: 'y', n: 'Normal' }, f, perf)).toBe(true);
+  });
+});

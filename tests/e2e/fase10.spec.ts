@@ -44,3 +44,24 @@ test('Visor: una imagen de tu colección se abre en grande y el gesto atrás la 
   await expect(page.getByRole('dialog', { name: 'Imagen en grande' })).toBeHidden();
   expect(errores).toEqual([]);
 });
+
+test('Recetario: guardar recetas por origen, buscarlas por nombre y deshacer', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Recetario' }).click();
+  await expect(page.getByText(/Mostrando 2 de 2/)).toBeVisible();
+  await page.getByRole('button', { name: 'Ordenar recetas por origen' }).click();
+  await page.getByRole('dialog').getByRole('switch').first().click();
+  await page.getByRole('button', { name: 'Aplicar' }).click();
+  await expect(page.getByText(/Mostrando 0 de 2/)).toBeVisible();
+  // Buscarla por nombre la muestra aunque esté guardada
+  await page.getByRole('searchbox', { name: 'Buscar receta o ingrediente' }).fill('Tinga');
+  await expect(page.getByRole('button', { name: /Tinga de pollo/ })).toBeVisible();
+  await page.getByRole('searchbox', { name: 'Buscar receta o ingrediente' }).fill('');
+  await page.getByRole('switch', { name: 'Ver también las guardadas' }).click();
+  await expect(page.getByText(/Mostrando 2 de 2/)).toBeVisible();
+  await page.getByRole('button', { name: 'Quitar filtros' }).click();
+  await expect(page.getByText(/Mostrando 0 de 2/)).toBeVisible();
+  expect(errores).toEqual([]);
+});

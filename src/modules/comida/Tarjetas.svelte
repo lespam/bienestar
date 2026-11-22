@@ -23,7 +23,7 @@
   let pasada = $state<ItemMenu[]>([]);
   let listo = $state(false);
   let uso = $state<Record<string, UsoReceta>>({});
-  let perfiles = $state<Record<'les' | 'jeff', Pick<PerfilComida, 'no'>>>({ les: { no: [] }, jeff: { no: [] } });
+  let perfiles = $state<Record<'les' | 'jeff', Pick<PerfilComida, 'no' | 'niveles'>>>({ les: { no: [] }, jeff: { no: [] } });
 
   const cargarMenu = async () => { [items, pasada] = await Promise.all([menuDe(dias), menuDe(fechasDeSemana(semanaK + 1))]); };
   async function cambiarSemana(k: number) { semanaK = k; await cargarMenu(); }
@@ -36,7 +36,7 @@
   const porId = $derived(new Map(recetas.map((r) => [r.id, r])));
   // Por tiempos: solo las recetas de los tiempos elegidos (desayuno y cena, sin bases, por ejemplo).
   const catsTiempos = $derived(tarjetas.porTiempos ? TIEMPOS.filter((t) => tarjetas.tiempos.includes(t.l)).map((t) => t.cat) : null);
-  const mazo = $derived(mazoDe(recetas.filter((r) => pasaFiltros(r, { ...filtros, foto: 'todo' }, perfiles, uso) && (!catsTiempos || catsTiempos.includes(r.cat))), tarjetas.liked, tarjetas.passed, catsTiempos ? 'todo' : tarjetas.cat, uso));
+  const mazo = $derived(mazoDe(recetas.filter((r) => pasaFiltros(r, { ...filtros, foto: 'todo', guardadas: false }, perfiles, uso) && (!catsTiempos || catsTiempos.includes(r.cat))), tarjetas.liked, tarjetas.passed, catsTiempos ? 'todo' : tarjetas.cat, uso));
   // La ronda: cuántas decidiste desde que empezó y cuántas tiene (menos si quedan pocas).
   const inicio = $derived(Math.min(tarjetas.ronda, tarjetas.hist.length));
   const enRonda = $derived(tarjetas.hist.slice(inicio));

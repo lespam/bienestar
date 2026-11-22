@@ -1,9 +1,10 @@
 <script lang="ts">
   import type { PerfilComida, Receta } from '../../core/db';
   import { avisos } from '../../core/aviso.svelte';
+  import Hoja from '../../core/Hoja.svelte';
   import { nav } from '../../core/nav.svelte';
   import { CATEGORIAS, CAT_COLOR, CAT_PLURAL, avisoConflicto, norm, pasaFiltros, usoTxt, type UsoReceta } from './calculos';
-  import { guardarReceta, leerPerfiles, listarRecetas, quitarReceta, sembrarRecetas, usoDeRecetas } from './datos';
+  import { guardarReceta, ponerVisibilidad, visibilidadDeOrigen, leerPerfiles, listarRecetas, quitarReceta, sembrarRecetas, usoDeRecetas } from './datos';
   import { eleccion, filtros, numerosVisibles, vista } from './estado.svelte';
   import { NOMBRE_LUGAR, nombreDia, platoTxt } from './semana';
   import { itemDeMenu } from './datos';
@@ -12,7 +13,7 @@
   import Plato from './Plato.svelte';
 
   let recetas = $state<Receta[]>([]);
-  let perfiles = $state<Record<'les' | 'jeff', Pick<PerfilComida, 'no'>>>({ les: { no: [] }, jeff: { no: [] } });
+  let perfiles = $state<Record<'les' | 'jeff', Pick<PerfilComida, 'no' | 'niveles'>>>({ les: { no: [] }, jeff: { no: [] } });
   let listo = $state(false);
 
   let uso = $state<Record<string, UsoReceta>>({});
@@ -44,9 +45,30 @@
   const q = $derived(norm(vista.q.trim()));
   const filas = $derived(
     recetas
-      .filter((r) => (cat === 'todo' || r.cat === cat) && pasaFiltros(r, filtros, perfiles, uso) && (!q || norm(r.n).includes(q) || r.ing.some((it) => norm(it[2]).includes(q))))
+      .filter((r) => (cat === 'todo' || r.cat === cat) && pasaFiltros(r, { ...filtros, guardadas: filtros.guardadas || !!q }, perfiles, uso) && (!q || norm(r.n).includes(q) || r.ing.some((it) => norm(it[2]).includes(q))))
       .sort((a, b) => a.n.localeCompare(b.n, 'es'))
   );
+
+  // Ordenar recetas: guardar (archivar) por origen, de un solo paso y con Deshacer.
+  const grupos = $derived.by(() => {
+    const m: Record<string, { n: number; g: number }> = {};
+    for (const r of recetas) { const o = r.origen ?? 'Mías'; (m[o] ??= { n: 0, g: 0 }).n++; if (r.vis) m[o].g++; }
+    return Object.entries(m).sort((a, b) => a[0].localeCompare(b[0], 'es'));
+  });
+  let marcas = $state<Record<string, boolean>>({});
+  function abrirOrden() { marcas = Object.fromEntries(grupos.map(([o, v]) => [o, v.g === v.n])); nav.abrirHoja('rc-orden'); }
+  async function aplicarOrden() {
+    const cambios: { ids: string[]; guardar: boolean }[] = [];
+    for (const [o, v] of grupos) {
+      const quiere = !!marcas[o];
+      if (quiere !== (v.g === v.n)) cambios.push({ ids: await visibilidadDeOrigen(o, quiere), guardar: quiere });
+    }
+    nav.cerrar();
+    vista.cambio++;
+    const total = cambios.reduce((s, c) => s + c.ids.length, 0);
+    if (!total) { avisos.mostrar('No hubo cambios'); return; }
+    avisos.deshacer(total + (total === 1 ? ' receta cambió' : ' recetas cambiaron') + ' de lugar', async () => { for (const c of cambios) await ponerVisibilidad(c.ids, !c.guardar); vista.cambio++; });
+  }
 
   // Saltar a una letra: la lista es larga (cientos de recetas).
   const letraDe = (r: Receta) => { const l = norm(r.n).charAt(0).toUpperCase(); return /[A-Z]/.test(l) ? l : '#'; };
@@ -111,7 +133,8 @@
       <button class:on aria-pressed={on} onclick={() => (vista.cat = c)}>{CAT_PLURAL[c]} · {recetas.filter((r) => r.cat === c).length}</button>
     {/each}
   </div>
-  <FiltrosRecetas {recetas} {perfiles} foto />
+  <button class="link-btn" onclick={abrirOrden}>Ordenar recetas por origen</button>
+  <FiltrosRecetas {recetas} {perfiles} foto mostrando={filas.length} total={recetas.length} />
   {#if conLetras}
     <nav class="fi-jump rc-abc" aria-label="Ir a la letra">
       {#each Object.keys(primeras) as l (l)}<button onclick={() => saltar(l)} aria-label={'Recetas con ' + l}>{l}</button>{/each}
@@ -138,5 +161,18 @@
   </div>
   <p class="tool-note">Calorías y macros aproximados, por porción.</p>
 </div>
+
+{#if nav.hojaAbierta('rc-orden')}
+  <Hoja titulo="Ordenar recetas">
+    <p class="seg-help">Las guardadas no salen en las vistas diarias, pero siguen aquí. Si luego usas una, vuelve sola. Se puede deshacer.</p>
+    <div class="group">
+      {#each grupos as [o, v] (o)}
+        <div class="rc-view"><span id={'rc-o-' + o}>{o} · {v.n}</span><button class="sw" role="switch" aria-checked={!!marcas[o]} aria-labelledby={'rc-o-' + o} onclick={() => (marcas[o] = !marcas[o])}><i></i></button></div>
+      {/each}
+    </div>
+    <p class="seg-help">Encendido = guardar todo este origen.</p>
+    <button class="start" onclick={aplicarOrden}>Aplicar</button>
+  </Hoja>
+{/if}
 
 {#if nav.hojaEnPila('rc-form')}<FormReceta receta={null} alGuardar={guardada} />{/if}

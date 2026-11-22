@@ -93,11 +93,18 @@ export async function ultimosRegistrados(limite = 60): Promise<Alimento[]> {
 // ---------- Menú ----------
 export const menuDe = (fechas: string[]) => db.menu.where('fecha').anyOf(fechas).toArray();
 const sinTicket = (m: ItemMenu) => ({ ...limpio({ ...m, ticket: undefined }), ...(m.ticket ? { ticket: m.ticket } : {}) });
-export async function ponerEnMenu(m: ItemMenu) { await db.menu.put(sinTicket(m)); await sincronizarPrep([m.fecha]); }
+/** Una receta guardada que usas en el menú pasa sola a «A la vista». */
+async function alaVista(filas: ItemMenu[]) {
+  const ids = [...new Set(filas.flatMap((m) => [m.r, m.rl, m.rj]).filter((x): x is string => !!x))];
+  if (!ids.length) return;
+  for (const r of await db.recetas.bulkGet(ids)) if (r?.vis) await db.recetas.update(r.id, { vis: undefined });
+}
+export async function ponerEnMenu(m: ItemMenu) { await db.menu.put(sinTicket(m)); await alaVista([m]); await sincronizarPrep([m.fecha]); }
 export const quitarDelMenu = (fecha: string, lugar: ItemMenu['lugar']) => db.menu.delete([fecha, lugar]).then(() => sincronizarPrep([fecha]));
 /** Guarda varios lugares a la vez y avisa que ya hay un registro nuevo. */
 export async function ponerVariosEnMenu(filas: ItemMenu[]) {
   await db.menu.bulkPut(filas.map(sinTicket));
+  await alaVista(filas);
   await sincronizarPrep([...new Set(filas.map((f) => f.fecha))]);
   await registroNuevo();
 }
@@ -161,4 +168,15 @@ export async function usoDeRecetas(): Promise<Record<string, UsoReceta>> {
   const dias = new Set<string>();
   for (const a of reg) if (a.receta && !dias.has(a.receta + '|' + a.fecha)) { dias.add(a.receta + '|' + a.fecha); de(a.receta).r++; }
   return out;
+}
+
+/** Guarda (archiva) o deja a la vista todas las recetas de un origen. Devuelve los ids que cambiaron, para Deshacer. */
+export async function visibilidadDeOrigen(origen: string, guardar: boolean): Promise<string[]> {
+  const enMenu = new Set((await db.menu.toArray()).flatMap((m) => [m.r, m.rl, m.rj]).filter((x): x is string => !!x));
+  const cambian = (await db.recetas.toArray()).filter((r) => (r.origen ?? 'Mías') === origen && (guardar ? !r.vis && !enMenu.has(r.id) : !!r.vis)).map((r) => r.id);
+  await db.transaction('rw', db.recetas, async () => { for (const id of cambian) await db.recetas.update(id, { vis: guardar ? 'guardada' : undefined }); });
+  return cambian;
+}
+export async function ponerVisibilidad(ids: string[], guardar: boolean) {
+  await db.transaction('rw', db.recetas, async () => { for (const id of ids) await db.recetas.update(id, { vis: guardar ? 'guardada' : undefined }); });
 }

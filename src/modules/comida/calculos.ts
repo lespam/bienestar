@@ -91,8 +91,9 @@ export function usoTxt(u?: UsoReceta): string {
   const vez = (n: number) => n + (n === 1 ? ' vez' : ' veces');
   return [u!.e ? 'En el menú ' + vez(u!.e) : '', u!.r ? 'Registrada ' + vez(u!.r) : ''].filter(Boolean).join(' · ');
 }
-export interface FiltrosReceta { origen: string; sinLes: boolean; sinJeff: boolean; uso?: 'todo' | 'nunca' | 'usadas'; foto?: 'todo' | 'con' | 'sin' }
-export function pasaFiltros(r: Pick<Receta, 'id' | 'n' | 'alt' | 'origen' | 'img'> & Partial<Pick<Receta, 'ing'>>, f: FiltrosReceta, perfiles: Record<'les' | 'jeff', PerfilNo>, uso: Record<string, UsoReceta> = {}): boolean {
+export interface FiltrosReceta { origen: string; sinLes: boolean; sinJeff: boolean; uso?: 'todo' | 'nunca' | 'usadas'; foto?: 'todo' | 'con' | 'sin'; guardadas?: boolean }
+export function pasaFiltros(r: Pick<Receta, 'id' | 'n' | 'alt' | 'origen' | 'img'> & Partial<Pick<Receta, 'vis'>> & Partial<Pick<Receta, 'ing'>>, f: FiltrosReceta, perfiles: Record<'les' | 'jeff', PerfilNo>, uso: Record<string, UsoReceta> = {}): boolean {
+  if (r.vis === 'guardada' && !f.guardadas) return false;
   if (f.origen !== 'todo' && (r.origen ?? 'Mías') !== f.origen) return false;
   if (f.uso === 'nunca' && vecesUsada(uso[r.id])) return false;
   if (f.uso === 'usadas' && !vecesUsada(uso[r.id])) return false;
