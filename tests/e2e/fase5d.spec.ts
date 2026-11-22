@@ -34,11 +34,11 @@ test('Lista de compras: se arma del menú, va a la tienda correcta, se marca y s
   await expect(page.getByRole('radio', { name: 'Enfrente · 2' })).toBeChecked();
   await expect(page.getByRole('radio', { name: 'Walmart+ · 1' })).toBeVisible();
   await expect(page.getByRole('radio', { name: 'Todo · 3' })).toBeVisible();
-  // 500 g cocidos son 650 g crudos
+  // Los dos comen 1 porción de 4: la mitad de la receta. 250 g cocidos son 325 g crudos (se redondea a 330 g)
   const pollo = page.locator('.cp-row', { hasText: 'Pechuga de pollo' });
-  await expect(pollo.getByText('650 g')).toBeVisible();
+  await expect(pollo.getByText('330 g')).toBeVisible();
   await expect(pollo.getByText('Para: Tinga de pollo · en crudo')).toBeVisible();
-  await expect(page.locator('.cp-row', { hasText: 'Jitomate' }).getByText('4 piezas')).toBeVisible();
+  await expect(page.locator('.cp-row', { hasText: 'Jitomate' }).getByText('2 piezas')).toBeVisible();
   await expect(page.getByText('Aceite')).toHaveCount(0);
   await revisarPantalla(page);
 

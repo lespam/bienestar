@@ -89,3 +89,16 @@ describe('lista de compras', () => {
     expect(otros).toEqual(['Sal de mar']);
   });
 });
+
+describe('lista de compras con porciones de los perfiles', () => {
+  it('usa la porción de cada quien y no redondea a tandas enteras', () => {
+    const rs = [receta('a', 'Tinga', 4, [[400, 'g', 'Jitomate'], [4, 'pieza', 'Cebolla']])];
+    const perfiles = { les: { por: 1 }, jeff: { por: 1.5 } };
+    // Los dos comen una vez: 2.5 porciones de 4 = 0.625 de la receta
+    const filas = armarLista([dos('a')], rs, perfiles);
+    expect(filas.find((f) => f.n === 'Cebolla')!.q).toBe('3 piezas');
+    // La porción que cambiaste en la receta manda sobre la del perfil
+    const r2 = [{ ...rs[0], por: { jeff: 3 } }];
+    expect(armarLista([dos('a')], r2, perfiles).find((f) => f.n === 'Cebolla')!.q).toBe('4 piezas');
+  });
+});
