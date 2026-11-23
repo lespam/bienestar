@@ -6,6 +6,7 @@ export const Perfiles = () => import('./Perfiles.svelte');
 export const Menu = () => import('./Menu.svelte');
 export const Compras = () => import('./Compras.svelte');
 export const Preparacion = () => import('./Preparacion.svelte');
+export const HoyToca = () => import('./HoyToca.svelte');
 export const Tips = () => import('./Tips.svelte');
 export const Tarjetas = () => import('./Tarjetas.svelte');
 export const Flexible = () => import('./Flexible.svelte');
