@@ -3,7 +3,7 @@
 // Desde otra pestaña regresa a Inicio. En Inicio, el primer gesto avisa y solo el segundo sale.
 import { contarPantalla } from './uso';
 
-export type Tab = 'inicio' | 'rutina' | 'comida' | 'cuerpo';
+export type Tab = 'inicio' | 'rutina' | 'comida' | 'alma';
 export type Capa =
   | { tipo: 'pantalla'; id: string; datos?: Record<string, unknown>; desde: HTMLElement | null }
   | { tipo: 'hoja'; id: string; desde: HTMLElement | null };

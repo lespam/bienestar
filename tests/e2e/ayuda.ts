@@ -73,3 +73,10 @@ export async function entrarConContenido(page: Page) {
   await page.getByRole('button', { name: 'Ir a Inicio' }).click();
   await expect(page.getByRole('heading', { name: 'Rutina A' })).toBeVisible();
 }
+
+/** Cuerpo ya no está en la barra de abajo: se abre desde Inicio. */
+export async function irACuerpo(page: Page) {
+  await page.getByRole('button', { name: 'Inicio', exact: true }).click();
+  await page.getByRole('button', { name: /^Cuerpo Medidas, fotos y período/ }).click();
+  await expect(page.getByRole('heading', { name: 'Cuerpo', level: 2 })).toBeVisible();
+}

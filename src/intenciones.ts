@@ -205,13 +205,13 @@ const DESTINOS: { rx: RegExp; nombre: string; ir: () => void }[] = [
   { rx: /perfiles/, nombre: 'los perfiles de comida', ir: () => nav.abrir('perfiles') },
   { rx: /\btips\b|combinaciones/, nombre: 'los tips', ir: () => nav.abrir('tips') },
   { rx: /hogar|tareas de la casa|\bcasa\b/, nombre: 'Hogar', ir: () => nav.abrir('hogar') },
-  { rx: /planeador|\balma\b/, nombre: 'el planeador de Alma', ir: () => nav.abrir('alma', { k: 0 }) },
+  { rx: /planeador|\balma\b/, nombre: 'el planeador de Alma', ir: () => nav.irTab('alma') },
   { rx: /coleccion|\bmente\b/, nombre: 'la colección de Mente', ir: () => nav.abrir('mente') },
   { rx: /patrones/, nombre: 'los patrones', ir: () => nav.abrir('patrones') },
   { rx: /ajustes/, nombre: 'Ajustes', ir: () => nav.abrir('ajustes') },
   { rx: /\brutina\b/, nombre: 'Rutina', ir: () => nav.irTab('rutina') },
   { rx: /\bcomida\b/, nombre: 'Comida', ir: () => nav.irTab('comida') },
-  { rx: /\bcuerpo\b|medidas|peso/, nombre: 'Cuerpo', ir: () => nav.irTab('cuerpo') },
+  { rx: /\bcuerpo\b|medidas|peso/, nombre: 'Cuerpo', ir: () => nav.abrir('cuerpo') },
   { rx: /\binicio\b/, nombre: 'Inicio', ir: () => nav.irTab('inicio') }
 ];
 const RX_ABRIR = /^(?:abre|abrir|ve a|ir a|llevame a|muestrame|muestra|quiero ver|ver)\s+(?:a\s+)?(?:mi\s+|mis\s+|la\s+|el\s+|los\s+|las\s+)?(.+)$/;

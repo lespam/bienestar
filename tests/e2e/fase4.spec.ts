@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { revisarPantalla, saltarBienvenida, vigilarConsola } from './ayuda';
+import { irACuerpo, revisarPantalla, saltarBienvenida, vigilarConsola } from './ayuda';
 
 // Una foto de prueba de 8 × 8 px.
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAFklEQVR4nGP8z8Dwn4EIwESMolGFVFMIAIzcAhFdpQHPAAAAAElFTkSuQmCC', 'base64');
@@ -25,7 +25,7 @@ test('Cuerpo: medidas ocultas, peso que se muestra, gráfica y zonas', async ({ 
     { zona: 'Glúteo', fecha: '2026-08-20', cm: 100 }, { zona: 'Glúteo', fecha: '2026-09-03', cm: 100.5 }, { zona: 'Glúteo', fecha: '2026-09-17', cm: 101 }
   ]);
   await page.reload();
-  await page.getByRole('button', { name: 'Cuerpo', exact: true }).click();
+  await irACuerpo(page);
   await expect(page.getByRole('heading', { name: 'Cuerpo', level: 2 })).toBeFocused();
 
   // Con "Ocultar números" encendido, las medidas se ven tapadas
@@ -69,7 +69,7 @@ test('Cuerpo: medidas ocultas, peso que se muestra, gráfica y zonas', async ({ 
 test('Cuerpo: las fotos empiezan cubiertas, se comparan y se quitan', async ({ page }) => {
   const errores = vigilarConsola(page);
   await saltarBienvenida(page);
-  await page.getByRole('button', { name: 'Cuerpo', exact: true }).click();
+  await irACuerpo(page);
   await page.getByRole('tab', { name: 'Fotos' }).click();
   await expect(page.getByText('Aún no hay fotos.')).toBeVisible();
   await page.locator('#ph-file').setInputFiles({ name: 'a.png', mimeType: 'image/png', buffer: PNG });
@@ -102,7 +102,7 @@ test('Cuerpo: las fotos empiezan cubiertas, se comparan y se quitan', async ({ p
 test('Cuerpo: Período marca días, guarda notas y no deja marcar el futuro', async ({ page }) => {
   const errores = vigilarConsola(page);
   await saltarBienvenida(page);
-  await page.getByRole('button', { name: 'Cuerpo', exact: true }).click();
+  await irACuerpo(page);
   await page.getByRole('tab', { name: 'Período' }).click();
   await expect(page.getByText('Aún no hay fechas.')).toBeVisible();
   await expect(page.locator('#dn-text')).toBeDisabled();
@@ -111,7 +111,7 @@ test('Cuerpo: Período marca días, guarda notas y no deja marcar el futuro', as
   await page.locator('#dn-text').fill('Más cansancio de lo normal.');
   await page.waitForTimeout(800);
   await page.reload();
-  await page.getByRole('button', { name: 'Cuerpo', exact: true }).click();
+  await irACuerpo(page);
   await page.getByRole('tab', { name: 'Período' }).click();
   await expect(page.getByText('Más cansancio de lo normal.')).toBeVisible();
   await expect(page.getByRole('button', { name: /marcado$/ })).toHaveCount(1);
