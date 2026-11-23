@@ -98,3 +98,54 @@ test('Mis fijos: lo que planeas seguido y casi no registras se dice con curiosid
   await expect(page.getByRole('heading', { name: 'Recetario', level: 2 })).toBeVisible();
   expect(errores).toEqual([]);
 });
+
+test('Medir mi uso: apagado por defecto, cuenta solo pantallas, se exporta y se borra con Deshacer', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await page.getByRole('button', { name: 'Ajustes' }).click();
+  const sw = page.getByRole('switch', { name: 'Medir mi uso' });
+  await expect(sw).toHaveAttribute('aria-checked', 'false');
+  // Apagado, abrir pantallas no cuenta nada
+  await page.getByRole('button', { name: /Volver/ }).click();
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Inicio', exact: true }).click();
+  await page.getByRole('button', { name: 'Ajustes' }).click();
+  await page.getByRole('button', { name: /Cómo uso la app/ }).click();
+  await expect(page.getByText('Con el interruptor apagado no se cuenta nada.')).toBeVisible();
+
+  // Encendido, cuenta lo que abres
+  await page.getByRole('switch', { name: 'Medir mi uso' }).click();
+  await expect(page.getByRole('switch', { name: 'Medir mi uso' })).toHaveAttribute('aria-checked', 'true');
+  await page.getByRole('button', { name: /Volver/ }).click();
+  await page.getByRole('button', { name: /Volver/ }).click();
+  await page.getByRole('button', { name: 'Rutina', exact: true }).click();
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Inicio', exact: true }).click();
+  await page.getByRole('button', { name: 'Ajustes' }).click();
+  await page.getByRole('button', { name: /Cómo uso la app/ }).click();
+  await expect(page.getByText('Abriste: Comida (2), Rutina (1).')).toBeVisible();
+  await expect(page.getByText(/falla|atrasad|perdiste/i)).toHaveCount(0);
+  await revisarPantalla(page);
+
+  // Exportar: un archivo pequeño, solo con números
+  const descarga = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Exportar contadores (JSON)' }).click();
+  const d = await descarga;
+  expect(d.suggestedFilename()).toMatch(/^uso-bienestar-\d{4}-\d{2}-\d{2}\.json$/);
+  const texto = await (await import('node:fs/promises')).readFile((await d.path())!, 'utf8');
+  expect(JSON.parse(texto)).toMatchObject({ app: 'bienestar', tipo: 'contadores-de-uso', version: 1 });
+  expect(texto).not.toMatch(/Tinga|Les|Jeff/);
+
+  // Borrar y deshacer
+  await page.getByRole('button', { name: 'Borrar mis contadores' }).click();
+  await expect(page.getByText('Todavía no hay nada contado esta semana.')).toBeVisible();
+  await page.getByRole('button', { name: 'Deshacer' }).click();
+  await expect(page.getByText('Abriste: Comida (2), Rutina (1).')).toBeVisible();
+
+  // Sigue encendido después de recargar
+  await page.reload();
+  await page.getByRole('button', { name: 'Ajustes' }).click();
+  await expect(page.getByRole('switch', { name: 'Medir mi uso' })).toHaveAttribute('aria-checked', 'true');
+  expect(errores).toEqual([]);
+});

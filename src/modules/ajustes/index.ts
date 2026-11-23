@@ -4,3 +4,4 @@ export type { Prefs } from './prefs.svelte';
 export { hacerRespaldo, elegirContenido } from './acciones';
 export const Ajustes = () => import('./Ajustes.svelte');
 export const Bienvenida = () => import('./Bienvenida.svelte');
+export const Uso = () => import('./Uso.svelte');

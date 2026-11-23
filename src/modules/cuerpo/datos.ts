@@ -1,4 +1,5 @@
 import { db, type DiaPeriodo, type FotoCuerpo, type Medida, type Peso } from '../../core/db';
+import { contarFuncion } from '../../core/uso';
 import { registroNuevo } from '../ajustes';
 import { ZONAS_EXTRA, ZONAS_INICIALES, mismaZona } from './calculos';
 
@@ -38,6 +39,7 @@ export async function guardarDelDia(fecha: string, valores: Record<string, numbe
       u.peso = await db.pesos.add({ fecha, valor: peso, unidad });
     }
   });
+  if (peso != null) contarFuncion('peso');
   await registroNuevo();
   return u;
 }

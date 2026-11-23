@@ -9,12 +9,14 @@ import { plataforma } from './core/plataforma.svelte';
 import { copiaAntesDeActualizar, limpiarCopias } from './core/respaldo';
 import { cargarPrefs } from './modules/ajustes';
 import { cargarIA } from './modules/ia';
+import { cargarUso } from './core/uso';
 
 async function iniciar() {
   // Antes de abrir la base: si va a cambiar de estructura, guarda una copia interna de lo que ya tienes.
   await copiaAntesDeActualizar();
   await cargarPrefs();
   await cargarIA();
+  await cargarUso();
   await limpiarCopias();
   plataforma.revisarGuardado();
   nav.conectar((t) => avisos.mostrar(t));

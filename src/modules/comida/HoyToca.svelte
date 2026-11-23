@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Tanda } from '../../core/db';
   import { avisos } from '../../core/aviso.svelte';
+  import { contarFuncion } from '../../core/uso';
   import { nav } from '../../core/nav.svelte';
   import { fechaDe } from './calculos';
   import { guardarPrep, leerPrep } from './datos';
@@ -24,6 +25,7 @@
     const a = ahora;
     if (!a) return;
     a.i.ok = true;
+    contarFuncion('preparacion-hecha');
     guardar();
     avisos.deshacer('Hecho: ' + a.i.t, () => { a.i.ok = false; guardar(); });
   }
