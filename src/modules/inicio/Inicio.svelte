@@ -7,6 +7,7 @@
   import { prefs, tocaRespaldo, ahoraNoRespaldo, enlaceObsidian, hacerRespaldo, elegirContenido } from '../ajustes';
   import { resumenDeHoy, empezarHoy, terminarHoy } from '../entreno';
   import { mensajeDelDia, metasDelTablero, resumenDePlan } from '../mente';
+  import { resumenDeHogar } from '../hogar';
   import type { Meta } from '../../core/db';
   import { onDestroy } from 'svelte';
 
@@ -19,6 +20,7 @@
   let metas = $state<Meta[]>([]);
   let fotos = $state<Record<number, string>>({});
   let plan = $state<{ dia: number; texto: string; finDeSemana: boolean } | null>(null);
+  let casaHecha = $state(0);
   onDestroy(() => { for (const u of Object.values(fotos)) URL.revokeObjectURL(u); });
 
   async function leer() {
@@ -27,6 +29,7 @@
     metas = await metasDelTablero();
     for (const m of metas.slice(0, 3)) if (m.imagen) fotos[m.id!] = URL.createObjectURL(m.imagen);
     plan = await resumenDePlan(hoy);
+    casaHecha = await resumenDeHogar(hoy);
     listo = true;
   }
   leer();
@@ -170,6 +173,13 @@
         {/if}
       </div>
       <button class="in-row" onclick={() => nav.abrir('alma', { k: 0 })}><span class="in-ic"><Icono nombre="calendario" /></span><span><b>Planeador semanal</b><small>De lunes a viernes</small></span><i aria-hidden="true">›</i></button>
+    </div>
+  </section>
+
+  <section class="in-area ho" aria-labelledby="in-a4">
+    <div class="in-ah"><h3 id="in-a4">Hogar</h3><span>Lo que cabe hoy</span></div>
+    <div class="group">
+      <button class="in-row" onclick={() => nav.abrir('hogar')}><span class="in-ic"><Icono nombre="casa" /></span><span><b>Tareas de la casa</b><small>{casaHecha ? 'Hoy hiciste ' + casaHecha + (casaHecha === 1 ? ' cosa' : ' cosas') : 'Según tu tiempo y tu energía'}</small></span><i aria-hidden="true">›</i></button>
     </div>
   </section>
 

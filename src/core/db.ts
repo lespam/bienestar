@@ -22,6 +22,34 @@ export interface ItemColeccion {
   /** Imagen que elegiste de tu teléfono. */
   imagen?: Blob;
 }
+/** Hogar: una tarea pequeña de la casa. `e` es el costo de energía (1 a 3), `cada` los días en que conviene hacerla. */
+export interface TareaHogar {
+  id?: number;
+  n: string;
+  zona: string;
+  min: number;
+  e: 1 | 2 | 3;
+  cada: number;
+  /** Última vez que la hiciste (AAAA-MM-DD). */
+  ult?: string;
+  /** Versión mínima: «solo el mostrador». `minMin` son sus minutos. */
+  minima?: string;
+  minMin?: number;
+  /** Forma en segunda persona para decir «Hace 12 días que no aspiras el cuarto». */
+  yo?: string;
+  /** Algo pequeño que se puede hacer un día antes («dejar la lavadora lista», 3 min). */
+  antes?: string;
+  antesMin?: number;
+}
+/** Hogar: lo que elegiste, hiciste o dejaste para después en un día, y tu capacidad de ese día. */
+export interface DiaHogar {
+  fecha: string;
+  energia?: 'poca' | 'media' | 'buena';
+  tiempo?: number;
+  hoy: number[];
+  hechas: number[];
+  despues: number[];
+}
 /** Mente: una meta de tu tablero de visión, con los 4 pasos de WOOP. */
 export interface Meta {
   id?: number;
@@ -255,6 +283,8 @@ export class BaseBienestar extends Dexie {
   semanas!: Table<SemanaAlma, string>;
   mente!: Table<AjusteMente, string>;
   historial!: Table<HistCompra, number>;
+  hogar!: Table<TareaHogar, number>;
+  hogarDia!: Table<DiaHogar, string>;
 
   constructor(nombre = 'bienestar') {
     super(nombre);
@@ -291,6 +321,8 @@ export class BaseBienestar extends Dexie {
     this.version(9).stores({ metas: '++id', areas: '++id', semanas: 'lunes', mente: 'k' });
     // Versión 2: historial de compras para los recordatorios por frecuencia.
     this.version(10).stores({ historial: '++id, art, fecha' });
+    // Versión 2: tareas del hogar y lo que elegiste cada día.
+    this.version(11).stores({ hogar: '++id', hogarDia: 'fecha' });
   }
 }
 
