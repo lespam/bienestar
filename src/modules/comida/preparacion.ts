@@ -1,5 +1,6 @@
 import type { ItemMenu, ItemPrep, LugarMenu, Tanda } from '../../core/db';
 import { fechaDe, lc } from './calculos';
+import type { EventoIcs } from '../../core/ics';
 import { NOMBRE_LUGAR, etiquetaFecha, nombreDia } from './semana';
 
 // El plan de preparación sigue al menú. Lo que se puede cocinar antes va en tandas, el día anterior a esa comida
@@ -104,4 +105,67 @@ export function filaDeTanda(tandas: Tanda[], fecha: string, hoy: string): { hora
   // En días que vienen se muestra lo primero de la tanda; hoy, lo que falta
   const base: ItemPrep[] = fecha > hoy ? t.items : pend;
   return { hora, titulo: base[0].t, mas: base.length > 1 ? cosasTxt(base.length - 1) : '', lista: false };
+}
+
+/** Un evento de calendario por cada tanda que sigue pendiente de hoy en adelante. Sin hora, se pone a las 8 pm. */
+export function eventosDePrep(tandas: Tanda[], hoy: string): EventoIcs[] {
+  const eventos: EventoIcs[] = [];
+  for (const t of tandas) {
+    const pend = t.items.filter((i) => !i.ok);
+    if (t.fecha < hoy || !pend.length) continue;
+    const min = pend.reduce((a, i) => a + (i.m ?? 0), 0);
+    eventos.push({
+      id: 'prep-' + t.id,
+      titulo: 'Preparar: ' + pend.slice(0, 3).map((i) => i.t).join(', ') + (pend.length > 3 ? ' y ' + (pend.length - 3) + ' más' : ''),
+      fecha: t.fecha, hora: t.hora || '20:00', minutos: min || 30,
+      nota: pend.map((i) => '• ' + i.t + (i.m ? ' (' + i.m + ' min)' : '')).join('\n')
+    });
+  }
+  return eventos.sort((a, b) => (a.fecha + a.hora!).localeCompare(b.fecha + b.hora!));
+}
+
+// ---------- Un día muy cargado se reparte en dos, antes de que lo pidas ----------
+/** Desde aquí un día de preparación se ve cargado: unas cuatro tandas de plato. */
+export const LIMITE_DIA = 90;
+export const cargaDelDia = (tandas: Tanda[], f: string) => tandas.filter((t) => t.fecha === f).reduce((a, t) => a + minutosPendientes(t), 0);
+export interface Reparto {
+  /** El día que se ve cargado. */
+  de: string;
+  /** El día anterior, donde caben las cosas que se pasan. */
+  a: string;
+  /** Las cosas que pasarían: la tanda y el número de la cosa en ella. */
+  mover: { tanda: string; n: number }[];
+  /** Cuántos minutos tenía el día y cuántos quedarían en cada uno. */
+  antes: number;
+  quedan: number;
+  pasan: number;
+}
+/**
+ * Propone pasar al día anterior lo de las comidas que vienen después, hasta que el día quede en `LIMITE_DIA` o menos.
+ * Lo que escribiste tú (sin comida) se queda. Solo el día anterior, que nunca es antes de hoy.
+ */
+export function repartoPropuesto(tandas: Tanda[], f: string, hoy: string): Reparto | null {
+  const antes = cargaDelDia(tandas, f), a = sumarDias(f, -1);
+  if (antes <= LIMITE_DIA || a < hoy) return null;
+  const candidatas = tandas.filter((t) => t.fecha === f).flatMap((t) => t.items.map((it, n) => ({ t, it, n }))).filter((x) => !x.it.ok && x.it.fm && x.it.m)
+    .sort((x, y) => (clave(y.it.fm!) < clave(x.it.fm!) ? -1 : clave(y.it.fm!) > clave(x.it.fm!) ? 1 : 0));
+  const mover: Reparto['mover'] = [];
+  let pasan = 0;
+  for (const c of candidatas) {
+    if (antes - pasan <= LIMITE_DIA) break;
+    mover.push({ tanda: c.t.id, n: c.n });
+    pasan += c.it.m!;
+  }
+  if (!mover.length || cargaDelDia(tandas, a) + pasan > LIMITE_DIA + 30) return null;
+  return { de: f, a, mover, antes, quedan: antes - pasan, pasan };
+}
+/** Aplica el reparto. No cambia la lista que recibe. */
+export function aplicarReparto(tandas: Tanda[], r: Reparto, nuevoId: () => string = idTanda): Tanda[] {
+  const copia: Tanda[] = tandas.map((t) => ({ ...t, items: t.items.map((i) => ({ ...i })) }));
+  let destino = copia.find((t) => t.fecha === r.a);
+  if (!destino) { destino = { id: nuevoId(), fecha: r.a, hora: HORA_INICIAL, auto: true, items: [] }; copia.push(destino); }
+  const sacar = r.mover.map((m) => ({ ...m, it: copia.find((t) => t.id === m.tanda)?.items[m.n] })).filter((x) => x.it);
+  for (const x of sacar) ponerEnOrden(destino.items, { ...x.it! });
+  for (const t of copia) t.items = t.items.filter((it) => !sacar.some((x) => x.it === it));
+  return copia.filter((t) => t.items.length || !t.auto).sort(porDiaYUrgencia);
 }

@@ -324,3 +324,41 @@ export async function ideaDeUsual(clave: string, p: PeticionUsual, revisar: (i: 
   }
   throw new ErrorIA('otro', 'sin idea');
 }
+
+// ---------- Historial de compras: leer un ticket o una captura de pedido ----------
+export interface ArticuloLeido { n: string; q: string; precio: number | null }
+export interface TicketLeido { fecha: string | null; lugar: string; items: ArticuloLeido[] }
+/** La foto ya viene reducida. Se lee una vez; la persona revisa la lista antes de guardar nada. */
+export async function leerTicket(clave: string, imagen: Imagen, ask: Pregunta = preguntar): Promise<TicketLeido> {
+  const t = await ask({
+    modelo: MODELO_FOTO, imagen, max: 2500,
+    texto: 'La imagen es un ticket de compra del súper o una captura de un pedido en línea. Lista cada artículo con su nombre tal como aparece, la cantidad si se ve ("2", "1 kg") y el precio de esa línea como número sin símbolo si se ve. ' +
+      'Ignora totales, impuestos, propinas, datos de tarjeta y direcciones. No inventes lo que no se lee. ' +
+      'JSON: {"fecha": "AAAA-MM-DD o null", "lugar": "nombre de la tienda o vacío", "items": [{"n": "nombre", "q": "cantidad o vacío", "precio": 38.5 o null}]}. Si no es un ticket, devuelve {"items": []}.'
+  }, clave);
+  const j = extraerJson(t);
+  const lista = Array.isArray(j.items) ? (j.items as unknown[]) : [];
+  const items: ArticuloLeido[] = [];
+  for (const x of lista.slice(0, 120)) {
+    const o = x as Record<string, unknown>;
+    if (typeof o?.n !== 'string' || !o.n.trim()) continue;
+    items.push({ n: o.n.trim().slice(0, 80), q: typeof o.q === 'string' ? o.q.trim().slice(0, 40) : '', precio: numero(o.precio) });
+  }
+  if (!items.length) throw new ErrorIA('otro', 'sin artículos');
+  const fecha = typeof j.fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(j.fecha) ? j.fecha : null;
+  return { fecha, lugar: typeof j.lugar === 'string' ? j.lugar.trim().slice(0, 40) : '', items };
+}
+/** Solo los nombres que aún no se saben unir. Lo que vuelve se guarda y no se vuelve a preguntar. */
+export async function unirNombres(clave: string, nombres: string[], ask: Pregunta = preguntar): Promise<Record<string, string>> {
+  const piden = nombres.slice(0, 60);
+  if (!piden.length) return {};
+  const t = await ask({
+    modelo: MODELO_TEXTO, max: 1500,
+    texto: 'Estos son nombres de artículos de un ticket de súper, algunos en inglés o abreviados. Da para cada uno su nombre común en español de México, en singular y corto (por ejemplo "Tomato sauce" → "Salsa de tomate"). ' +
+      'No cambies marcas ni agregues datos. JSON: {"nombres": {"original": "nombre común"}}.\n' + piden.map((n) => '- ' + n).join('\n')
+  }, clave);
+  const j = extraerJson(t).nombres as Record<string, unknown> | undefined;
+  const r: Record<string, string> = {};
+  if (j && typeof j === 'object') for (const n of piden) { const v = j[n]; if (typeof v === 'string' && v.trim()) r[n] = v.trim().slice(0, 40); }
+  return r;
+}

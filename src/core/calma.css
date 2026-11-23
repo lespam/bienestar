@@ -1074,6 +1074,33 @@ h4 { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-t
 .cq { background: var(--panel); border-radius: 20px; padding: 14px; display: grid; gap: 10px; }
 .cq-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
 .cq-row input { min-width: 0; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font: inherit; font-size: 15px; padding: 0 12px; }
+#cp-tabs.seg-n { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(96px, 1fr); overflow-x: auto; scrollbar-width: none; }
+.cp-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c); margin-right: 5px; vertical-align: 1px; }
+.cp-tools { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
+.cp-tools .link-btn { min-height: 44px; text-align: left; }
+.cp-chk { display: flex; gap: 10px; align-items: center; min-height: 44px; font-size: 14px; }
+.cp-chk input { width: 22px; height: 22px; flex: none; accent-color: var(--accent); }
+.cp-dia { display: grid; gap: 0; background: var(--panel); border-radius: 16px; padding: 6px 12px 8px; }
+.cp-dh { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 14px; }
+.cp-dh .link-btn { min-height: 44px; }
+.ca-lista { display: grid; gap: 8px; }
+.ca-fila { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: start; background: var(--panel); border-radius: 14px; padding: 6px 10px 8px 2px; }
+.ca-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.ca-campos input { width: 100%; min-width: 0; height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font: inherit; font-size: 14px; padding: 0 10px; }
+.ca-campos input:first-child { grid-column: 1 / -1; }
+.cp-sel { width: 100%; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); font: inherit; font-size: 14px; padding: 0 10px; }
+.lg-list { display: grid; gap: 10px; }
+.lg-row { display: grid; gap: 6px; background: var(--panel); border-radius: 16px; padding: 10px 12px; }
+.lg-n { width: 100%; min-width: 0; height: 46px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font: inherit; font-size: 15px; padding: 0 12px; }
+.lg-col { display: flex; flex-wrap: wrap; gap: 2px; }
+.lg-col button { width: 44px; height: 44px; border: 0; background: none; padding: 0; position: relative; }
+.lg-col button::before { content: ""; position: absolute; inset: 10px; border-radius: 50%; background: var(--c); }
+.lg-col button.on::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; border: 2px solid var(--fg); }
+.lg-row .link-btn { justify-self: start; min-height: 44px; }
+.lg-sec { display: grid; gap: 4px; }
+.lg-sec label { font-size: 12px; font-weight: 700; color: var(--muted); margin-top: 6px; }
+.lg-ing { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.lg-ing li { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 14px; border-top: 1px solid var(--line); }
 #cp-tabs { position: sticky; top: -24px; z-index: 5; box-shadow: 0 -18px 0 0 var(--bg), 0 8px 0 0 var(--bg); }
 #cp-tabs button { font-size: 12px; padding: 10px 2px; white-space: nowrap; }
 .cp-row .wu-it small { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

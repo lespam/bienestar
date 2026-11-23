@@ -3,11 +3,14 @@
   import { nav } from '../../core/nav.svelte';
   import { avisos } from '../../core/aviso.svelte';
   import { plataforma } from '../../core/plataforma.svelte';
-  import { fechaLarga, saludo } from '../../core/fechas';
+  import { DIA_MS, fechaLarga, iso, saludo } from '../../core/fechas';
   import { prefs, tocaRespaldo, ahoraNoRespaldo, enlaceObsidian, hacerRespaldo, elegirContenido } from '../ajustes';
   import { resumenDeHoy, empezarHoy, terminarHoy } from '../entreno';
   import { mensajeDelDia, metasDelTablero, resumenDePlan } from '../mente';
   import { resumenDeHogar } from '../hogar';
+  import { agregarFaltantes, quitarFaltantes, resumenHoyToca, silenciarCompra, type ResumenHoyToca } from '../comida';
+  import { contarSugerencia } from '../../core/uso';
+  import { entregarIcs } from '../../core/ics';
   import { AnfitrionIA, CuadroUnico } from '../ia';
   import type { Meta } from '../../core/db';
   import { onDestroy } from 'svelte';
@@ -22,6 +25,7 @@
   let fotos = $state<Record<number, string>>({});
   let plan = $state<{ dia: number; texto: string; finDeSemana: boolean } | null>(null);
   let casaHecha = $state(0);
+  let toca = $state<ResumenHoyToca | null>(null);
   onDestroy(() => { for (const u of Object.values(fotos)) URL.revokeObjectURL(u); });
 
   async function leer() {
@@ -31,6 +35,7 @@
     for (const m of metas.slice(0, 3)) if (m.imagen) fotos[m.id!] = URL.createObjectURL(m.imagen);
     plan = await resumenDePlan(hoy);
     casaHecha = await resumenDeHogar(hoy);
+    toca = await resumenHoyToca(iso(hoy));
     listo = true;
   }
   leer();
@@ -63,6 +68,23 @@
     nav.abrir('fin', { sesion: rutina.sesion });
   }
   function resumen() { nav.irTab('rutina'); nav.abrir('fin', { sesion: rutina?.sesion }); }
+  // «Hoy toca»: lo siguiente por preparar y lo que ya toca comprar (máximo 3 filas)
+  async function agregarYa(n: string) {
+    const nuevos = await agregarFaltantes([n], iso(hoy));
+    contarSugerencia('ya-toca', true);
+    toca = await resumenHoyToca(iso(hoy));
+    if (!nuevos.length) { avisos.mostrar('Ya estaba en tu lista'); return; }
+    avisos.deshacer(n + ' va a tu lista de compras', async () => { await quitarFaltantes(nuevos, iso(hoy)); toca = await resumenHoyToca(iso(hoy)); });
+  }
+  async function noMeInteresa(art: string) {
+    await silenciarCompra(art);
+    contarSugerencia('ya-toca', false);
+    toca = await resumenHoyToca(iso(hoy));
+  }
+  async function alCalendario(n: string, art: string, texto: string) {
+    const r = await entregarIcs('ya-toca-' + art.replace(/\s+/g, '-'), [{ id: 'ya-toca-' + art.replace(/\s+/g, '-') + '-' + iso(hoy), titulo: 'Comprar ' + n.toLowerCase(), fecha: iso(new Date(+hoy + DIA_MS)), nota: texto }]);
+    if (r === 'descargado') avisos.mostrar('Descargué el recordatorio. Ábrelo para ponerlo en tu calendario.');
+  }
   const tono = (id?: number) => 't' + (((id ?? 0) % 3) + 1);
 </script>
 
@@ -110,6 +132,28 @@
         <div role="status">{#if cargando}<span class="sr">Cargando tu contenido…</span>{/if}</div>
         <button class="start" onclick={cargar} disabled={cargando}>{cargando ? 'Cargando…' : 'Cargar archivo'}</button>
       {/if}
+    </section>
+  {/if}
+
+  {#if toca && (toca.prep || toca.ya.length)}
+    <section class="cq" aria-labelledby="in-ht">
+      <b id="in-ht">Hoy toca</b>
+      {#if toca.prep}
+        <div class="yt-row">
+          <p><b>{toca.prep.t}</b>{toca.prep.m ? ' · unos ' + toca.prep.m + ' min' : ''}</p>
+          <div class="yt-b"><button class="ghost" onclick={() => nav.abrir('hoytoca')}>Abrir Hoy toca</button>{#if toca.masPrep}<small class="seg-help">{toca.masPrep === 1 ? 'Y 1 cosa más' : 'Y ' + toca.masPrep + ' cosas más'}</small>{/if}</div>
+        </div>
+      {/if}
+      {#each toca.ya as t (t.art)}
+        <div class="yt-row">
+          <p>{t.texto}</p>
+          <div class="yt-b">
+            <button class="ghost" aria-label={'Agregar ' + t.n + ' a la lista'} onclick={() => agregarYa(t.n)}>Agregar a la lista</button>
+            <button class="link-btn" aria-label={'Recordarme ' + t.n + ' en el calendario'} onclick={() => alCalendario(t.n, t.art, t.texto)}>Al calendario</button>
+            <button class="link-btn" aria-label={'No me interesa: ' + t.n} onclick={() => noMeInteresa(t.art)}>No me interesa</button>
+          </div>
+        </div>
+      {/each}
     </section>
   {/if}
 

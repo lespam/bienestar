@@ -5,8 +5,9 @@
   import { nav } from '../../core/nav.svelte';
   import { cap, fechaDe } from './calculos';
   import { AnfitrionIA, iaLista, ordenarPreparacion, pedirIA } from '../ia';
-  import { guardarPrep, leerPrep } from './datos';
-  import { cuandoTxt, diaTanda, estTxt, hechas, horaTxt, idTanda, minutosPendientes, ponerEnOrden, preparoTxt, sumarDias, tandasDeSemana, ultimoDia } from './preparacion';
+  import { guardarPrep, leerPrep, leerRepartoNo, repartoNo } from './datos';
+  import { entregarIcs } from '../../core/ics';
+  import { aplicarReparto, cuandoTxt, diaTanda, estTxt, eventosDePrep, hechas, horaTxt, idTanda, minutosPendientes, ponerEnOrden, preparoTxt, repartoPropuesto, sumarDias, tandasDeSemana, ultimoDia } from './preparacion';
   import { fechasDeSemana, LETRA_DIA, numeroDia, etiquetaFecha, rangoSemana } from './semana';
 
   const semana = (nav.pantalla?.datos as { k?: number } | undefined)?.k ?? 0;
@@ -119,6 +120,32 @@
     nav.cerrar();
     avisos.mostrar('Guardado. ' + cuandoTxt(t, hoy) + '.');
   }
+  // ---------- Un día cargado se reparte en dos (se propone antes de que lo pidas) ----------
+  let sinReparto = $state<string[]>([]);
+  leerRepartoNo().then((x) => (sinReparto = x));
+  const reparto = $derived.by(() => {
+    for (const f of [...new Set(tandas.map((t) => t.fecha))].sort()) {
+      if (f < hoy || sinReparto.includes(f)) continue;
+      const r = repartoPropuesto(todas, f, hoy);
+      if (r) return r;
+    }
+    return null;
+  });
+  function repartir() {
+    const r = reparto;
+    if (!r) return;
+    const antes = $state.snapshot(todas) as Tanda[];
+    todas = aplicarReparto(antes, r);
+    guardar();
+    avisos.deshacer('Repartí la preparación en dos días', () => { todas = antes; guardar(); });
+  }
+  async function asiEstaBien(f: string) { sinReparto = [...sinReparto, f]; await repartoNo(f); }
+
+  const paraCalendario = $derived(eventosDePrep(todas, hoy));
+  async function alCalendario() {
+    const r = await entregarIcs('plan-de-preparacion', paraCalendario);
+    if (r === 'descargado') avisos.mostrar('Descargué el plan. Ábrelo para ponerlo en tu calendario.');
+  }
   const porqueTxt = (t: Tanda) => {
     const p = t.items.filter((i) => !i.ok && i.fm);
     return p.length ? 'Esta tanda es para ' + p.map((i) => i.t.replace(/^Preparar /, '')).slice(0, 3).join(', ') + '. Debe quedar lista el ' + etiquetaFecha(ultimoDia(t, hoy)).toLowerCase() + ' como tarde.' : 'Elige el día y la hora de esta tanda.';
@@ -141,6 +168,13 @@
     </div>
   {/if}
   {#if preparadas}<p class="coach">{preparoTxt(preparadas)}</p>{/if}
+  {#if reparto}
+    <section class="cq" aria-label="Repartir la preparación">
+      <b>El {etiquetaFecha(reparto.de).toLowerCase()} se ve cargado</b>
+      <p class="seg-help">Tiene unos {reparto.antes} min de preparación. Puedo pasar {reparto.mover.length === 1 ? '1 cosa' : reparto.mover.length + ' cosas'} al {etiquetaFecha(reparto.a).toLowerCase()}: quedarían unos {reparto.pasan} min ese día y unos {reparto.quedan} min el otro.</p>
+      <div class="yt-b"><button class="ghost" onclick={repartir}>Repartir en dos días</button><button class="link-btn" onclick={() => asiEstaBien(reparto.de)}>Así está bien</button></div>
+    </section>
+  {/if}
   <div class="pp-list">
     {#if listo && !tandas.length}
       <p class="tool-note">{rango !== 'semana' && todas.length ? 'Nada por preparar en estos días.' : 'Aún no hay nada por preparar.'} Cuando elijas recetas en el menú, aquí aparece qué cocinar antes y cuándo.</p>
@@ -201,6 +235,7 @@
   {#if tandas.some((x) => x.fecha >= hoy && x.items.filter((i) => !i.ok).length > 1)}
     {#if iaLista('prep')}<button class="ghost" onclick={ordenarIA}>Ordenar mi preparación con IA</button>{/if}
   {/if}
+  {#if paraCalendario.length}<button class="ghost" onclick={alCalendario}>Llevar el plan a mi calendario</button>{/if}
   <p class="tool-note">Si cambias el menú, el plan se actualiza. Los tiempos son aproximados.</p>
 </div>
 
