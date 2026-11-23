@@ -2,7 +2,8 @@ import { db, type Alimento, type DiaFlexible, type ItemMenu, type PerfilComida, 
 import { parte } from '../../core/contenido';
 import { registroNuevo } from '../ajustes';
 import { comprasVacias, type EstadoCompras } from './compras';
-import { sincronizar } from './preparacion';
+import { agregarConsejos } from './consejos';
+import { idTanda, sincronizar } from './preparacion';
 import { tipsVacios, type TipsGuardados } from './tips';
 import { fechaDe, norm, type UsoReceta } from './calculos';
 
@@ -141,7 +142,10 @@ export async function guardarPrep(t: Tanda[]) {
 export async function sincronizarPrep(fechas: string[]) {
   if (!fechas.length) return;
   const [tandas, menu] = await Promise.all([leerPrep(), db.menu.where('fecha').anyOf(fechas).toArray()]);
-  await guardarPrep(sincronizar(tandas, menu, fechas, fechaDe(0)));
+  const hoy = fechaDe(0);
+  const ids = [...new Set(menu.flatMap((m) => [m.r, m.rl, m.rj]).filter((x): x is string => !!x))];
+  const recetas = new Map((await db.recetas.bulkGet(ids)).filter((r): r is Receta => !!r).map((r) => [r.id, r]));
+  await guardarPrep(agregarConsejos(sincronizar(tandas, menu, fechas, hoy), menu, recetas, fechas, hoy, idTanda));
 }
 
 // ---------- Tips ----------

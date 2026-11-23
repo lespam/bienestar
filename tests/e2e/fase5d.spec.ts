@@ -120,14 +120,17 @@ test('Plan de preparación: sale del menú, se marca, se agrega y se cambia la h
   await revisarPantalla(page);
   await hoy.getByRole('button', { name: 'Ver', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Plan de preparación', level: 2 })).toBeVisible();
-  await expect(page.getByText('Para la comida del', { exact: false })).toBeVisible();
-  await expect(page.getByText('0 de 1 listas · unos 20 min')).toBeVisible();
+  await expect(page.getByText('Para la comida del', { exact: false }).first()).toBeVisible();
+  await expect(page.getByText('0 de 2 listas · unos 25 min')).toBeVisible();
   await expect(page.getByText('Hoy a las 8 pm')).toBeVisible();
   await revisarPantalla(page);
 
   // Marcar
   await page.getByRole('checkbox', { name: /Preparar tinga de pollo/ }).check();
   await expect(page.getByText('Esta semana ya preparaste 1 cosa.')).toBeVisible();
+  // El consejo de sacar el pollo del congelador viene en la misma tanda
+  await page.getByRole('checkbox', { name: /Saca del congelador pechuga de pollo/ }).check();
+  await expect(page.getByText('Esta semana ya preparaste 2 cosas.')).toBeVisible();
   await expect(page.locator('.pp-t .tag.f')).toHaveText('Lista');
   await page.waitForTimeout(400);
 
