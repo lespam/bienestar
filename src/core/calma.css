@@ -1269,3 +1269,12 @@ textarea { font: inherit; color: var(--fg); }
 .rc-ancla { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .tj-acc { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .tj-acc .ghost.on { border-color: var(--accent); background: var(--soft); }
+/* Acomoda la semana: vista de mes */
+.tj-zoom { width: 44px; height: 44px; border-radius: 99px; border: 1.5px solid var(--line); background: none; color: var(--fg); font-size: 20px; }
+.tj-zoom:disabled { opacity: .35; }
+.tj-mes-g { display: grid; gap: 4px; }
+.tj-mes-r { display: grid; grid-template-columns: repeat(7, minmax(44px, 1fr)); gap: 1px; text-align: center; font-size: 12px; font-weight: 700; color: var(--muted); }
+.tj-mes-d { min-height: 48px; border: 0; border-radius: 12px; background: var(--panel); color: var(--fg); display: grid; place-items: center; font-size: 14px; font-weight: 600; padding: 2px 0; }
+.tj-mes-d i { font-style: normal; font-size: 13px; color: var(--accent); }
+.tj-mes-d.fuera { color: var(--muted); background: none; }
+.tj-mes-d.hoy { outline: 2px solid var(--accent); }

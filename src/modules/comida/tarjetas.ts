@@ -7,9 +7,12 @@ export const CATS_TARJETA = ['Desayuno', 'Comida', 'Cena', 'Base'] as const;
 
 /** Planear por tiempos: cada tiempo de comida y el tipo de receta que le toca. Bases no es un tiempo. */
 export const TIEMPOS: { l: LugarMenu; cat: string; n: string }[] = [{ l: 'd', cat: 'Desayuno', n: 'Desayuno' }, { l: 'c', cat: 'Comida', n: 'Comida' }, { l: 'n', cat: 'Cena', n: 'Cena' }];
-export const lugarDeCat = (cat: string): LugarMenu | null => TIEMPOS.find((t) => t.cat === cat)?.l ?? null;
+/** Las colaciones son su propio bloque, aparte de las comidas: AM y PM. */
+export const COLACIONES: { l: LugarMenu; cat: string; n: string }[] = [{ l: 'a', cat: 'Colación', n: 'Colación AM' }, { l: 'p', cat: 'Colación', n: 'Colación PM' }];
+export const TODOS_TIEMPOS = [...TIEMPOS, ...COLACIONES];
+export const lugarDeReceta = (r: Pick<Receta, 'cat' | 'sub'>): LugarMenu | null => (r.cat === 'Colación' ? (r.sub === 'PM' ? 'p' : 'a') : TIEMPOS.find((t) => t.cat === r.cat)?.l ?? null);
 export const tiemposTxt = (ls: LugarMenu[]) => {
-  const ns = TIEMPOS.filter((t) => ls.includes(t.l)).map((t) => t.n.toLowerCase());
+  const ns = TODOS_TIEMPOS.filter((t) => ls.includes(t.l)).map((t) => t.n.toLowerCase());
   return ns.length < 2 ? ns.join('') : ns.slice(0, -1).join(', ') + ' y ' + ns[ns.length - 1];
 };
 /**
@@ -20,7 +23,7 @@ export function repartirPorTiempos(recetas: Receta[], dias: string[], ocupado: (
   const tomado = new Set<string>();
   const puestas: { r: Receta; f: string; l: LugarMenu }[] = [], sobran: Receta[] = [];
   for (const r of recetas) {
-    const l = lugarDeCat(r.cat);
+    const l = lugarDeReceta(r);
     const f = l && dias.find((d) => !ocupado(d, l) && !tomado.has(d + l));
     if (!l || !f) { sobran.push(r); continue; }
     tomado.add(f + l);
@@ -33,9 +36,9 @@ export function repartirPorTiempos(recetas: Receta[], dias: string[], ocupado: (
  * Primero lo que ya sabes cocinar (lo más usado arriba) y, cada cuarta tarjeta, una que casi no usas,
  * para ampliar las opciones sin que estorben. Sin historial, van en orden alfabético.
  */
-export function mazoDe(recetas: Receta[], liked: string[], passed: string[], cat: string, uso: Record<string, UsoReceta> = {}): Receta[] {
+export function mazoDe(recetas: Receta[], liked: string[], passed: string[], cat: string, uso: Record<string, UsoReceta> = {}, conColaciones = false): Receta[] {
   const lista = recetas
-    .filter((r) => (CATS_TARJETA as readonly string[]).includes(r.cat) && !liked.includes(r.id) && !passed.includes(r.id) && (cat === 'todo' || r.cat === cat))
+    .filter((r) => ((CATS_TARJETA as readonly string[]).includes(r.cat) || (conColaciones && r.cat === 'Colación')) && !liked.includes(r.id) && !passed.includes(r.id) && (cat === 'todo' || r.cat === cat))
     .sort((a, b) => a.n.localeCompare(b.n, 'es'));
   const conocidas = lista.filter((r) => vecesUsada(uso[r.id]) >= 2).sort((a, b) => vecesUsada(uso[b.id]) - vecesUsada(uso[a.id]));
   if (!conocidas.length) return lista;
