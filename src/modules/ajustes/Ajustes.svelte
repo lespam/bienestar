@@ -5,8 +5,8 @@
   import { nav } from '../../core/nav.svelte';
   import { avisos } from '../../core/aviso.svelte';
   import { plataforma } from '../../core/plataforma.svelte';
-  import { elegirArchivo } from '../../core/archivos';
-  import { importarZip, volverACopia, ultimaCopia } from '../../core/respaldo';
+  import { volverACopia, ultimaCopia } from '../../core/respaldo';
+  import ImportarPaquete from './ImportarPaquete.svelte';
   import { metaContenido, resumenCargado } from '../../core/contenido';
   import { fechaCorta, diasEntre } from '../../core/fechas';
   import { activarUso, cargarUso, usoActivo } from '../../core/uso';
@@ -60,15 +60,6 @@
     await cargarUso();
     midiendo = usoActivo();
     plataforma.datos++;
-  }
-  async function importar() {
-    nav.cerrar();
-    const f = await elegirArchivo();
-    if (!f) return;
-    const r = await importarZip(f.bytes);
-    if (!r.ok) { avisos.mostrar('Este archivo no es un respaldo de la app. No cambié nada.'); return; }
-    await datosCambiaron();
-    avisos.deshacer('Respaldo importado', async () => { await volverACopia(r.copia); await datosCambiaron(); avisos.mostrar('Volviste a tus datos anteriores'); });
   }
   async function volver() {
     if (!copia) return;
@@ -132,7 +123,7 @@
   <section class="tp-sec"><h4>Respaldo</h4>
     <div class="group aj-g aj-bk">
       <p class="aj-last">{ultimo}</p>
-      <p class="tp-hint">Tus datos y fotos están solo en este teléfono. Un respaldo te protege si lo cambias o lo pierdes.</p>
+      <p class="tp-hint">Tus datos y fotos están solo en este aparato. Un respaldo te protege si lo cambias o lo pierdes. El mismo archivo sirve para seguir en tu computadora: expórtalo aquí, impórtalo allá y al revés. Al importar, la app te dice qué se reemplaza y qué se combina.</p>
       {#if plataforma.persistente === false}
         <p class="aj-warn">Tu navegador todavía no asegura guardar tus datos. Instala la app en tu pantalla de inicio y haz un respaldo.</p>
       {/if}
@@ -187,10 +178,4 @@
   </Hoja>
 {/if}
 
-{#if nav.hojaAbierta('importar')}
-  <Hoja titulo="Importar respaldo">
-    <p class="seg-help">Importar cambia tus datos actuales por los del archivo. Antes, la app guarda un respaldo de lo que tienes ahora, por si quieres volver.</p>
-    <button class="start" onclick={importar}>Elegir archivo ZIP</button>
-    <button class="ghost" onclick={() => nav.cerrar()}>Cancelar</button>
-  </Hoja>
-{/if}
+<ImportarPaquete alCambiar={datosCambiaron} />

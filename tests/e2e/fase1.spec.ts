@@ -93,8 +93,12 @@ test('respaldo: exportar, importar y deshacer', async ({ page }) => {
   const elegir = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Elegir archivo ZIP' }).click();
   await (await elegir).setFiles({ name: 'r.zip', mimeType: 'application/zip', buffer: zip });
+  // Antes de cambiar nada, la app muestra qué trae el paquete y tú confirmas
+  await expect(page.getByRole('dialog', { name: 'Qué trae este paquete' })).toBeVisible();
+  await expect(page.getByText('Ajustes y contenido personal').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Reemplazar todo con el paquete' }).click();
   await expect(page.getByRole('radio', { name: 'Libras (lb)' })).toHaveAttribute('aria-checked', 'true');
-  await expect(page.getByText('Respaldo importado')).toBeVisible();
+  await expect(page.getByText(/^Respaldo importado/)).toBeVisible();
   await page.getByRole('button', { name: 'Deshacer' }).click();
   await expect(page.getByRole('radio', { name: 'Kilos (kg)' })).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByRole('button', { name: 'Volver a mis datos anteriores' })).toBeVisible();

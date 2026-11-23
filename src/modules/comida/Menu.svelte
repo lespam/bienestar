@@ -2,6 +2,7 @@
   import type { ItemMenu, LugarMenu, PerfilComida, Receta } from '../../core/db';
   import Hoja from '../../core/Hoja.svelte';
   import Inspiracion from './Inspiracion.svelte';
+  import MacrosPlan from './MacrosPlan.svelte';
   import { avisos } from '../../core/aviso.svelte';
   import { reducirFoto } from '../../core/imagen';
   import { nav } from '../../core/nav.svelte';
@@ -382,6 +383,10 @@
     {/if}
     {#if !pasadaVista && sel >= hoyIso && libresIA.length && iaLista('idea')}<button class="ai-btn" onclick={ideasIA}>Ideas con IA para lo libre del {nombreDia(sel).toLowerCase()}</button>{/if}
   </div>
+
+  {#if listo && perfiles && itemsDe(sel).some((m) => m.t !== 'decidir')}
+    <MacrosPlan fecha={sel} {dias} {items} {recetas} {perfiles} />
+  {/if}
 
   {#if !proxima}
     <div class="to-card">

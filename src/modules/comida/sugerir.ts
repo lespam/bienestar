@@ -2,6 +2,7 @@ import type { LugarMenu, PerfilComida, Receta } from '../../core/db';
 import { minutosDe, norm, ocultaPorNivel, prefiereEvitar, vecesUsada, type UsoReceta } from './calculos';
 import { cambiosFijos, type Fijo } from './fijos';
 import { menciona } from './seguro';
+import { distanciaARef } from './macros';
 import { lugarDeReceta } from './tarjetas';
 
 // «Sugerir menú» y «Con lo que tengo»: todo por reglas. La IA solo entra para huecos, y lo que propone pasa por seguro.ts.
@@ -47,6 +48,8 @@ export interface EntradaSugerir {
   nevera?: boolean;
   /** Recetas que no se deben proponer (por ejemplo las que acabas de cambiar). */
   evitar?: string[];
+  /** «Acerca a mis referencias»: entre las que ya sirven, van primero las más cercanas a la referencia por comida. Solo ordena. */
+  cerca?: boolean;
 }
 
 /** Una receta que puede ir al menú de los dos: no la oculta ninguno de sus filtros y está a la vista. */
@@ -54,7 +57,9 @@ export const sirveParaLosDos = (r: Receta, perfiles: Record<'les' | 'jeff', Perf
   r.cat !== 'Base' && r.vis !== 'guardada' && !ocultaPorNivel(r, perfiles.les, 'les') && !ocultaPorNivel(r, perfiles.jeff, 'jeff');
 const gustaA = (r: Receta, perfiles: Record<'les' | 'jeff', PerfilComida>) => [...perfiles.les.gustos, ...perfiles.jeff.gustos].some((g) => r.ing.some((i) => menciona(i[2], g)));
 
-interface Ranqueada { r: Receta; rep: number; evita: boolean; gusto: boolean; nevera: number; poco: boolean; tiempo: boolean }
+interface Ranqueada { r: Receta; rep: number; evita: boolean; gusto: boolean; nevera: number; poco: boolean; tiempo: boolean; dist: number }
+/** Menor distancia primero; lo que no se puede comparar (Infinity) queda al final sin romper el orden de lo demás. */
+const cmpDist = (a: number, b: number) => (a === b ? 0 : a === Infinity ? 1 : b === Infinity ? -1 : a - b);
 /** Las recetas que sirven para un tiempo de comida, de la que más conviene a la que menos. */
 function ranquear(e: EntradaSugerir, l: LugarMenu, usadas: Record<string, number>): Ranqueada[] {
   const hay = e.hay ?? [];
@@ -67,11 +72,11 @@ function ranquear(e: EntradaSugerir, l: LugarMenu, usadas: Record<string, number
     .map((r) => {
       const c = cobertura(r, hay);
       const poco = vecesUsada(e.uso[r.id]) <= 1;
-      return { r, rep: usadas[r.id] ?? 0, evita: prefiereEvitar(r, e.perfiles.les) || prefiereEvitar(r, e.perfiles.jeff), gusto: poco && gustaA(r, e.perfiles), nevera: hay.length ? c.cobertura + c.urgentes * 0.25 : 0, poco, tiempo: e.maxMin != null && minutosDe(r.t) != null };
+      return { r, rep: usadas[r.id] ?? 0, evita: prefiereEvitar(r, e.perfiles.les) || prefiereEvitar(r, e.perfiles.jeff), gusto: poco && gustaA(r, e.perfiles), nevera: hay.length ? c.cobertura + c.urgentes * 0.25 : 0, poco, tiempo: e.maxMin != null && minutosDe(r.t) != null, dist: e.cerca ? distanciaARef(r, e.perfiles) ?? Infinity : 0 };
     })
     .sort((a, b) =>
       a.rep - b.rep || Number(a.evita) - Number(b.evita) ||
-      (e.nevera ? b.nevera - a.nevera || Number(b.gusto) - Number(a.gusto) : Number(b.gusto) - Number(a.gusto) || b.nevera - a.nevera) ||
+      (e.nevera ? b.nevera - a.nevera || cmpDist(a.dist, b.dist) || Number(b.gusto) - Number(a.gusto) : cmpDist(a.dist, b.dist) || Number(b.gusto) - Number(a.gusto) || b.nevera - a.nevera) ||
       Number(b.tiempo) - Number(a.tiempo) || Number(b.poco) - Number(a.poco) || a.r.id.localeCompare(b.r.id));
 }
 /** Hasta `max` recetas para pedirle ideas a la IA: las mejores de cada tiempo, sin las que ya están en el borrador. */

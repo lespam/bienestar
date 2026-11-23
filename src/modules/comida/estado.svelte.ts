@@ -9,6 +9,9 @@ export const vista = $state({ ver: false, cat: 'todo', q: '', vin: false, cambio
 /** Filtros de fuente y de lo que no le gusta a alguien: los mismos en el Recetario y en las Tarjetas. */
 export const filtros = $state<FiltrosReceta>({ origen: 'todo', sinLes: false, sinJeff: false, uso: 'todo', foto: 'todo', guardadas: false, etq: '', hasta: 0 });
 
+/** «Acerca a mis referencias»: solo ordena (Tarjetas, Sugerir menú y Con lo que tengo), nunca esconde. Se queda mientras no cierres la app. */
+export const orden = $state({ cerca: false });
+
 export const numerosVisibles = () => !prefs.ocultarComida || vista.ver;
 
 export function reiniciarVista() { vista.ver = false; vista.cat = 'todo'; vista.q = ''; }
