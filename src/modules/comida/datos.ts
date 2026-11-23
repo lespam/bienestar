@@ -4,7 +4,7 @@ import { registroNuevo } from '../ajustes';
 import { comprasVacias, type EstadoCompras } from './compras';
 import { sincronizar } from './preparacion';
 import { tipsVacios, type TipsGuardados } from './tips';
-import { fechaDe, type UsoReceta } from './calculos';
+import { fechaDe, norm, type UsoReceta } from './calculos';
 
 // Comida es la única dueña de recetas y perfiles. Las recetas del archivo de contenido se copian una vez
 // a tu tabla y desde ahí son tuyas: si quitas una, no vuelve; si el archivo trae nuevas, solo se agregan esas.
@@ -180,3 +180,18 @@ export async function visibilidadDeOrigen(origen: string, guardar: boolean): Pro
 export async function ponerVisibilidad(ids: string[], guardar: boolean) {
   await db.transaction('rw', db.recetas, async () => { for (const id of ids) await db.recetas.update(id, { vis: guardar ? 'guardada' : undefined }); });
 }
+
+// ---------- Historial de compras ----------
+export const leerHistorial = () => db.historial.toArray();
+/** Marcar algo como comprado lo anota (una vez por artículo y día); desmarcarlo lo quita. */
+export async function anotarCompra(n: string, fecha: string, lugar?: string, q?: string) {
+  const art = norm(n);
+  if (await db.historial.where('art').equals(art).filter((h) => h.fecha === fecha).count()) return;
+  await db.historial.add({ art, n, fecha, ...(lugar ? { lugar } : {}), ...(q ? { q } : {}) });
+}
+export async function quitarCompra(n: string, fecha: string) {
+  const art = norm(n);
+  await db.historial.where('art').equals(art).filter((h) => h.fecha === fecha).delete();
+}
+export async function leerSilenciadas(): Promise<string[]> { return ((await db.comida.get('silencio-compras'))?.v as string[] | undefined) ?? []; }
+export async function silenciarCompra(art: string) { await db.comida.put({ k: 'silencio-compras', v: [...new Set([...(await leerSilenciadas()), art])] }); }

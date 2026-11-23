@@ -220,6 +220,8 @@ export interface ItemPrep { t: string; f: string; s?: string; m?: number; ok: bo
 export interface Tanda { id: string; fecha: string; hora: string; auto?: boolean; items: ItemPrep[] }
 /** Comida: un día flexible. Todo es opcional. La fase del ciclo y el día de la semana se calculan, no se guardan. */
 export interface DiaFlexible { fecha: string; hora: string; emo: string; lugar: string; sueno: string; estres: string; comi: string }
+/** Comida: una compra que marcaste en la lista (alimenta «ya toca»). `art` es el nombre sin acentos ni mayúsculas. */
+export interface HistCompra { id?: number; art: string; n: string; fecha: string; lugar?: string; q?: string; precio?: number }
 /** Base: copias internas antes de importar o de cambiar la estructura. Nunca van en el respaldo. */
 export interface CopiaInterna { id?: number; fecha: number; motivo: string; datos: Blob }
 
@@ -252,6 +254,7 @@ export class BaseBienestar extends Dexie {
   areas!: Table<AreaAlma, number>;
   semanas!: Table<SemanaAlma, string>;
   mente!: Table<AjusteMente, string>;
+  historial!: Table<HistCompra, number>;
 
   constructor(nombre = 'bienestar') {
     super(nombre);
@@ -286,6 +289,8 @@ export class BaseBienestar extends Dexie {
     this.version(8).stores({ flexibles: 'fecha' });
     // Fase 7: metas, áreas y semanas del planeador, ajustes de Mente.
     this.version(9).stores({ metas: '++id', areas: '++id', semanas: 'lunes', mente: 'k' });
+    // Versión 2: historial de compras para los recordatorios por frecuencia.
+    this.version(10).stores({ historial: '++id, art, fecha' });
   }
 }
 
