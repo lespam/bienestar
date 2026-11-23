@@ -4,7 +4,8 @@
   import { avisos } from '../../core/aviso.svelte';
   import { nav } from '../../core/nav.svelte';
   import { CAT_COLOR, fechaDe, norm, pasaFiltros, type UsoReceta } from './calculos';
-  import { leerPerfiles, listarRecetas, menuDe, ponerEnMenu, ponerVariosEnMenu, reponerMenu, sembrarRecetas, usoDeRecetas } from './datos';
+  import { guardarFijos, leerFijos, leerPerfiles, listarRecetas, menuDe, nuevoFijo, ponerEnMenu, ponerVariosEnMenu, reponerMenu, sembrarRecetas, silenciarSugerencia, sugerenciasDeFijos, usoDeRecetas } from './datos';
+  import { cambiosFijos, sugerenciaTxt, type Fijo, type Sugerencia } from './fijos';
   import { filtros, numerosVisibles, tarjetas } from './estado.svelte';
   import { COMIDAS_MENU, LETRA_DIA, NOMBRE_LUGAR, cambiosRepetir, etiquetaFecha, fechasDeSemana, indexar, itemDecidir, itemDos, llave, nombreDia, nombreMes, numeroDia, platoTxt, rangoSemana, semanasDelMes, llenuraDia, fechasDeSemana as semanaDe } from './semana';
   import { CATS_TARJETA, RONDA, TIEMPOS, TODOS_TIEMPOS, COLACIONES, lugarDeReceta, cuentaRonda, elegidasTxt, mazoDe, repartirPorTiempos, tiemposTxt } from './tarjetas';
@@ -23,6 +24,8 @@
   let pasada = $state<ItemMenu[]>([]);
   let listo = $state(false);
   let uso = $state<Record<string, UsoReceta>>({});
+  let fijos = $state<Fijo[]>([]);
+  let sugs = $state<Sugerencia[]>([]);
   let perfiles = $state<Record<'les' | 'jeff', Pick<PerfilComida, 'no' | 'niveles'>>>({ les: { no: [] }, jeff: { no: [] } });
 
   // Vista de mes: puntos por día; tocar un día de esta semana o la próxima hace zoom a ese día.
@@ -47,7 +50,7 @@
   async function cambiarSemana(k: number) { semanaK = k; await cargarMenu(); }
   (async () => {
     await sembrarRecetas();
-    [recetas, perfiles, uso] = await Promise.all([listarRecetas(), leerPerfiles(), usoDeRecetas(), cargarMenu()]);
+    [recetas, perfiles, uso, fijos, sugs] = await Promise.all([listarRecetas(), leerPerfiles(), usoDeRecetas(), leerFijos(), sugerenciasDeFijos(hoy), cargarMenu()]);
     listo = true;
   })();
 
@@ -59,7 +62,7 @@
   const tiempoOk = (r: Receta) => r.cat !== 'Colación' || !tarjetas.porTiempos || tarjetas.tiempos.includes(lugarDeReceta(r)!);
   let buscar = $state('');
   const qBuscar = $derived(norm(buscar.trim()));
-  const mazo = $derived(mazoDe(recetas.filter((r) => pasaFiltros(r, { ...filtros, foto: 'todo', guardadas: false }, perfiles, uso) && (!qBuscar || norm(r.n).includes(qBuscar)) && (!catsTiempos || catsTiempos.includes(r.cat)) && tiempoOk(r)), tarjetas.liked, tarjetas.passed, catsTiempos ? 'todo' : tarjetas.cat, uso, !!catsTiempos && conColaciones));
+  const mazo = $derived(mazoDe(recetas.filter((r) => pasaFiltros(r, { ...filtros, foto: 'todo', guardadas: false }, perfiles, uso) && (!qBuscar || norm(r.n).includes(qBuscar)) && (!catsTiempos || catsTiempos.includes(r.cat)) && tiempoOk(r)), tarjetas.liked, tarjetas.passed, catsTiempos ? 'todo' : tarjetas.cat, uso, !!catsTiempos && conColaciones, fijos.map((f) => f.r)));
   // La ronda: cuántas decidiste desde que empezó y cuántas tiene (menos si quedan pocas).
   const inicio = $derived(Math.min(tarjetas.ronda, tarjetas.hist.length));
   const enRonda = $derived(tarjetas.hist.slice(inicio));
@@ -316,6 +319,42 @@
     avisos.deshacer(filas.length + (filas.length === 1 ? ' comida queda por decidir' : ' comidas quedan por decidir'), async () => { await reponerMenu(fechas, antes.filter((m) => fechas.includes(m.fecha))); await cargarMenu(); });
   }
 
+  // ---------- Mis fijos: lo que se repite ----------
+  const recetaPorId = $derived(Object.fromEntries(recetas.map((r) => [r.id, r])) as Record<string, Receta>);
+  const sug = $derived(sugs.find((x) => recetaPorId[x.r]));
+  const cambiosFj = $derived(cambiosFijos(fijos, recetaPorId, dias, (f, l) => indice.has(llave(f, l)), hoy));
+  async function ponerFijos(lista: Fijo[]) { fijos = lista; await guardarFijos($state.snapshot(lista) as Fijo[]); }
+  async function aceptarSug() {
+    const s = sug;
+    if (!s) return;
+    const antes = $state.snapshot(fijos) as Fijo[];
+    await ponerFijos([...antes, await nuevoFijo(s.r, hoy)]);
+    sugs = sugs.filter((x) => x !== s);
+    avisos.deshacer('«' + recetaPorId[s.r].n + '» quedó en mis fijos', () => ponerFijos(antes));
+  }
+  async function rechazarSug() {
+    const s = sug;
+    if (!s) return;
+    await silenciarSugerencia(s.r, hoy);
+    sugs = sugs.filter((x) => x !== s);
+  }
+  function quitarFijo(id: string) {
+    const antes = $state.snapshot(fijos) as Fijo[];
+    ponerFijos(antes.filter((f) => f.r !== id));
+    avisos.deshacer('«' + (recetaPorId[id]?.n ?? 'La receta') + '» salió de mis fijos', () => ponerFijos(antes));
+  }
+  function abrirFijos() { moviendo = null; nav.abrirHoja('tj-fj'); }
+  async function repetirFijos() {
+    const cs = cambiosFj;
+    if (!cs.length) return;
+    nav.cerrar();
+    const antes = structuredClone($state.snapshot(items)) as ItemMenu[];
+    const fechas = [...new Set(cs.map((c) => c.f))];
+    await ponerVariosEnMenu(cs.map((c) => itemDos(c.f, c.l, c.r)));
+    await cargarMenu();
+    avisos.deshacer('Puse ' + cs.length + (cs.length === 1 ? ' fijo' : ' fijos') + ' en la semana', async () => { await reponerMenu(fechas, antes.filter((m) => fechas.includes(m.fecha))); await cargarMenu(); });
+  }
+
   const colorDe = (m: ItemMenu | undefined) => {
     if (!m) return '';
     if (m.t === 'takeout') return 'var(--rose)';
@@ -495,8 +534,20 @@
       <div class="m-chips" role="radiogroup" aria-label="Qué semana">
         {#each [[0, 'Esta semana'], [-1, 'Próxima semana']] as const as [k, t] (k)}<button role="radio" aria-checked={semanaK === k} class:on={semanaK === k} onclick={() => cambiarSemana(k)}>{t}</button>{/each}
       </div>
-      <button class="ghost tj-rep" onclick={abrirRepetir}>{repetirTxt}</button>
+      <div class="tj-reps">
+        <button class="ghost tj-rep" onclick={abrirRepetir}>{repetirTxt}</button>
+        <button class="ghost tj-rep" onclick={abrirFijos}>Mis fijos{fijos.length ? ' (' + fijos.length + ')' : ''}</button>
+      </div>
     </div>
+    {#if sug}
+      <section class="tj-sug" aria-label="Una idea" aria-live="polite">
+        <p>{sugerenciaTxt(sug, recetaPorId[sug.r].n)}</p>
+        <div class="two">
+          {#if sug.tipo === 'fijo'}<button class="start" onclick={aceptarSug}>Agregar a mis fijos</button>{:else}<button class="ghost" onclick={() => nav.abrir('recetas')}>Ver recetas</button>{/if}
+          <button class="ghost" onclick={rechazarSug}>No por ahora</button>
+        </div>
+      </section>
+    {/if}
     <section class="tj-plan" aria-labelledby="tj-plan-t">
       <b id="tj-plan-t">¿Qué tiempos quieres planear?</b>
       <div class="m-chips" role="group" aria-labelledby="tj-plan-t">
@@ -605,6 +656,24 @@
     {/if}
     <button class="ghost" onclick={verMenu}>Ver el menú de {semanaK ? 'la próxima semana' : 'la semana'}</button>
   </div>
+{/if}
+
+{#if nav.hojaAbierta('tj-fj')}
+  <Hoja titulo="Mis fijos">
+    {#if fijos.length}
+      <p class="seg-help">Las tarjetas empiezan por ellos. «Poner mis fijos» los acomoda en los lugares libres de {semanaK ? 'la próxima semana' : 'esta semana'}, de hoy en adelante.</p>
+      <ul class="fj-list">
+        {#each fijos as f (f.r)}
+          <li><span>{recetaPorId[f.r]?.n ?? 'Receta quitada'}</span><button class="hg-q" onclick={() => quitarFijo(f.r)} aria-label={'Quitar de mis fijos: ' + (recetaPorId[f.r]?.n ?? 'receta')}>Quitar</button></li>
+        {/each}
+      </ul>
+      <p class="rp-sum" aria-live="polite">{cambiosFj.length ? (cambiosFj.length === 1 ? 'Se pondría 1 fijo.' : 'Se pondrían ' + cambiosFj.length + ' fijos.') : 'No hay lugares libres para ponerlos.'}</p>
+      <button class="start" disabled={!cambiosFj.length} onclick={repetirFijos}>Poner mis fijos</button>
+    {:else}
+      <p class="seg-help">Aún no tienes fijos. Cuando una comida se repita en tu menú, te lo propongo aquí. También puedes agregarla desde su receta.</p>
+    {/if}
+    <button class="ghost" onclick={() => nav.cerrar()}>Cerrar</button>
+  </Hoja>
 {/if}
 
 {#if nav.hojaAbierta('tj-rp')}

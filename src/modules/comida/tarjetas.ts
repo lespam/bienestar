@@ -36,10 +36,16 @@ export function repartirPorTiempos(recetas: Receta[], dias: string[], ocupado: (
  * Primero lo que ya sabes cocinar (lo más usado arriba) y, cada cuarta tarjeta, una que casi no usas,
  * para ampliar las opciones sin que estorben. Sin historial, van en orden alfabético.
  */
-export function mazoDe(recetas: Receta[], liked: string[], passed: string[], cat: string, uso: Record<string, UsoReceta> = {}, conColaciones = false): Receta[] {
-  const lista = recetas
+export function mazoDe(recetas: Receta[], liked: string[], passed: string[], cat: string, uso: Record<string, UsoReceta> = {}, conColaciones = false, fijos: string[] = []): Receta[] {
+  const todas = recetas
     .filter((r) => ((CATS_TARJETA as readonly string[]).includes(r.cat) || (conColaciones && r.cat === 'Colación')) && !liked.includes(r.id) && !passed.includes(r.id) && (cat === 'todo' || r.cat === cat))
     .sort((a, b) => a.n.localeCompare(b.n, 'es'));
+  // Mis fijos van primero, en el orden en que los guardaste.
+  const primeros = fijos.map((id) => todas.find((r) => r.id === id)).filter((r): r is Receta => !!r);
+  const lista = primeros.length ? todas.filter((r) => !fijos.includes(r.id)) : todas;
+  return [...primeros, ...resto(lista, uso)];
+}
+function resto(lista: Receta[], uso: Record<string, UsoReceta>): Receta[] {
   const conocidas = lista.filter((r) => vecesUsada(uso[r.id]) >= 2).sort((a, b) => vecesUsada(uso[b.id]) - vecesUsada(uso[a.id]));
   if (!conocidas.length) return lista;
   const nuevas = lista.filter((r) => vecesUsada(uso[r.id]) < 2);
