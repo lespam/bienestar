@@ -128,6 +128,7 @@
 <header class="cur-head">
   <button class="back" aria-label="Volver" onclick={() => nav.cerrar()}>‹ Volver</button>
   <span class="rest-next">Menú {rangoSemana(dias)}</span>
+  <button class="link-btn" onclick={() => nav.abrir('hoytoca')}>Hoy toca</button>
 </header>
 <div class="screen">
   <div class="tl-head">

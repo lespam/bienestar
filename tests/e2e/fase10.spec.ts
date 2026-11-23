@@ -157,3 +157,30 @@ test('Acomoda la semana: zoom de mes a semana y a un día', async ({ page }) => 
   await expect(page.getByRole('button', { name: 'Alejar' })).toBeDisabled();
   expect(errores).toEqual([]);
 });
+
+test('Hoy toca: una cosa a la vez, con Hecho y Después', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Recetario' }).click();
+  await page.getByRole('button', { name: /Tinga de pollo/ }).click();
+  await page.getByRole('button', { name: 'Agregar al menú' }).click();
+  await page.getByRole('dialog', { name: 'Agregar al menú' }).getByRole('button', { name: 'Agregar', exact: true }).click();
+  await expect(page.getByText(/^Agregado al menú: /)).toBeVisible();
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: 'Volver' }).click();
+  await page.getByRole('button', { name: 'Volver' }).click();
+  await page.getByRole('button', { name: 'Menú', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Preparación', exact: false }).first().click();
+  await page.getByRole('button', { name: 'Hoy toca' }).click();
+  await expect(page.getByRole('heading', { name: 'Hoy toca', level: 2 })).toBeVisible();
+  await expect(page.getByText(/Preparar tinga de pollo/)).toBeVisible();
+  await revisarPantalla(page);
+  await page.getByRole('button', { name: 'Después' }).click();
+  await expect(page.getByText('Nada por preparar ahora')).toBeVisible();
+  await page.getByRole('button', { name: 'Deshacer' }).click();
+  await page.getByRole('button', { name: 'Hecho', exact: true }).click();
+  await expect(page.getByText('Nada por preparar ahora')).toBeVisible();
+  await expect(page.getByText(/Hoy llevas 1 cosa lista/)).toBeVisible();
+  expect(errores).toEqual([]);
+});
