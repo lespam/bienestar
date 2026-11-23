@@ -1,3 +1,4 @@
+import { contarFuncion } from '../../core/uso';
 import { ejerciciosEmpezados, llave } from './calculos';
 import { cargarContexto } from './contexto';
 import { iniciarSesion, terminarSesion } from './datos';
@@ -40,6 +41,7 @@ export async function empezarHoy(): Promise<number | null> {
   const c = await cargarContexto();
   if (!c) return null;
   const s = await iniciarSesion(c.letra, c.aj.modo, c.aj.primero);
+  contarFuncion('rutina-empezar');
   return s.id ?? null;
 }
 

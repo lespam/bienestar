@@ -3,6 +3,7 @@
   import type { ItemMenu, LugarMenu, PerfilComida, Receta } from '../../core/db';
   import { avisos } from '../../core/aviso.svelte';
   import { nav } from '../../core/nav.svelte';
+  import { contarSugerencia } from '../../core/uso';
   import { CAT_COLOR, fechaDe, norm, pasaFiltros, type UsoReceta } from './calculos';
   import { guardarFijos, leerFijos, leerPerfiles, listarRecetas, menuDe, nuevoFijo, ponerEnMenu, ponerVariosEnMenu, reponerMenu, sembrarRecetas, silenciarSugerencia, sugerenciasDeFijos, usoDeRecetas } from './datos';
   import { cambiosFijos, sugerenciaTxt, type Fijo, type Sugerencia } from './fijos';
@@ -330,6 +331,7 @@
     const antes = $state.snapshot(fijos) as Fijo[];
     await ponerFijos([...antes, await nuevoFijo(s.r, hoy)]);
     sugs = sugs.filter((x) => x !== s);
+    contarSugerencia('fijo', true);
     avisos.deshacer('«' + recetaPorId[s.r].n + '» quedó en mis fijos', () => ponerFijos(antes));
   }
   async function rechazarSug() {
@@ -337,6 +339,7 @@
     if (!s) return;
     await silenciarSugerencia(s.r, hoy);
     sugs = sugs.filter((x) => x !== s);
+    contarSugerencia('fijo', false);
   }
   function quitarFijo(id: string) {
     const antes = $state.snapshot(fijos) as Fijo[];

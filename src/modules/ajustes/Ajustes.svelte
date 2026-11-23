@@ -9,6 +9,7 @@
   import { importarZip, volverACopia, ultimaCopia } from '../../core/respaldo';
   import { metaContenido, resumenCargado } from '../../core/contenido';
   import { fechaCorta, diasEntre } from '../../core/fechas';
+  import { activarUso, cargarUso, usoActivo } from '../../core/uso';
   import { prefs, guardar, cargarPrefs, enlaceObsidian, aplicarPaleta, PALETAS, type Paleta } from './prefs.svelte';
   import { hacerRespaldo, elegirContenido } from './acciones';
 
@@ -47,8 +48,17 @@
     if (t) avisos.mostrar(t);
   }
 
+  let midiendo = $state(usoActivo());
+  async function cambiarUso() {
+    await activarUso(!midiendo);
+    midiendo = usoActivo();
+    avisos.mostrar(midiendo ? 'Empecé a contar. Puedes apagarlo cuando quieras.' : 'Dejé de contar. Tus contadores siguen guardados hasta que los borres.');
+  }
+
   async function datosCambiaron() {
     await cargarPrefs();
+    await cargarUso();
+    midiendo = usoActivo();
     plataforma.datos++;
   }
   async function importar() {
@@ -144,6 +154,13 @@
       <div class="aj-acts" role="status">
         <button class="ghost" onclick={cargarContenido} disabled={cargando}>{cargando ? 'Cargando tu contenido…' : contenido ? 'Cargar otro archivo' : 'Cargar archivo'}</button>
       </div>
+    </div>
+  </section>
+
+  <section class="tp-sec"><h4>Mi uso de la app</h4>
+    <div class="group aj-g">
+      <Interruptor id="aj-uso" encendido={midiendo} titulo="Medir mi uso" detalle="Cuenta cuántas veces abres cada pantalla. Sin texto ni fotos, solo en tu teléfono. Apagado hasta que lo enciendas." onchange={cambiarUso} />
+      <button class="in-more" onclick={() => nav.abrir('uso')}>Cómo uso la app ›</button>
     </div>
   </section>
 

@@ -1,6 +1,7 @@
 // Navegación: una sola pila con pantallas y hojas (plan, punto 2b).
 // El gesto atrás de Android cierra lo último que abriste: primero la hoja, después la pantalla.
 // Desde otra pestaña regresa a Inicio. En Inicio, el primer gesto avisa y solo el segundo sale.
+import { contarPantalla } from './uso';
 
 export type Tab = 'inicio' | 'rutina' | 'comida' | 'cuerpo';
 export type Capa =
@@ -33,8 +34,8 @@ class Nav {
     return typeof document !== 'undefined' && document.activeElement instanceof HTMLElement ? document.activeElement : null;
   }
 
-  irTab(t: Tab) { this.pila = []; this.tab = t; this.cambio++; }
-  abrir(id: string, datos?: Record<string, unknown>) { this.pila = [...this.pila, { tipo: 'pantalla', id, datos, desde: this.foco() }]; this.cambio++; }
+  irTab(t: Tab) { this.pila = []; this.tab = t; this.cambio++; contarPantalla(t); }
+  abrir(id: string, datos?: Record<string, unknown>) { this.pila = [...this.pila, { tipo: 'pantalla', id, datos, desde: this.foco() }]; this.cambio++; contarPantalla(id); }
   abrirHoja(id: string) { this.pila = [...this.pila, { tipo: 'hoja', id, desde: this.foco() }]; }
 
   /** Cierra lo último abierto y devuelve el foco al botón que lo abrió. */

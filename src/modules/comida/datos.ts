@@ -1,5 +1,6 @@
 import { db, type Alimento, type DiaFlexible, type ItemMenu, type PerfilComida, type Receta, type Tanda } from '../../core/db';
 import { parte } from '../../core/contenido';
+import { contarFuncion } from '../../core/uso';
 import { registroNuevo } from '../ajustes';
 import { comprasVacias, type EstadoCompras } from './compras';
 import { agregarConsejos } from './consejos';
@@ -76,6 +77,7 @@ export async function sembrarRecetas(): Promise<number> {
 export const alimentosDe = (fecha: string) => db.registro.where('fecha').equals(fecha).sortBy('id');
 export async function agregarAlimentos(filas: Omit<Alimento, 'id'>[]): Promise<number[]> {
   const ids = (await db.registro.bulkAdd(filas.map((f) => limpio(f)), { allKeys: true })) as number[];
+  contarFuncion('registrar-comida');
   await registroNuevo();
   return ids;
 }
@@ -102,11 +104,12 @@ async function alaVista(filas: ItemMenu[]) {
   if (!ids.length) return;
   for (const r of await db.recetas.bulkGet(ids)) if (r?.vis) await db.recetas.update(r.id, { vis: undefined });
 }
-export async function ponerEnMenu(m: ItemMenu) { await db.menu.put(sinTicket(m)); await alaVista([m]); await sincronizarPrep([m.fecha]); }
+export async function ponerEnMenu(m: ItemMenu) { await db.menu.put(sinTicket(m)); contarFuncion('planear-menu'); await alaVista([m]); await sincronizarPrep([m.fecha]); }
 export const quitarDelMenu = (fecha: string, lugar: ItemMenu['lugar']) => db.menu.delete([fecha, lugar]).then(() => sincronizarPrep([fecha]));
 /** Guarda varios lugares a la vez y avisa que ya hay un registro nuevo. */
 export async function ponerVariosEnMenu(filas: ItemMenu[]) {
   await db.menu.bulkPut(filas.map(sinTicket));
+  contarFuncion('planear-menu');
   await alaVista(filas);
   await sincronizarPrep([...new Set(filas.map((f) => f.fecha))]);
   await registroNuevo();
@@ -194,6 +197,7 @@ export async function anotarCompra(n: string, fecha: string, lugar?: string, q?:
   const art = norm(n);
   if (await db.historial.where('art').equals(art).filter((h) => h.fecha === fecha).count()) return;
   await db.historial.add({ art, n, fecha, ...(lugar ? { lugar } : {}), ...(q ? { q } : {}) });
+  contarFuncion('compra-marcada');
 }
 export async function quitarCompra(n: string, fecha: string) {
   const art = norm(n);

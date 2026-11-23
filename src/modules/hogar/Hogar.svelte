@@ -3,6 +3,7 @@
   import Hoja from '../../core/Hoja.svelte';
   import { avisos } from '../../core/aviso.svelte';
   import { iso } from '../../core/fechas';
+  import { contarFuncion } from '../../core/uso';
   import { nav } from '../../core/nav.svelte';
   import { agregarTarea, guardarDia, guardarTarea, leerDia, listarTareas, quitarTarea } from './datos';
   import { ENERGIAS, MAXIMO_HOY, TIEMPOS, entendi, haceCuanto, interpretar, mismaZona, minutosMinima, noCaben, ordenar, previsiones, type Capacidad, type Energia, type Frase } from './reglas';
@@ -51,6 +52,7 @@
   async function yaLaHice(t: TareaHogar) {
     const antesT = limpio(t), antesD = limpio(dia);
     const nueva: TareaHogar = { ...antesT, ult: hoy };
+    contarFuncion('hogar-hecha');
     tareas = tareas.map((x) => (x.id === t.id ? nueva : x));
     await guardarTarea(nueva);
     await ponerDia({ ...antesD, hoy: antesD.hoy.filter((x) => x !== t.id), despues: antesD.despues.filter((x) => x !== t.id), hechas: [...antesD.hechas.filter((x) => x !== t.id), t.id!] });

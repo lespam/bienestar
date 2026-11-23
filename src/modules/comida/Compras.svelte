@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { contarSugerencia } from '../../core/uso';
   import type { HistCompra, ItemMenu, PerfilComida, Receta } from '../../core/db';
   import Hoja from '../../core/Hoja.svelte';
   import { avisos } from '../../core/aviso.svelte';
@@ -52,8 +53,8 @@
   async function cargarHist() { [hist, silencio] = await Promise.all([leerHistorial(), leerSilenciadas()]); }
   cargarHist();
   const toca = $derived(yaToca(hist, hoyIso, filas.map((f) => f.n), silencio, 3));
-  function agregarToca(n: string) { if (agregar(n)) cargarHist(); }
-  async function noMeInteresa(art: string) { await silenciarCompra(art); await cargarHist(); }
+  function agregarToca(n: string) { if (agregar(n)) { contarSugerencia('ya-toca', true); cargarHist(); } }
+  async function noMeInteresa(art: string) { await silenciarCompra(art); contarSugerencia('ya-toca', false); await cargarHist(); }
   function mover(f: FilaCompra) {
     const antes = estado.dest[f.n];
     const a: Destino = f.dest === 'walmart' ? 'enfrente' : 'walmart';
