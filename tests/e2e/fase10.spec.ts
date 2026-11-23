@@ -176,12 +176,17 @@ test('Hoy toca: una cosa a la vez, con Hecho y Después', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Hoy toca', level: 2 })).toBeVisible();
   await expect(page.getByText(/Preparar tinga de pollo/)).toBeVisible();
   await revisarPantalla(page);
+  // Hecho pasa a la siguiente cosa: el consejo de sacar el pollo del congelador
+  await page.getByRole('button', { name: 'Hecho', exact: true }).click();
+  await expect(page.getByText('Saca del congelador pechuga de pollo')).toBeVisible();
+  // Después la pasa a mañana, sin marca de falla, y se puede deshacer
   await page.getByRole('button', { name: 'Después' }).click();
   await expect(page.getByText('Nada por preparar ahora')).toBeVisible();
   await page.getByRole('button', { name: 'Deshacer' }).click();
+  await expect(page.getByText('Saca del congelador pechuga de pollo', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Hecho', exact: true }).click();
   await expect(page.getByText('Nada por preparar ahora')).toBeVisible();
-  await expect(page.getByText(/Hoy llevas 1 cosa lista/)).toBeVisible();
+  await expect(page.getByText(/Hoy llevas 2 cosas listas/)).toBeVisible();
   expect(errores).toEqual([]);
 });
 
