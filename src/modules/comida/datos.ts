@@ -5,6 +5,7 @@ import { registroNuevo } from '../ajustes';
 import { comprasVacias, seccionDe, type EstadoCompras } from './compras';
 import { mezclarHay, vigente, type HayGuardado } from './nevera';
 import { usualesVacios, type DatosUsuales } from './usuales';
+import { normalizarLugares, type DatosLugares } from './lugares';
 import { agregarConsejos } from './consejos';
 import { idTanda, sincronizar } from './preparacion';
 import { tipsVacios, type TipsGuardados } from './tips';
@@ -195,18 +196,49 @@ export async function ponerVisibilidad(ids: string[], guardar: boolean) {
 // ---------- Historial de compras ----------
 export const leerHistorial = () => db.historial.toArray();
 /** Marcar algo como comprado lo anota (una vez por artículo y día); desmarcarlo lo quita. */
-export async function anotarCompra(n: string, fecha: string, lugar?: string, q?: string) {
+export async function anotarCompra(n: string, fecha: string, lugar?: string, q?: string, precio?: number) {
   const art = norm(n);
   if (await db.historial.where('art').equals(art).filter((h) => h.fecha === fecha).count()) return;
-  await db.historial.add({ art, n, fecha, ...(lugar ? { lugar } : {}), ...(q ? { q } : {}) });
+  await db.historial.add({ art, n, fecha, ...(lugar ? { lugar } : {}), ...(q ? { q } : {}), ...(precio != null ? { precio } : {}) });
   contarFuncion('compra-marcada');
 }
+/** Los nombres que ya se unieron: lo que salió en el ticket → el nombre con que se cuenta. Una vez unido, no se vuelve a preguntar. */
+export async function leerUnidos(): Promise<Record<string, string>> { return ((await db.comida.get('unidos'))?.v as Record<string, string> | undefined) ?? {}; }
+export async function guardarUnidos(nuevos: Record<string, string>) { await db.comida.put({ k: 'unidos', v: { ...(await leerUnidos()), ...nuevos } }); }
+/** Guarda compras que revisaste (de un ticket, una captura o escritas a mano). Devuelve los ids para poder deshacer. */
+export async function guardarCompraAnterior(filas: { n: string; fecha: string; lugar?: string; q?: string; precio?: number }[]): Promise<number[]> {
+  const ids: number[] = [];
+  for (const f of filas) {
+    const art = norm(f.n);
+    const hay = await db.historial.where('art').equals(art).filter((h) => h.fecha === f.fecha).first();
+    if (hay) { if (hay.precio == null && f.precio != null) await db.historial.update(hay.id!, { precio: f.precio }); continue; }
+    ids.push(await db.historial.add({ art, n: f.n, fecha: f.fecha, ...(f.lugar ? { lugar: f.lugar } : {}), ...(f.q ? { q: f.q } : {}), ...(f.precio != null ? { precio: f.precio } : {}) }));
+  }
+  if (ids.length) contarFuncion('compra-anotada');
+  await registroNuevo();
+  return ids;
+}
+export async function quitarComprasAnotadas(ids: number[]) { await db.historial.bulkDelete(ids); }
 export async function quitarCompra(n: string, fecha: string) {
   const art = norm(n);
   await db.historial.where('art').equals(art).filter((h) => h.fecha === fecha).delete();
 }
 export async function leerSilenciadas(): Promise<string[]> { return ((await db.comida.get('silencio-compras'))?.v as string[] | undefined) ?? []; }
 export async function silenciarCompra(art: string) { await db.comida.put({ k: 'silencio-compras', v: [...new Set([...(await leerSilenciadas()), art])] }); }
+
+// ---------- Repartir un día cargado ----------
+export async function leerRepartoNo(): Promise<string[]> { return ((await db.comida.get('reparto-no'))?.v as string[] | undefined) ?? []; }
+export async function repartoNo(f: string) { await db.comida.put({ k: 'reparto-no', v: [...new Set([...(await leerRepartoNo()), f])] }); }
+
+// ---------- Ideas de ahorro ----------
+export async function leerPrecios(): Promise<Record<string, number>> { return ((await db.comida.get('precios'))?.v as Record<string, number> | undefined) ?? {}; }
+export async function guardarPrecio(art: string, precio: number | null) {
+  const p = { ...(await leerPrecios()) };
+  if (precio == null) delete p[art]; else p[art] = precio;
+  await db.comida.put({ k: 'precios', v: p });
+}
+export async function leerSilenciadasAhorro(): Promise<string[]> { return ((await db.comida.get('silencio-ahorro'))?.v as string[] | undefined) ?? []; }
+export async function silenciarAhorro(art: string) { await db.comida.put({ k: 'silencio-ahorro', v: [...new Set([...(await leerSilenciadasAhorro()), art])] }); }
 
 // ---------- Mis fijos y lo que se repite ----------
 export async function leerFijos(): Promise<Fijo[]> { return ((await db.comida.get('fijos'))?.v as Fijo[] | undefined) ?? []; }
@@ -231,6 +263,13 @@ export async function semanasDeReceta(id: string, hoy: string, semanas = 8): Pro
 export async function nuevoFijo(id: string, hoy: string): Promise<Fijo> {
   const { menu } = await historiaReciente(hoy, VENTANA);
   return fijoNuevo(menu, id, hoy);
+}
+
+// ---------- Lugares de compra y reglas de reparto ----------
+export async function leerLugares(): Promise<DatosLugares> { return normalizarLugares((await db.comida.get('lugares'))?.v as Partial<DatosLugares> | undefined); }
+export async function guardarLugares(d: DatosLugares) {
+  await db.comida.put({ k: 'lugares', v: limpio(d) });
+  await registroNuevo();
 }
 
 // ---------- Con lo que tengo: lo que hay en casa ----------

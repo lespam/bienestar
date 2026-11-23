@@ -1,11 +1,13 @@
 import type { ItemMenu, PerfilComida, Receta } from '../../core/db';
 import { norm, porcionDe } from './calculos';
+import { cortoLugar, deFabrica, lugaresIniciales, nombreLugar, porReglas, type DatosLugares } from './lugares';
 
 // La lista de compras sale del menú de la semana y de los ingredientes de cada receta.
 // Lo que agregas tú se queda aparte. Todo es una cuenta: no hay nada que cumplir.
 
 export const SECCIONES = ['Frutas y verduras', 'Proteínas', 'Lácteos', 'Granos y legumbres', 'Tortillería', 'Despensa', 'Otros'];
-export type Destino = 'enfrente' | 'walmart';
+/** El id de un lugar de compra (`enfrente` y `walmart` vienen de fábrica; tú agregas los demás). */
+export type Destino = string;
 export type Pestana = Destino | 'todo';
 
 const RX_LACTEOS = /yogur|leche|queso|panela|oaxaca|cottage|requeson|crema(?! de cacahuate)/;
@@ -60,9 +62,13 @@ export interface FilaCompra {
   why?: string;
   /** Algo que agregaste tú. */
   extra?: boolean;
+  /** Lo que agregaste tú: ya falta o se acaba pronto. */
+  urg?: 'falta' | 'pronto';
+  /** Para quién es, según el menú. Vacío en lo que agregas a mano. */
+  quien?: ('les' | 'jeff')[];
 }
 export interface Extra { n: string; q: string; sec: number; urg: 'falta' | 'pronto'; chk: boolean }
-export interface EstadoCompras { chk: Record<string, boolean>; dest: Record<string, Destino>; extras: Extra[]; /** Lo que ya tienes pero necesitas comprar de todos modos. */ nec?: Record<string, boolean> }
+export interface EstadoCompras { chk: Record<string, boolean>; dest: Record<string, Destino>; extras: Extra[]; /** Lo que ya tienes pero necesitas comprar de todos modos. */ nec?: Record<string, boolean>; /** Las comidas del menú que elegiste para esta lista (fecha:lugar). Sin esto, entran todas. */ sel?: string[] }
 export const comprasVacias = (): EstadoCompras => ({ chk: {}, dest: {}, extras: [] });
 
 const mayus = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
@@ -90,7 +96,14 @@ export function usosDelMenu(items: ItemMenu[], recetas: Receta[] = [], perfiles?
 /** Junta los ingredientes de las recetas del menú y las colaciones armadas por partes. */
 export function armarLista(items: ItemMenu[], recetas: Receta[], perfiles?: PorcionesPerfiles): FilaCompra[] {
   const porId = new Map(recetas.map((r) => [r.id, r]));
-  const acc = new Map<string, { n: string; u: string; q: number | null; para: string[]; crudo: boolean }>();
+  const acc = new Map<string, { n: string; u: string; q: number | null; para: string[]; crudo: boolean; quien: ('les' | 'jeff')[] }>();
+  // Quién come cada receta, según el menú
+  const quienDe = new Map<string, ('les' | 'jeff')[]>();
+  const come = (id: string | undefined, w: 'les' | 'jeff') => { if (id) quienDe.set(id, [...new Set([...(quienDe.get(id) ?? []), w])]); };
+  for (const m of items) {
+    if (m.t === 'dos') { come(m.r, 'les'); come(m.r, 'jeff'); }
+    else if (m.t === 'cada') { come(m.rl, 'les'); come(m.rj, 'jeff'); }
+  }
   for (const [id, usos] of usosDelMenu(items, recetas, perfiles)) {
     const r = porId.get(id);
     if (!r) continue;
@@ -101,7 +114,8 @@ export function armarLista(items: ItemMenu[], recetas: Receta[], perfiles?: Porc
       const crudo = g[0] != null && esCruda(g[2], g[1]);
       const llave = norm(g[2]) + '|' + g[1];
       let a = acc.get(llave);
-      if (!a) { a = { n: g[2], u: g[1], q: null, para: [], crudo }; acc.set(llave, a); }
+      if (!a) { a = { n: g[2], u: g[1], q: null, para: [], crudo, quien: [] }; acc.set(llave, a); }
+      for (const w of quienDe.get(id) ?? []) if (!a.quien.includes(w)) a.quien.push(w);
       if (g[0] != null) a.q = (a.q ?? 0) + g[0] * tandas * (crudo ? FACTOR_CRUDO : 1);
       if (!a.para.includes(r.n)) a.para.push(r.n);
     }
@@ -111,9 +125,10 @@ export function armarLista(items: ItemMenu[], recetas: Receta[], perfiles?: Porc
   for (const a of acc.values()) {
     const q = cantidadCompra(a.q, a.u);
     const hay = filas.find((f) => norm(f.n) === norm(a.n));
-    if (!hay) { filas.push({ n: mayus(a.n), q, para: a.para, sec: seccionDe(a.n), ...(a.crudo ? { crudo: true } : {}) }); continue; }
+    if (!hay) { filas.push({ n: mayus(a.n), q, para: a.para, sec: seccionDe(a.n), quien: a.quien, ...(a.crudo ? { crudo: true } : {}) }); continue; }
     if (q) hay.q = hay.q ? hay.q + ' + ' + q : q;
     for (const p of a.para) if (!hay.para.includes(p)) hay.para.push(p);
+    for (const w of a.quien) if (!(hay.quien ??= []).includes(w)) hay.quien.push(w);
     if (a.crudo) hay.crudo = true;
   }
 
@@ -134,46 +149,57 @@ export function armarLista(items: ItemMenu[], recetas: Receta[], perfiles?: Porc
 
 export interface ListaFinal { filas: FilaCompra[]; pasadas: string[] }
 
-/** Junta lo del menú con lo que agregaste y decide en qué tienda va cada cosa. */
-export function repartir(menu: FilaCompra[], estado: EstadoCompras): ListaFinal {
+/**
+ * Junta lo del menú con lo que agregaste y decide en qué lugar va cada cosa.
+ * Manda primero lo que moviste esta semana, luego tus reglas (por ingrediente y por sección) y al final el reparto de fábrica.
+ */
+export function repartir(menu: FilaCompra[], estado: EstadoCompras, lugares: DatosLugares = lugaresIniciales()): ListaFinal {
   const filas: FilaCompra[] = menu.map((f) => ({ ...f }));
   let pesadas = 0;
   const pasadas: string[] = [];
-  for (const e of estado.extras) filas.push({ n: e.n, q: e.q, para: [], sec: e.sec, extra: true, why: e.urg });
+  const enfrente = deFabrica(lugares, 'enfrente'), walmart = deFabrica(lugares, 'walmart');
+  const existe = (id: string | undefined): id is string => !!id && lugares.lista.some((l) => l.id === id);
+  for (const e of estado.extras) filas.push({ n: e.n, q: e.q, para: [], sec: e.sec, extra: true, why: e.urg, urg: e.urg });
   for (const f of filas) {
     const mio = estado.dest[f.n];
-    if (mio) { f.dest = mio; if (f.extra) f.why = mio === 'walmart' ? 'Lo pasaste a Walmart+' : 'Lo pasaste a Enfrente'; continue; }
-    if (!f.extra) { f.dest = f.sec === 3 || f.sec === 5 ? 'walmart' : 'enfrente'; continue; }
-    if (f.why === 'pronto') { f.dest = 'walmart'; f.why = 'Se acaba pronto'; }
+    if (existe(mio)) { f.dest = mio; if (f.extra) f.why = 'Lo pasaste a ' + cortoLugar(nombreLugar(lugares, mio)); continue; }
+    const regla = porReglas(lugares, f.n, f.sec);
+    if (regla) { f.dest = regla; if (f.extra) f.why = (f.urg === 'pronto' ? 'Se acaba pronto' : 'Ya falta') + ' · ' + cortoLugar(nombreLugar(lugares, regla)); continue; }
+    if (!f.extra) { f.dest = f.sec === 3 || f.sec === 5 ? walmart : enfrente; continue; }
+    if (f.why === 'pronto') { f.dest = walmart; f.why = 'Se acaba pronto'; }
     else if (RX_PESADO.test(norm(f.n))) {
-      if (pesadas < 1) { pesadas++; f.dest = 'enfrente'; f.why = 'Ya falta'; }
-      else { f.dest = 'walmart'; f.why = 'Ya falta · pesado'; pasadas.push(f.n); }
-    } else { f.dest = 'enfrente'; f.why = 'Ya falta'; }
+      if (pesadas < 1) { pesadas++; f.dest = enfrente; f.why = 'Ya falta'; }
+      else { f.dest = walmart; f.why = 'Ya falta · pesado'; if (walmart !== enfrente) pasadas.push(f.n); }
+    } else { f.dest = enfrente; f.why = 'Ya falta'; }
   }
   return { filas: filas.sort((a, b) => a.sec - b.sec), pasadas };
 }
 
 export const marcada = (estado: EstadoCompras, f: FilaCompra) => (f.extra ? estado.extras.find((e) => e.n === f.n)?.chk : estado.chk[f.n]) ?? false;
 
-export function conteos(filas: FilaCompra[], estado: EstadoCompras) {
-  const c = { enfrente: 0, walmart: 0, todo: filas.length, hechas: 0 };
-  for (const f of filas) { c[f.dest ?? 'enfrente']++; if (marcada(estado, f)) c.hechas++; }
-  return c;
+/** Cuántas cosas hay por lugar (por id), en total y las ya marcadas. */
+export function conteos(filas: FilaCompra[], estado: EstadoCompras, lugares: DatosLugares = lugaresIniciales()): Record<string, number> & { todo: number; hechas: number } {
+  const c: Record<string, number> = { todo: filas.length, hechas: 0 };
+  for (const l of lugares.lista) c[l.id] = 0;
+  for (const f of filas) {
+    const d = f.dest && c[f.dest] !== undefined ? f.dest : lugares.lista[0].id;
+    c[d]++;
+    if (marcada(estado, f)) c.hechas++;
+  }
+  return c as Record<string, number> & { todo: number; hechas: number };
 }
 
-export const NOMBRE_TIENDA: Record<Destino, string> = { enfrente: 'Súper de enfrente', walmart: 'Pedido Walmart+' };
-
 /** El texto que se manda a Jeff. */
-export function textoCompartir(filas: FilaCompra[], estado: EstadoCompras, cual: Pestana, todo: boolean): string {
+export function textoCompartir(filas: FilaCompra[], estado: EstadoCompras, cual: Pestana, todo: boolean, lugares: DatosLugares = lugaresIniciales()): string {
   const partes: string[] = [];
-  for (const d of ['enfrente', 'walmart'] as Destino[]) {
-    if (cual !== 'todo' && cual !== d) continue;
+  for (const l of lugares.lista) {
+    if (cual !== 'todo' && cual !== l.id) continue;
     const bloques: string[] = [];
     SECCIONES.forEach((s, si) => {
-      const its = filas.filter((f) => f.sec === si && f.dest === d && (todo || !marcada(estado, f)));
+      const its = filas.filter((f) => f.sec === si && (f.dest ?? lugares.lista[0].id) === l.id && (todo || !marcada(estado, f)));
       if (its.length) bloques.push(s + '\n' + its.map((f) => '• ' + f.n + (f.q ? ' (' + f.q + ')' : '')).join('\n'));
     });
-    if (bloques.length) partes.push(NOMBRE_TIENDA[d] + '\n\n' + bloques.join('\n\n'));
+    if (bloques.length) partes.push(l.n + '\n\n' + bloques.join('\n\n'));
   }
   return partes.join('\n\n———\n\n');
 }

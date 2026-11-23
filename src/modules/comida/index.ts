@@ -12,5 +12,7 @@ export const Tarjetas = () => import('./Tarjetas.svelte');
 export const Flexible = () => import('./Flexible.svelte');
 export const Patrones = () => import('./Patrones.svelte');
 export const Nevera = () => import('./Nevera.svelte');
-export { anotarComido, anotarHay, agregarFaltantes, quitarFaltantes } from './datos';
+export { anotarComido, anotarHay, agregarFaltantes, quitarFaltantes, silenciarCompra } from './datos';
 export { leerTextoHay } from './nevera';
+export { resumenHoyToca } from './hoytoca';
+export type { ResumenHoyToca } from './hoytoca';

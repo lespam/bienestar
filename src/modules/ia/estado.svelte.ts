@@ -6,7 +6,7 @@ import { anotar, tokensDe, usoVacio, type UsoIA } from './uso';
 // La IA es opcional y empieza apagada. Todo vive en tu teléfono: la clave nunca sale en el respaldo
 // (CLAVES_PRIVADAS) y la pantalla solo guarda si hay una y sus últimos 4 caracteres.
 
-export type FnIA = 'foto' | 'tips' | 'ing' | 'prep' | 'idea' | 'comida' | 'escaner' | 'resumen' | 'entreno' | 'nevera' | 'huecos' | 'combos' | 'usuales' | 'caja';
+export type FnIA = 'foto' | 'tips' | 'ing' | 'prep' | 'idea' | 'comida' | 'escaner' | 'resumen' | 'entreno' | 'nevera' | 'huecos' | 'combos' | 'usuales' | 'caja' | 'ticket';
 /** Nombre de cada función en Ajustes y qué datos se envían (el aviso se arma con este texto). */
 export const FUNCIONES: Record<FnIA, [string, string]> = {
   foto: ['Leer recetas desde una foto', 'la imagen de la receta'],
@@ -22,11 +22,12 @@ export const FUNCIONES: Record<FnIA, [string, string]> = {
   huecos: ['Ideas con lo que tengo y menú diferente', 'los ingredientes que hay, tus exclusiones y los nombres de hasta 15 recetas'],
   combos: ['Más combinaciones de alimentos', 'tus exclusiones, los ingredientes de tu menú de la semana y las combinaciones que ya conoces'],
   usuales: ['Ingredientes nuevos para tus usuales', 'tus ingredientes usuales, tus exclusiones, lo que ya rechazaste y los nombres de hasta 15 recetas'],
+  ticket: ['Leer un ticket o una captura de pedido', 'la foto reducida del ticket o de la captura y los nombres de los artículos que no se reconocen'],
   caja: ['Entender una frase libre', 'solo la frase que escribas o digas y la lista de acciones de la app']
 };
 export const NUNCA_SE_ENVIA = 'Nunca se envía: tu peso, medidas, fotos de cuerpo, calorías ni tu registro de comidas.';
 
-const FN_INICIAL = (): Record<FnIA, boolean> => ({ foto: true, tips: true, ing: true, prep: true, idea: true, comida: true, escaner: true, resumen: true, entreno: true, nevera: true, huecos: true, combos: true, usuales: true, caja: true });
+const FN_INICIAL = (): Record<FnIA, boolean> => ({ foto: true, tips: true, ing: true, prep: true, idea: true, comida: true, escaner: true, resumen: true, entreno: true, nevera: true, huecos: true, combos: true, usuales: true, caja: true, ticket: true });
 
 export const ia = $state({ cargada: false, on: false, fn: FN_INICIAL(), vistas: {} as Record<string, boolean>, tieneClave: false, fin: '' });
 

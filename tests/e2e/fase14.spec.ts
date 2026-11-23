@@ -66,7 +66,15 @@ test('Combinaciones: lo que Jeff no come no aparece y la IA pasa por el mismo se
   await expect(page.getByRole('heading', { name: 'Pollo + limón' })).toBeVisible();
   await expect(page.getByText('Sugerido por IA').first()).toBeVisible();
 
-  // Quedan guardadas: al volver no se piden otra vez
+  // Quedan guardadas: espero a que el guardado termine antes de recargar, y al volver no se piden otra vez
+  await expect.poll(() => page.evaluate(() => new Promise<string>((ok) => {
+    const abrir = indexedDB.open('bienestar');
+    abrir.onsuccess = () => {
+      const bd = abrir.result, pedir = bd.transaction('comida').objectStore('comida').get('tips');
+      pedir.onsuccess = () => { bd.close(); ok(JSON.stringify(pedir.result ?? {})); };
+      pedir.onerror = () => { bd.close(); ok(''); };
+    };
+  }))).toContain('Jitomate + albahaca');
   await page.reload();
   await abrirTips(page);
   await page.getByRole('tab', { name: 'Combinaciones' }).click();

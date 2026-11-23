@@ -10,10 +10,10 @@ export const PANTALLAS_CONOCIDAS: [string, string][] = [
   ['patrones', 'Patrones'], ['perfiles', 'Perfiles'], ['flexible', 'Día flexible'], ['tips', 'Tips']
 ];
 export const FUNCIONES_CONOCIDAS: Record<string, string> = {
-  'registrar-comida': 'Registrar comida', 'planear-menu': 'Planear comidas', 'compra-marcada': 'Marcar compras', 'preparacion-hecha': 'Hacer lo de «Hoy toca»',
+  'registrar-comida': 'Registrar comida', 'planear-menu': 'Planear comidas', 'compra-marcada': 'Marcar compras', 'compra-anotada': 'Anotar compras anteriores', 'preparacion-hecha': 'Hacer lo de «Hoy toca»',
   'rutina-empezar': 'Empezar una rutina', peso: 'Anotar peso', 'hogar-hecha': 'Tareas de la casa hechas'
 };
-export const SUGERENCIAS_CONOCIDAS: Record<string, string> = { fijo: 'Mis fijos', 'ya-toca': 'Ya toca' };
+export const SUGERENCIAS_CONOCIDAS: Record<string, string> = { fijo: 'Mis fijos', 'ya-toca': 'Ya toca', ahorro: 'Ideas de ahorro' };
 
 const NOMBRE = new Map(PANTALLAS_CONOCIDAS);
 const mayorAMenor = (r: Record<string, number>, nombre: (k: string) => string | undefined, max = 5): [string, number][] =>

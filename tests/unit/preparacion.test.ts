@@ -102,3 +102,51 @@ describe('plan de preparación', () => {
     expect(filaDeTanda(t, '2026-10-12', HOY)).toBeNull();
   });
 });
+
+describe('plan de preparación al calendario', () => {
+  const t = (id: string, fecha: string, hora: string, items: { t: string; m?: number; ok?: boolean }[]) => ({ id, fecha, hora, items: items.map((i) => ({ t: i.t, f: '', ...(i.m ? { m: i.m } : {}), ok: !!i.ok })) }) as Tanda;
+  it('una cita por tanda pendiente de hoy en adelante, en orden, con hora por defecto', async () => {
+    const { eventosDePrep } = await import('../../src/modules/comida/preparacion');
+    const ev = eventosDePrep([
+      t('b', '2026-11-25', '', [{ t: 'Cortar fresas', m: 5 }, { t: 'Cocer arroz', m: 25 }]),
+      t('a', '2026-11-24', '19:30', [{ t: 'Sacar el pollo', m: 5 }]),
+      t('c', '2026-11-22', '19:00', [{ t: 'Atrasada' }]),
+      t('d', '2026-11-26', '18:00', [{ t: 'Ya hecha', ok: true }])
+    ], '2026-11-23');
+    expect(ev.map((e) => e.id)).toEqual(['prep-a', 'prep-b']);
+    expect(ev[0]).toMatchObject({ titulo: 'Preparar: Sacar el pollo', fecha: '2026-11-24', hora: '19:30', minutos: 5 });
+    expect(ev[1]).toMatchObject({ hora: '20:00', minutos: 30, titulo: 'Preparar: Cortar fresas, Cocer arroz' });
+    expect(ev[1].nota).toBe('• Cortar fresas (5 min)\n• Cocer arroz (25 min)');
+  });
+});
+
+describe('repartir un día cargado', () => {
+  const item = (t: string, fm: string, m = 20, ok = false) => ({ t, f: '', m, ok, fm }) as Tanda['items'][number];
+  const base = (): Tanda[] => [{ id: 'x', fecha: '2026-11-25', hora: '20:00', auto: true, items: [item('Desayuno 26', '2026-11-26:d'), item('Comida 26', '2026-11-26:c'), item('Cena 26', '2026-11-26:n'), item('Cena 26 b', '2026-11-26:n'), item('Comida 26 b', '2026-11-26:c'), { t: 'Lavar la lechuga', f: '', m: 15, ok: false }] }];
+
+  it('propone pasar al día anterior lo de las comidas que vienen después, hasta quedar en el límite', async () => {
+    const { repartoPropuesto, LIMITE_DIA } = await import('../../src/modules/comida/preparacion');
+    const r = repartoPropuesto(base(), '2026-11-25', '2026-11-23')!;
+    expect(LIMITE_DIA).toBe(90);
+    expect(r).toMatchObject({ de: '2026-11-25', a: '2026-11-24', antes: 115, quedan: 75, pasan: 40 });
+    expect(r.mover.map((m) => base()[0].items[m.n].t)).toEqual(['Cena 26', 'Cena 26 b']);
+  });
+  it('no propone nada si no está cargado, si el día anterior ya pasó o si no cabe', async () => {
+    const { repartoPropuesto } = await import('../../src/modules/comida/preparacion');
+    expect(repartoPropuesto(base().map((t) => ({ ...t, items: t.items.slice(0, 3) })), '2026-11-25', '2026-11-23')).toBeNull();
+    expect(repartoPropuesto(base(), '2026-11-25', '2026-11-25')).toBeNull();
+    const lleno: Tanda = { id: 'y', fecha: '2026-11-24', hora: '', items: [item('a', '2026-11-25:c', 80), item('b', '2026-11-25:n', 50)] };
+    expect(repartoPropuesto([...base(), lleno], '2026-11-25', '2026-11-23')).toBeNull();
+  });
+  it('aplica el reparto sin tocar la lista original, deja lo que escribiste y crea la tanda del día anterior', async () => {
+    const { repartoPropuesto, aplicarReparto } = await import('../../src/modules/comida/preparacion');
+    const orig = base();
+    const r = repartoPropuesto(orig, '2026-11-25', '2026-11-23')!;
+    const nueva = aplicarReparto(orig, r, () => 'nuevo');
+    expect(orig[0].items).toHaveLength(6);
+    expect(nueva.map((t) => [t.id, t.fecha, t.items.map((i) => i.t)])).toEqual([
+      ['nuevo', '2026-11-24', ['Cena 26', 'Cena 26 b']],
+      ['x', '2026-11-25', ['Desayuno 26', 'Comida 26', 'Comida 26 b', 'Lavar la lechuga']]
+    ]);
+  });
+});
