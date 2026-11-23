@@ -17,6 +17,26 @@ export function fechasDeSemana(k: number, hoy = new Date()): string[] {
   const desdeLunes = (hoy.getDay() + 6) % 7;
   return Array.from({ length: 7 }, (_, i) => fechaDe(-desdeLunes - 7 * k + i, hoy));
 }
+/** El mes de la fecha `f` en semanas de lunes a domingo; `fuera` marca los días de los meses vecinos. */
+export function semanasDelMes(f: string): { f: string; fuera: boolean }[][] {
+  const d = aFecha(f), mes = d.getMonth();
+  const primero = new Date(d.getFullYear(), mes, 1), ultimo = new Date(d.getFullYear(), mes + 1, 0);
+  const ini = new Date(primero); ini.setDate(1 - ((primero.getDay() + 6) % 7));
+  const fin = new Date(ultimo); fin.setDate(ultimo.getDate() + (6 - ((ultimo.getDay() + 6) % 7)));
+  const semanas: { f: string; fuera: boolean }[][] = [];
+  for (const x = new Date(ini); x <= fin; x.setDate(x.getDate() + 1)) {
+    if (!semanas.length || semanas[semanas.length - 1].length === 7) semanas.push([]);
+    semanas[semanas.length - 1].push({ f: fechaIso(x), fuera: x.getMonth() !== mes });
+  }
+  return semanas;
+}
+const fechaIso = (x: Date) => x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+/** Qué tan lleno está un día: libre, parcial o completo (desayuno, comida y cena). */
+export function llenuraDia(items: ItemMenu[], f: string): 'vacio' | 'parcial' | 'completo' {
+  const n = new Set(items.filter((m) => m.fecha === f && m.t !== 'decidir' && ['d', 'c', 'n'].includes(m.lugar)).map((m) => m.lugar)).size;
+  return n === 0 ? 'vacio' : n >= 3 ? 'completo' : 'parcial';
+}
+export const nombreMes = (f: string) => { const d = aFecha(f); return ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][d.getMonth()] + ' ' + d.getFullYear(); };
 /** "Jueves 1 oct". */
 export function etiquetaFecha(f: string): string {
   const d = aFecha(f);

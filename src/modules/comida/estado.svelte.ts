@@ -27,6 +27,6 @@ export const menuFoco = $state<{ fecha: string; lugar: LugarMenu | '' }>({ fecha
  * ronda: en qué punto de `hist` empezó la ronda actual (rondas cortas de RONDA tarjetas).
  * tiempos y porTiempos: planear por tiempos de comida (solo esas tarjetas; cada una va a su tiempo).
  * vista: Acomoda la semana como tabla de la semana o un día a la vez. */
-export interface EstadoTarjetas { cat: string; liked: string[]; passed: string[]; hist: { id: string; dir: 'yes' | 'no' }[]; fotos: boolean; sel: string | null; destino: { l: LugarMenu; f: string; desde: number } | null; ronda: number; tiempos: LugarMenu[]; porTiempos: { desde: number } | null; vista: 'semana' | 'dia' }
+export interface EstadoTarjetas { cat: string; liked: string[]; passed: string[]; hist: { id: string; dir: 'yes' | 'no' }[]; fotos: boolean; sel: string | null; destino: { l: LugarMenu; f: string; desde: number } | null; ronda: number; tiempos: LugarMenu[]; porTiempos: { desde: number } | null; vista: 'mes' | 'semana' | 'dia' }
 export const tarjetas = $state<EstadoTarjetas>({ cat: 'todo', liked: [], passed: [], hist: [], fotos: true, sel: null, destino: null, ronda: 0, tiempos: ['d', 'c', 'n'], porTiempos: null, vista: 'semana' });
 export function reiniciarTarjetas() { tarjetas.cat = 'todo'; tarjetas.liked = []; tarjetas.passed = []; tarjetas.hist = []; tarjetas.fotos = true; tarjetas.sel = null; tarjetas.destino = null; tarjetas.ronda = 0; tarjetas.porTiempos = null; }

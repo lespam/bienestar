@@ -4,11 +4,11 @@ import { cargarContenido } from '../../src/core/contenido';
 import { crearZip, leerZip } from '../../src/core/respaldo';
 import { strToU8, zipSync } from 'fflate';
 import { aplicarCambio, ajustar, barra, partes, diaBreve, etiquetaDia, fechaDe, recientes, sinRepetir, sumas, alcanzaTxt, avisoConflicto, calBaja, calculadoraLibro, cantidadTxt, fmtQ, leerIngrediente, leerReceta, lineaIng, notaConflictos, pasaFiltros, escalarReceta, factorAncla, pctTxt, alGusto, etiquetasDe, minutosDe, nivelDe, prefiereEvitar, exclusionesDuras, usoTxt, porTxt, porcionDe, recetaDeEstimados } from '../../src/modules/comida/calculos';
-import { mazoDe, repartirPorTiempos, tiemposTxt } from '../../src/modules/comida/tarjetas';
+import { lugarDeReceta, mazoDe, repartirPorTiempos, tiemposTxt } from '../../src/modules/comida/tarjetas';
 import { itemDeMenu, menuDe, ponerEnMenu, ponerVariosEnMenu, quitarDelMenu, reponerMenu, agregarAlimentos, alimentosDe, quitarAlimento, reponerDia, ultimosRegistrados, guardarPerfil, guardarReceta, leerPerfiles, listarRecetas, perfilInicial, quitarReceta, sembrarRecetas } from '../../src/modules/comida/datos';
 import { cargarPrefs } from '../../src/modules/ajustes';
 import type { ItemMenu, Receta } from '../../src/core/db';
-import { cambiosRepetir, fechasDeSemana, platoTxt, puntoDe, rangoSemana, takeoutTxt, takeouts } from '../../src/modules/comida/semana';
+import { cambiosRepetir, llenuraDia, semanasDelMes, fechasDeSemana, platoTxt, puntoDe, rangoSemana, takeoutTxt, takeouts } from '../../src/modules/comida/semana';
 import { colacionTxt } from '../../src/modules/comida/colacion';
 
 let n = 0;
@@ -375,6 +375,16 @@ describe('niveles de lo que no se come', () => {
   });
 });
 
+describe('colaciones en el plan por tiempos', () => {
+  it('cada colación va a su tiempo AM o PM y no se mezcla con las comidas', () => {
+    const rs = [{ cat: 'Colación', sub: 'PM' }, { cat: 'Colación' }, { cat: 'Desayuno' }, { cat: 'Base' }] as never[];
+    expect(rs.map((r) => lugarDeReceta(r))).toEqual(['p', 'a', 'd', null]);
+    const mazo = mazoDe([{ id: 'c', n: 'Fruta', cat: 'Colación' }, { id: 'd', n: 'Avena', cat: 'Desayuno' }] as never[], [], [], 'todo', {}, true);
+    expect(mazo.map((r: { id: string }) => r.id).sort()).toEqual(['c', 'd']);
+    expect(mazoDe([{ id: 'c', n: 'Fruta', cat: 'Colación' }] as never[], [], [], 'todo')).toHaveLength(0);
+  });
+});
+
 describe('recetas guardadas', () => {
   const perf = { les: { no: [] as string[] }, jeff: { no: [] as string[] } };
   const f = { origen: 'todo', sinLes: false, sinJeff: false };
@@ -427,5 +437,23 @@ describe('escalar cambiando un ingrediente', () => {
     expect(e.ing[3][0]).toBeNull();
     expect(alGusto('Sal de mar')).toBe(true);
     expect(alGusto('Salsa roja')).toBe(false);
+  });
+});
+
+describe('vista de mes', () => {
+  it('arma semanas de lunes a domingo y marca los días de otros meses', () => {
+    const s = semanasDelMes('2026-11-22');
+    expect(s.every((x) => x.length === 7)).toBe(true);
+    expect(s[0][0].f).toBe('2026-10-26'); // noviembre empieza en domingo
+    expect(s[0][0].fuera).toBe(true);
+    expect(s[0][6]).toEqual({ f: '2026-11-01', fuera: false });
+    expect(s[s.length - 1][6].f).toBe('2026-12-06');
+  });
+  it('dice qué tan lleno está un día', () => {
+    const m = (lugar: 'd' | 'c' | 'n' | 'a', t: 'dos' | 'decidir' = 'dos') => ({ fecha: '2026-11-23', lugar, t, n: 'x' }) as never;
+    expect(llenuraDia([], '2026-11-23')).toBe('vacio');
+    expect(llenuraDia([m('d'), m('a')], '2026-11-23')).toBe('parcial');
+    expect(llenuraDia([m('d'), m('c'), m('n')], '2026-11-23')).toBe('completo');
+    expect(llenuraDia([m('d', 'decidir')], '2026-11-23')).toBe('vacio');
   });
 });

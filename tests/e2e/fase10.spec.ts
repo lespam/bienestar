@@ -128,5 +128,32 @@ test('Acomoda la semana: elegir los días donde entra lo que eliges con tarjetas
   await expect(page.getByText('1 día elegido.')).toBeVisible();
   await dias.nth(2).click();
   await expect(page.getByText(/Sin elegir días/)).toBeVisible();
+  // Colaciones: su propio bloque, plegado, con AM y PM
+  const col = page.getByRole('group', { name: 'Colaciones' });
+  await expect(col).toBeHidden();
+  await page.getByRole('button', { name: /^Colaciones/ }).click();
+  await col.getByRole('button', { name: 'Colación AM' }).click();
+  await expect(page.getByRole('columnheader', { name: 'Colación AM' })).toBeVisible();
+  expect(errores).toEqual([]);
+});
+
+test('Acomoda la semana: zoom de mes a semana y a un día', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Menú', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Planear', exact: true }).click();
+  await page.getByRole('radio', { name: 'Mes' }).click();
+  await expect(page.getByRole('grid')).toBeVisible();
+  await revisarPantalla(page);
+  const hoy = page.locator('.tj-mes-d.hoy');
+  await expect(hoy).toHaveAttribute('aria-label', /libre/);
+  await hoy.click();
+  await expect(page.getByRole('radio', { name: 'Un día' })).toHaveAttribute('aria-checked', 'true');
+  await page.getByRole('button', { name: 'Alejar' }).click();
+  await expect(page.getByRole('radio', { name: 'Toda la semana' })).toHaveAttribute('aria-checked', 'true');
+  await page.getByRole('button', { name: 'Alejar' }).click();
+  await expect(page.getByRole('grid')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Alejar' })).toBeDisabled();
   expect(errores).toEqual([]);
 });
