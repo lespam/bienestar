@@ -6,8 +6,10 @@
   import { nav } from '../../core/nav.svelte';
   import { fechaDe, norm } from './calculos';
   import { NOMBRE_TIENDA, SECCIONES, armarLista, comprasVacias, conteos, marcada, plantillaMarcada, repartir, seccionDe, sugerencias, textoCompartir, type Destino, type Extra, type FilaCompra, type Pestana } from './compras';
-  import { anotarCompra, guardarCompras, leerCompras, leerHistorial, leerPerfiles, leerSilenciadas, listarRecetas, menuDe, quitarCompra, sembrarRecetas, silenciarCompra } from './datos';
+  import { anotarCompra, guardarCompras, leerCompras, leerHay, leerHistorial, leerPerfiles, leerSilenciadas, listarRecetas, menuDe, quitarCompra, sembrarRecetas, silenciarCompra } from './datos';
   import { yaToca } from './frecuencia';
+  import { tengo, vigente } from './nevera';
+  import type { Hay } from './sugerir';
   import { fechasDeSemana, rangoSemana } from './semana';
 
   const semana = ((nav.pantalla?.datos as { k?: number } | undefined)?.k ?? 0);
@@ -20,10 +22,15 @@
   let perfiles = $state<Record<'les' | 'jeff', PerfilComida> | undefined>(undefined);
   let listo = $state(false);
   let pestana = $state<Pestana>('enfrente');
+  // «Con lo que tengo»: lo que ya hay en casa no se pide dos veces (se puede volver a pedir con «Lo necesito»).
+  let hayHoy = $state<Hay[]>([]);
+  let verTengo = $state(false);
 
   (async () => {
     await sembrarRecetas();
-    [items, recetas, estado, perfiles] = await Promise.all([menuDe(dias), listarRecetas(), leerCompras(lunes), leerPerfiles()]);
+    let g;
+    [items, recetas, estado, perfiles, g] = await Promise.all([menuDe(dias), listarRecetas(), leerCompras(lunes), leerPerfiles(), leerHay()]);
+    hayHoy = vigente(g, fechaDe(0));
     listo = true;
   })();
 
@@ -33,7 +40,8 @@
   const hoyIso = fechaDe(0);
   const delRango = $derived(semana !== 0 || rango === 'semana' ? items : items.filter((m) => m.fecha >= hoyIso && m.fecha <= fechaDe(Number(rango))));
   const lista = $derived(repartir(armarLista(delRango, recetas, perfiles), estado));
-  const filas = $derived(lista.filas);
+  const yaTengo = $derived(lista.filas.filter((f) => !f.extra && !estado.nec?.[f.n] && tengo(f.n, hayHoy)));
+  const filas = $derived(lista.filas.filter((f) => !yaTengo.includes(f)));
   const cuenta = $derived(conteos(filas, estado));
   const visibles = $derived(filas.filter((f) => pestana === 'todo' || f.dest === pestana));
   const guardar = () => guardarCompras(lunes, $state.snapshot(estado));
@@ -45,6 +53,12 @@
     guardar();
     // Lo que marcas como comprado alimenta el historial («ya toca»).
     (v ? anotarCompra(f.n, hoyIso, f.dest, f.q) : quitarCompra(f.n, hoyIso)).then(cargarHist);
+  }
+
+  function loNecesito(n: string) {
+    estado.nec = { ...(estado.nec ?? {}), [n]: true };
+    guardar();
+    avisos.deshacer(n + ' vuelve a tu lista', () => { estado.nec = Object.fromEntries(Object.entries(estado.nec ?? {}).filter(([k]) => k !== n)); guardar(); });
   }
 
   // ---------- Ya toca (por frecuencia, sin IA) ----------
@@ -165,6 +179,17 @@
           <div class="yt-b"><button class="ghost" aria-label={'Agregar ' + t.n + ' a la lista'} onclick={() => agregarToca(t.n)}>Agregar a la lista</button><button class="link-btn" aria-label={'No me interesa: ' + t.n} onclick={() => noMeInteresa(t.art)}>No me interesa</button></div>
         </div>
       {/each}
+    </section>
+  {/if}
+  {#if yaTengo.length}
+    <section class="cq" aria-label="Ya tienes en casa">
+      <button class="link-btn" aria-expanded={verTengo} aria-controls="cp-tengo" onclick={() => (verTengo = !verTengo)}>Ya tienes en casa ({yaTengo.length}) {verTengo ? '▴' : '▾'}</button>
+      <div id="cp-tengo" hidden={!verTengo}>
+        {#each yaTengo as f (f.n)}
+          <div class="yt-row"><p>{f.n}{f.q ? ' · ' + f.q : ''}</p><button class="link-btn" aria-label={'Lo necesito: ' + f.n} onclick={() => loNecesito(f.n)}>Lo necesito</button></div>
+        {/each}
+        <p class="seg-help">Lo tomé de «Con lo que tengo». Si necesitas comprar más, toca «Lo necesito».</p>
+      </div>
     </section>
   {/if}
   <section class="cq" aria-label="Falta o se acaba">

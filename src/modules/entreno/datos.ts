@@ -92,6 +92,13 @@ export async function quitarSustituto(clave: string) { await db.sustitutos.delet
 
 export async function leerFicha(clave: string): Promise<FichaPropia> { return (await db.fichas.get(clave)) ?? { clave }; }
 export async function guardarFicha(f: FichaPropia) { await db.fichas.put(f); }
+/** Las imágenes o GIFs propios que pusiste en las fichas, por ejercicio. Solo los que existen. */
+export async function leerAnimacionesPropias(claves: string[]): Promise<Record<string, Blob>> {
+  const fichas = await db.fichas.bulkGet(claves);
+  const hay: Record<string, Blob> = {};
+  fichas.forEach((f, i) => { if (f?.animacion) hay[claves[i]] = f.animacion; });
+  return hay;
+}
 /** Agrega un tip a la ficha de un ejercicio; si vino de la IA queda marcado. No repite uno igual. */
 export async function agregarTip(clave: string, tip: string, ia: boolean): Promise<FichaPropia> {
   const f = await leerFicha(clave);

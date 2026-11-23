@@ -2,7 +2,9 @@ import { db, type Alimento, type DiaFlexible, type ItemMenu, type PerfilComida, 
 import { parte } from '../../core/contenido';
 import { contarFuncion } from '../../core/uso';
 import { registroNuevo } from '../ajustes';
-import { comprasVacias, type EstadoCompras } from './compras';
+import { comprasVacias, seccionDe, type EstadoCompras } from './compras';
+import { mezclarHay, vigente, type HayGuardado } from './nevera';
+import { usualesVacios, type DatosUsuales } from './usuales';
 import { agregarConsejos } from './consejos';
 import { idTanda, sincronizar } from './preparacion';
 import { tipsVacios, type TipsGuardados } from './tips';
@@ -229,4 +231,50 @@ export async function semanasDeReceta(id: string, hoy: string, semanas = 8): Pro
 export async function nuevoFijo(id: string, hoy: string): Promise<Fijo> {
   const { menu } = await historiaReciente(hoy, VENTANA);
   return fijoNuevo(menu, id, hoy);
+}
+
+// ---------- Con lo que tengo: lo que hay en casa ----------
+export async function leerHay(): Promise<HayGuardado | null> { return ((await db.comida.get('hay'))?.v as HayGuardado | undefined) ?? null; }
+export async function guardarHay(g: HayGuardado | null) {
+  if (g) await db.comida.put({ k: 'hay', v: limpio(g) });
+  else await db.comida.delete('hay');
+}
+/** Lo que falta para un plan se agrega a la lista de compras de esta semana. Devuelve lo que de verdad se agregó. */
+export async function agregarFaltantes(nombres: string[], hoy: string): Promise<string[]> {
+  const lunes = lunesDeIso(hoy);
+  const e = await leerCompras(lunes);
+  const nuevos: string[] = [];
+  for (const n of nombres) {
+    const nombre = n.trim().charAt(0).toUpperCase() + n.trim().slice(1);
+    if (!nombre || e.extras.some((x) => norm(x.n) === norm(nombre)) || nuevos.some((x) => norm(x) === norm(nombre))) continue;
+    nuevos.push(nombre);
+  }
+  if (!nuevos.length) return [];
+  await guardarCompras(lunes, { ...e, extras: [...e.extras, ...nuevos.map((n) => ({ n, q: '', sec: seccionDe(n), urg: 'falta' as const, chk: false }))] });
+  return nuevos;
+}
+/** Deshace `agregarFaltantes`: quita de la lista de esta semana solo lo que se había agregado. */
+export async function quitarFaltantes(nombres: string[], hoy: string) {
+  const lunes = lunesDeIso(hoy);
+  const e = await leerCompras(lunes);
+  await guardarCompras(lunes, { ...e, extras: e.extras.filter((x) => !nombres.some((n) => norm(n) === norm(x.n))) });
+}
+
+/** Lo que dijiste que hay en casa se suma a «Lo que hay hoy». Devuelve cómo dejarlo como estaba. */
+export async function anotarHay(nuevos: { n: string; q?: string; urgente?: boolean }[], hoy: string): Promise<() => Promise<void>> {
+  const antes = await leerHay();
+  await guardarHay({ fecha: hoy, items: mezclarHay(vigente(antes, hoy), nuevos) });
+  return () => guardarHay(antes);
+}
+/** Registra lo que comiste con solo el nombre, sin números. Devuelve cómo quitarlo. */
+export async function anotarComido(nombres: string[], comida: 0 | 1 | 2 | 3, fecha: string): Promise<() => Promise<void>> {
+  const ids = await agregarAlimentos(nombres.map((n) => ({ fecha, comida, n, por: '1 porción', k: null, p: 0, c: 0, g: 0 })));
+  return () => db.registro.bulkDelete(ids);
+}
+
+// ---------- Mis usuales ----------
+export async function leerUsuales(): Promise<DatosUsuales> { return { ...usualesVacios(), ...((await db.comida.get('usuales'))?.v as Partial<DatosUsuales> | undefined) }; }
+export async function guardarUsuales(d: DatosUsuales) {
+  await db.comida.put({ k: 'usuales', v: limpio(d) });
+  await registroNuevo();
 }

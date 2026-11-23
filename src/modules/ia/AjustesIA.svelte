@@ -40,7 +40,7 @@
       {#each Object.entries(FUNCIONES) as [k, [titulo, envia]] (k)}
         <Interruptor id={'aj-ai-' + k} encendido={ia.fn[k as FnIA]} {titulo} detalle={'Envía ' + envia + '.'} onchange={() => funcion(k as FnIA)} />
       {/each}
-      <div class="aj-row ai-uso"><span><b>Consumo de esta app</b>{#if uso}<small>Este mes: {dolares(uso.meses[mes]?.usd ?? 0)} aprox. · {pedidos(uso.meses[mes]?.pedidos ?? 0)}</small><small>Desde el {desdeTxt(uso.desde)}: {dolares(uso.total.usd)} aprox. · {pedidos(uso.total.pedidos)}</small>{:else}<small>Aún no hay pedidos contados.</small>{/if}</span></div>
+      <div class="aj-row ai-uso"><span><b>Consumo de esta app</b>{#if uso}<small>Este mes: {dolares(uso.meses[mes]?.usd ?? 0)} aprox. · {pedidos(uso.meses[mes]?.pedidos ?? 0)}</small><small>Desde el {desdeTxt(uso.desde)}: {dolares(uso.total.usd)} aprox. · {pedidos(uso.total.pedidos)}</small>{#each Object.entries(uso.fns ?? {}).sort((x, y) => y[1].usd - x[1].usd) as [k, c] (k)}{#if FUNCIONES[k as FnIA]}<small>{FUNCIONES[k as FnIA][0]}: {dolares(c.usd)} aprox. · {pedidos(c.pedidos)}</small>{/if}{/each}{:else}<small>Aún no hay pedidos contados.</small>{/if}</span></div>
       <p class="tp-hint">Es una estimación con los precios de Anthropic y solo cuenta lo que pide esta app desde que empezó a contarlo. El cobro real y lo que usaste antes están en la consola de Anthropic.</p>
       <a class="ghost aj-link" href="https://console.anthropic.com/" target="_blank" rel="noopener">Abrir la consola de Anthropic</a>
       <p class="tp-hint">Tu clave se guarda solo en este teléfono. Crea una clave exclusiva para esta app y ponle un límite de gasto en tu cuenta de Anthropic.</p>

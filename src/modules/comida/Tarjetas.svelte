@@ -3,14 +3,20 @@
   import type { ItemMenu, LugarMenu, PerfilComida, Receta } from '../../core/db';
   import { avisos } from '../../core/aviso.svelte';
   import { nav } from '../../core/nav.svelte';
+  import { visor } from '../../core/visor.svelte';
   import { contarSugerencia } from '../../core/uso';
   import { CAT_COLOR, fechaDe, norm, pasaFiltros, type UsoReceta } from './calculos';
-  import { guardarFijos, leerFijos, leerPerfiles, listarRecetas, menuDe, nuevoFijo, ponerEnMenu, ponerVariosEnMenu, reponerMenu, sembrarRecetas, silenciarSugerencia, sugerenciasDeFijos, usoDeRecetas } from './datos';
+  import { guardarFijos, leerFijos, leerHay, leerPerfiles, listarRecetas, menuDe, nuevoFijo, perfilInicial, ponerEnMenu, ponerVariosEnMenu, reponerMenu, sembrarRecetas, silenciarSugerencia, sugerenciasDeFijos, usoDeRecetas } from './datos';
   import { cambiosFijos, sugerenciaTxt, type Fijo, type Sugerencia } from './fijos';
+  import { vigente } from './nevera';
+  import type { Hay } from './sugerir';
   import { filtros, numerosVisibles, tarjetas } from './estado.svelte';
   import { COMIDAS_MENU, LETRA_DIA, NOMBRE_LUGAR, cambiosRepetir, etiquetaFecha, fechasDeSemana, indexar, itemDecidir, itemDos, llave, nombreDia, nombreMes, numeroDia, platoTxt, rangoSemana, semanasDelMes, llenuraDia, fechasDeSemana as semanaDe } from './semana';
   import { CATS_TARJETA, RONDA, TIEMPOS, TODOS_TIEMPOS, COLACIONES, lugarDeReceta, cuentaRonda, elegidasTxt, mazoDe, repartirPorTiempos, tiemposTxt } from './tarjetas';
   import FiltrosRecetas from './FiltrosRecetas.svelte';
+  import Borrador from './Borrador.svelte';
+  import { AnfitrionIA } from '../ia';
+  import type { EntradaSugerir } from './sugerir';
   import Plato from './Plato.svelte';
   import Hoja from '../../core/Hoja.svelte';
 
@@ -27,7 +33,8 @@
   let uso = $state<Record<string, UsoReceta>>({});
   let fijos = $state<Fijo[]>([]);
   let sugs = $state<Sugerencia[]>([]);
-  let perfiles = $state<Record<'les' | 'jeff', Pick<PerfilComida, 'no' | 'niveles'>>>({ les: { no: [] }, jeff: { no: [] } });
+  let hayHoy = $state<Hay[]>([]);
+  let perfiles = $state<Record<'les' | 'jeff', PerfilComida>>({ les: perfilInicial('les'), jeff: perfilInicial('jeff') });
 
   // Vista de mes: puntos por día; tocar un día de esta semana o la próxima hace zoom a ese día.
   let itemsMes = $state<ItemMenu[]>([]);
@@ -51,8 +58,12 @@
   async function cambiarSemana(k: number) { semanaK = k; await cargarMenu(); }
   (async () => {
     await sembrarRecetas();
-    [recetas, perfiles, uso, fijos, sugs] = await Promise.all([listarRecetas(), leerPerfiles(), usoDeRecetas(), leerFijos(), sugerenciasDeFijos(hoy), cargarMenu()]);
+    let g;
+    [recetas, perfiles, uso, fijos, sugs, g] = await Promise.all([listarRecetas(), leerPerfiles(), usoDeRecetas(), leerFijos(), sugerenciasDeFijos(hoy), leerHay(), cargarMenu()]);
+    hayHoy = vigente(g, hoy);
     listo = true;
+    // Desde el cuadro único: «sugiéreme el menú».
+    if (nav.pantalla?.datos?.sugerir) abrirSugerir();
   })();
 
   const porId = $derived(new Map(recetas.map((r) => [r.id, r])));
@@ -127,9 +138,19 @@
     tarjetas.hist = tarjetas.hist.filter((h) => h.id !== id);
   }
 
+  // La foto de la carta de arriba se abre en grande. Las URL se sueltan al salir.
+  const urlsFoto: Record<string, string> = {};
+  function verFoto(r: Receta) {
+    if (!r.img) return;
+    const u = (urlsFoto[r.id] ??= URL.createObjectURL(r.img));
+    visor.abrir([{ src: u, alt: 'Foto de ' + r.n }]);
+  }
+  $effect(() => () => { for (const u of Object.values(urlsFoto)) URL.revokeObjectURL(u); });
+
   // Deslizar la carta de arriba
   let inicioX = 0, dx = 0, arrastrando = false;
   function abajo(e: PointerEvent) {
+    if ((e.target as HTMLElement).closest('.tj-ver')) return;
     const c = e.currentTarget as HTMLElement;
     arrastrando = true; dx = 0; inicioX = e.clientX;
     c.setPointerCapture(e.pointerId);
@@ -358,6 +379,33 @@
     avisos.deshacer('Puse ' + cs.length + (cs.length === 1 ? ' fijo' : ' fijos') + ' en la semana', async () => { await reponerMenu(fechas, antes.filter((m) => fechas.includes(m.fecha))); await cargarMenu(); });
   }
 
+  // ---------- Sugerir menú: un borrador con reglas; la IA solo si la activaste ----------
+  let rapido = $state(false);
+  let entradaSug = $state.raw<EntradaSugerir | null>(null);
+  const diasParaSugerir = $derived(dias.filter((f) => f >= hoy && (!diasElegidos.length || diasElegidos.includes(f))));
+  const entradaDe = (maxMin?: number): EntradaSugerir => ({
+    recetas, perfiles, uso, fijos, dias: diasParaSugerir, tiempos: [...tarjetas.tiempos], hoy, hay: $state.snapshot(hayHoy) as Hay[],
+    ocupado: (f, l) => indice.has(llave(f, l)),
+    yaEnMenu: items.flatMap((m) => [m.r, m.rl, m.rj]).filter((x): x is string => !!x), maxMin
+  });
+  function abrirSugerir() {
+    if (!tarjetas.tiempos.length) { avisos.mostrar('Elige al menos un tiempo de comida'); return; }
+    moviendo = null; rapido = false;
+    entradaSug = entradaDe();
+    nav.abrirHoja('tj-sg');
+  }
+  function alternarRapido() { rapido = !rapido; entradaSug = entradaDe(rapido ? 30 : undefined); }
+  async function usarBorrador(filas: ItemMenu[]) {
+    if (!filas.length) return;
+    nav.cerrar();
+    const fechas = [...new Set(filas.map((x) => x.fecha))];
+    const antes = structuredClone($state.snapshot(items)) as ItemMenu[];
+    await ponerVariosEnMenu(filas);
+    await cargarMenu();
+    tarjetas.vista = 'semana';
+    avisos.deshacer(filas.length + (filas.length === 1 ? ' comida puesta' : ' comidas puestas') + ' en el menú', async () => { await reponerMenu(fechas, antes.filter((m) => fechas.includes(m.fecha))); await cargarMenu(); });
+  }
+
   const colorDe = (m: ItemMenu | undefined) => {
     if (!m) return '';
     if (m.t === 'takeout') return 'var(--rose)';
@@ -500,7 +548,14 @@
           onkeydown={pos === 0 ? tecla : undefined}
         >
           {#if tarjetas.fotos}
-            <div class="tj-img"><Plato receta={r} /></div>
+            <div class="tj-img">
+              <Plato receta={r} />
+              {#if pos === 0 && r.img}
+                <button class="tj-ver" aria-label={'Ver la foto en grande: ' + r.n} onclick={() => verFoto(r)}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5" /></svg>
+                </button>
+              {/if}
+            </div>
           {:else}
             <div class="tj-img tj-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d={BOWL} /></svg></div>
           {/if}
@@ -540,6 +595,7 @@
       <div class="tj-reps">
         <button class="ghost tj-rep" onclick={abrirRepetir}>{repetirTxt}</button>
         <button class="ghost tj-rep" onclick={abrirFijos}>Mis fijos{fijos.length ? ' (' + fijos.length + ')' : ''}</button>
+        <button class="ghost tj-rep tj-rep-sg" onclick={abrirSugerir}>Sugerir menú</button>
       </div>
     </div>
     {#if sug}
@@ -661,6 +717,19 @@
   </div>
 {/if}
 
+{#if nav.hojaAbierta('tj-sg') && entradaSug}
+  <Hoja titulo="Sugerir menú">
+    <p class="seg-help">Armo un borrador con tus fijos, lo que usas poco y lo que a los dos les cuadra. Solo llena lugares libres de {diasParaSugerir.length === 1 ? 'un día' : diasParaSugerir.length + ' días'}. Tú decides qué se queda.</p>
+    <div class="m-chips" role="group" aria-label="Opciones del borrador">
+      <button class:on={rapido} aria-pressed={rapido} onclick={alternarRapido}>Rápido (hasta 30 min)</button>
+    </div>
+    {#key entradaSug}
+      <Borrador entrada={entradaSug} alUsar={usarBorrador} />
+    {/key}
+    <button class="ghost" onclick={() => nav.cerrar()}>Cerrar</button>
+  </Hoja>
+{/if}
+
 {#if nav.hojaAbierta('tj-fj')}
   <Hoja titulo="Mis fijos">
     {#if fijos.length}
@@ -691,3 +760,5 @@
     <button class="ghost" onclick={() => nav.cerrar()}>Cancelar</button>
   </Hoja>
 {/if}
+
+<AnfitrionIA />

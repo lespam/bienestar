@@ -1,7 +1,7 @@
 <script lang="ts">
   import Hoja from '../../core/Hoja.svelte';
   import { nav } from '../../core/nav.svelte';
-  import { ErrorIA } from './api';
+  import { ErrorIA, ganchos } from './api';
   import { cargarIA, FUNCIONES, ia, leerClave, marcarAvisada, NUNCA_SE_ENVIA } from './estado.svelte';
   import { pedido, type ItemIA, type PedidoIA } from './pedir.svelte';
 
@@ -18,7 +18,8 @@
   let vivo = true;
   $effect(() => () => { vivo = false; });
 
-  const esFoto = p.fn === 'foto';
+  const esFoto = p.fn === 'foto' || p.fn === 'nevera';
+  const leyendo = p.fn === 'nevera' ? 'Leyendo tus fotos…' : 'Leyendo la receta…';
   const MENSAJE: Record<string, string> = {
     internet: 'Sin internet. La IA no está disponible ahora y no se perdió nada.',
     clave: 'Anthropic no aceptó tu clave. Revisa que esté bien escrita en Ajustes.',
@@ -27,7 +28,7 @@
   };
   const aviso = $derived(p.envia ?? FUNCIONES[p.fn][1]);
   const porque = $derived(!ia.on ? 'La IA está apagada. Puedes activarla en Ajustes con tu propia clave.' : !ia.tieneClave ? 'Falta tu clave de Anthropic. Se guarda solo en este teléfono.' : 'Esta ayuda está apagada en Ajustes.');
-  const anuncio = $derived(fase === 'pensando' ? (esFoto ? 'Leyendo la receta…' : 'Pensando…') : fase === 'listo' && items.length ? 'Respuesta lista. Revísala antes de usarla.' : fase === 'listo' ? intro : fase === 'error' ? falla : fase === 'apagada' ? porque : fase === 'internet' ? MENSAJE.internet : '');
+  const anuncio = $derived(fase === 'pensando' ? (esFoto ? leyendo : 'Pensando…') : fase === 'listo' && items.length ? 'Respuesta lista. Revísala antes de usarla.' : fase === 'listo' ? intro : fase === 'error' ? falla : fase === 'apagada' ? porque : fase === 'internet' ? MENSAJE.internet : '');
 
   (async () => {
     await cargarIA();
@@ -42,6 +43,7 @@
     fase = 'pensando';
     await marcarAvisada(p.fn);
     try {
+      ganchos.fn = p.fn;
       const r = await p.ejecutar(await leerClave());
       if (!vivo) return;
       if (r.cerrar) { nav.cerrar(); return; }
@@ -50,6 +52,8 @@
       if (!vivo) return;
       const t = e instanceof ErrorIA ? e.tipo : 'otro';
       falla = MENSAJE[t]; fase = t === 'internet' ? 'internet' : 'error';
+    } finally {
+      ganchos.fn = null;
     }
   }
   async function aplicar(i: ItemIA) {
@@ -89,7 +93,7 @@
       <button class="start" onclick={enviar}>Enviar</button>
       <button class="ghost" onclick={() => nav.cerrar()}>Cancelar</button>
     {:else if fase === 'pensando'}
-      <p>{esFoto ? 'Leyendo la receta…' : 'Pensando…'}</p>
+      <p>{esFoto ? leyendo : 'Pensando…'}</p>
     {:else if fase === 'error'}
       <p>{falla}</p>
       <button class="start" onclick={enviar}>Intentar otra vez</button>
