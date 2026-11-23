@@ -7,6 +7,9 @@ export { leerRefri, proponerComidas, leerRecetaDeFoto, tipsDeReceta, tipsGeneral
 export type { RecetaLeida, AlimentoEstimado, EjercicioCorto, Hallazgo, PeticionCocina, ComidaIA, TiempoIA, PeticionCombos, ComboNuevo, PeticionUsual, IdeaDeUsual, TicketLeido, ArticuloLeido } from './tareas';
 export { aBase64 } from './api';
 export { cargarIA, iaLista } from './estado.svelte';
+export { default as AjustesGemini } from './AjustesGemini.svelte';
+export { default as HojaImagen } from './HojaImagen.svelte';
+export { cargarGemini, geminiLista } from './gemini.svelte';
 export { default as CuadroUnico } from './CuadroUnico.svelte';
 export { registrar, entender, entenderConIA, intenciones, partir, textoDeAcciones, ejecutar, vaciarRegistro } from './cuadro';
 export type { Entendido, Intencion, Resultado } from './cuadro';

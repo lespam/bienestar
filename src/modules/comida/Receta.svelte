@@ -14,7 +14,8 @@
   import type { Fijo, SemanasDe } from './fijos';
   import type { ItemMenu, LugarMenu } from '../../core/db';
   import FormReceta from './FormReceta.svelte';
-  import { AnfitrionIA, cambiosDeIngredientes, iaLista, pedirIA, tipsDeReceta } from '../ia';
+  import { AnfitrionIA, cambiosDeIngredientes, cargarGemini, geminiLista, HojaImagen, iaLista, pedirIA, tipsDeReceta } from '../ia';
+  import { nombreImagen, sePuedeGenerar } from './imagen';
 
   const id = String(nav.pantalla?.datos?.id ?? '');
   let r = $state<Receta | null>(null);
@@ -174,9 +175,21 @@
     if (!archivo) return;
     const antes = copia(), x = copia();
     x.img = await reducirFoto(archivo, 800);
+    x.img_tipo = undefined;
     input.value = '';
     await poner(x);
     avisos.deshacer('Foto guardada', () => poner(antes));
+  }
+
+  const imagenNombre = $derived(r ? nombreImagen(r) : 'Foto del platillo');
+  // Generar imagen con Gemini (opcional, con tu propia clave): se revisa en una hoja y solo se guarda si tú lo decides.
+  cargarGemini();
+  async function guardarGenerada(foto: Blob) {
+    const antes = copia(), x = copia();
+    x.img = foto;
+    x.img_tipo = 'generada';
+    await poner(x);
+    avisos.deshacer('Ilustración guardada', () => poner(antes));
   }
 
   // ---------- Agregar al menú, o elegir para un lugar del menú ----------
@@ -331,9 +344,10 @@
     </section>
 
     <section class="rc-sec" aria-labelledby="rc-h5">
-      <h4 id="rc-h5">Foto del platillo</h4>
-      {#if fotoUrl}<button class="link-btn ampliable" aria-label="Ver la foto en grande" onclick={() => visor.abrir([{ src: fotoUrl, alt: "Foto del platillo" }])}><img class="rc-page" src={fotoUrl} alt="Foto del platillo" /></button>{:else}<p class="seg-help">Aún no tiene. Se ve en las tarjetas si activas las fotos.</p>{/if}
+      <h4 id="rc-h5">{imagenNombre}</h4>
+      {#if fotoUrl}<button class="link-btn ampliable" aria-label="Ver la imagen en grande" onclick={() => visor.abrir([{ src: fotoUrl, alt: imagenNombre }])}><img class="rc-page" src={fotoUrl} alt={imagenNombre} /></button>{:else}<p class="seg-help">Aún no tiene. Se ve en las tarjetas si activas las fotos.</p>{/if}
       <button class="add" onclick={() => archivo?.click()}>{r.img ? 'Cambiar foto' : '+ Agregar foto'}</button>
+      {#if geminiLista() && sePuedeGenerar(r)}<button class="add" onclick={() => nav.abrirHoja('rc-img')}>{r.img ? 'Generar otra imagen' : 'Generar imagen'}</button>{/if}
       <input bind:this={archivo} type="file" accept="image/*" hidden onchange={elegirFoto} aria-label="Elegir la foto del platillo" />
     </section>
 
@@ -471,4 +485,8 @@
     {#if factorAncla(r.ing[aI][0], aNum) != null}<p class="seg-help">Todo quedaría al {pctTxt(factorAncla(r.ing[aI][0], aNum)!)}.</p>{/if}
     <button class="start" onclick={aplicarAncla}>Ajustar la receta</button>
   </Hoja>
+{/if}
+
+{#if nav.hojaAbierta('rc-img') && r}
+  <HojaImagen nombre={r.n} ingredientes={r.ing.map((it) => it[2])} alGuardar={guardarGenerada} conFoto={() => archivo?.click()} />
 {/if}

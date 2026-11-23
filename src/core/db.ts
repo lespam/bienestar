@@ -336,7 +336,7 @@ export class BaseBienestar extends Dexie {
 /** Tablas que nunca salen en el respaldo. */
 export const FUERA_DEL_RESPALDO = new Set(['copias', 'sync']);
 /** Claves de Ajustes que nunca salen del teléfono (tu clave de IA, fase 8). */
-export const CLAVES_PRIVADAS = new Set(['ia.clave']);
+export const CLAVES_PRIVADAS = new Set(['ia.clave', 'gem.clave']);
 
 export let db = new BaseBienestar();
 

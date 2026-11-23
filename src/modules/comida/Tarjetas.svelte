@@ -20,6 +20,7 @@
   import { AnfitrionIA } from '../ia';
   import type { EntradaSugerir } from './sugerir';
   import Plato from './Plato.svelte';
+  import { esIlustracion } from './imagen';
   import Hoja from '../../core/Hoja.svelte';
 
   const hoy = fechaDe(0);
@@ -145,7 +146,7 @@
   function verFoto(r: Receta) {
     if (!r.img) return;
     const u = (urlsFoto[r.id] ??= URL.createObjectURL(r.img));
-    visor.abrir([{ src: u, alt: 'Foto de ' + r.n }]);
+    visor.abrir([{ src: u, alt: (esIlustracion(r) ? 'Ilustración de ' : 'Foto de ') + r.n }]);
   }
   $effect(() => () => { for (const u of Object.values(urlsFoto)) URL.revokeObjectURL(u); });
 

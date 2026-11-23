@@ -1,6 +1,6 @@
 <script lang="ts">
   import Interruptor from '../../core/Interruptor.svelte';
-  import { AjustesIA } from '../ia';
+  import { AjustesGemini, AjustesIA } from '../ia';
   import Hoja from '../../core/Hoja.svelte';
   import { nav } from '../../core/nav.svelte';
   import { avisos } from '../../core/aviso.svelte';
@@ -119,6 +119,7 @@
   </section>
 
   <AjustesIA />
+  <AjustesGemini />
 
   <section class="tp-sec"><h4>Respaldo</h4>
     <div class="group aj-g aj-bk">
