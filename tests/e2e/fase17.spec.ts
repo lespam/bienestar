@@ -177,3 +177,135 @@ test.describe('en la computadora', () => {
     expect(errores).toEqual([]);
   });
 });
+
+// Versión 2, sección 9: «Generar imagen» con tu propia clave de Gemini.
+const CLAVE_G = 'AIzaSyD-pruebaDePrueba1234567890';
+const PNG_G = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+type Enviado = { url: string; headers: Record<string, string>; body: string };
+/** Responde a Gemini con lo que se pida y guarda lo que se envió. */
+async function simularGemini(page: Page, estado: () => number = () => 200, enviados: Enviado[] = []) {
+  await page.route('https://generativelanguage.googleapis.com/**', async (route) => {
+    const req = route.request();
+    enviados.push({ url: req.url(), headers: req.headers(), body: req.postData() ?? '' });
+    const status = estado();
+    const cuerpo = status === 200 ? { candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: PNG_G } }] }, finishReason: 'STOP' }] } : { error: { message: 'x', status: 'E' } };
+    await route.fulfill({ status, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(cuerpo) });
+  });
+  return enviados;
+}
+const abrirReceta = async (page: Page, nombre: RegExp) => {
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Recetario' }).click();
+  await page.getByRole('button', { name: nombre }).click();
+};
+
+test('Gemini: empieza apagado, pide tu clave de Google y no sale en el respaldo', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await abrirReceta(page, /Tinga de pollo/);
+  await expect(page.getByRole('button', { name: 'Generar imagen' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Volver' }).click();
+  await page.getByRole('button', { name: 'Volver' }).click();
+  await page.getByRole('button', { name: 'Inicio', exact: true }).click();
+  await page.getByRole('button', { name: 'Ajustes' }).click();
+  const interruptor = page.getByRole('switch', { name: 'Generar imágenes con Gemini' });
+  await expect(interruptor).toHaveAttribute('aria-checked', 'false');
+  await expect(page.getByLabel('Tu clave de Gemini')).toHaveCount(0);
+  await interruptor.click();
+  await page.getByLabel('Tu clave de Gemini').fill('hola');
+  await page.getByRole('button', { name: 'Guardar clave de Gemini' }).click();
+  await expect(page.getByText('La clave de Gemini empieza con AIza')).toBeVisible();
+  await page.getByLabel('Tu clave de Gemini').fill(CLAVE_G);
+  await page.getByRole('button', { name: 'Guardar clave de Gemini' }).click();
+  await expect(page.getByText('····7890')).toBeVisible();
+  await expect(page.getByText(/Al generar una imagen se envía a Google: el nombre y los ingredientes de la receta\./)).toBeVisible();
+  await revisarPantalla(page);
+
+  // La clave se queda en el teléfono: no entra al paquete de respaldo
+  const descarga = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Exportar respaldo (ZIP)' }).click();
+  const zip = readFileSync(await (await descarga).path());
+  expect(zip.includes(Buffer.from(CLAVE_G))).toBe(false);
+  expect(errores).toEqual([]);
+});
+
+test('Gemini: avisa qué se envía, deja revisar la imagen y la guarda como ilustración', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await sembrar(page, 'ajustes', [{ k: 'gem.on', v: true }, { k: 'gem.clave', v: CLAVE_G }]);
+  await page.reload();
+  const enviados = await simularGemini(page);
+  await abrirReceta(page, /Tinga de pollo/);
+  await expect(page.getByRole('heading', { name: 'Foto del platillo', level: 4 })).toBeVisible();
+  await page.getByRole('button', { name: 'Generar imagen' }).click();
+  const hoja = page.getByRole('dialog', { name: 'Generar imagen' });
+  await expect(hoja.getByText('Esto se envía a Google (Gemini): el nombre y los ingredientes de la receta.')).toBeVisible();
+  await expect(hoja.getByText(/Nunca se envía: tu peso/)).toBeVisible();
+  expect(enviados).toHaveLength(0);
+  await revisarPantalla(page);
+  await hoja.getByRole('button', { name: 'Enviar' }).click();
+  const prev = hoja.getByRole('img', { name: /^Ilustración de Tinga de pollo, hecha con IA/ });
+  await expect(prev).toBeVisible();
+  await expect(hoja.getByText('Es una ilustración, no una foto real')).toBeVisible();
+  // Solo salió el nombre y los ingredientes, con la clave en el encabezado y no en la dirección
+  expect(enviados).toHaveLength(1);
+  expect(enviados[0].headers['x-goog-api-key']).toBe(CLAVE_G);
+  expect(enviados[0].url).not.toContain('AIza');
+  expect(enviados[0].url).toContain('generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent');
+  expect(enviados[0].body).toContain('Tinga de pollo');
+  expect(enviados[0].body).toContain('Pechuga de pollo');
+  expect(enviados[0].body).not.toMatch(/kcal|290|Reto de prueba|Cuece el pollo/);
+  await revisarPantalla(page);
+  // Nada se guarda hasta que tú lo decides
+  await hoja.getByRole('button', { name: 'Descartar' }).click();
+  await expect(page.getByRole('heading', { name: 'Foto del platillo', level: 4 })).toBeVisible();
+  await expect(page.getByText('Aún no tiene. Se ve en las tarjetas')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Generar imagen' }).click();
+  // Ya vio el aviso: ahora pide la imagen directo
+  await expect(hoja.getByRole('img', { name: /^Ilustración de Tinga de pollo/ })).toBeVisible();
+  expect(enviados).toHaveLength(2);
+  await hoja.getByRole('button', { name: 'Guardar como ilustración' }).click();
+  await expect(page.getByText('Ilustración guardada')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Ilustración hecha con IA', level: 4 })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Ilustración hecha con IA' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Generar otra imagen' })).toBeVisible();
+  const tipo = await page.evaluate(() => new Promise<string | undefined>((ok, mal) => {
+    const a = indexedDB.open('bienestar');
+    a.onerror = () => mal(a.error);
+    a.onsuccess = () => { const g = a.result.transaction('recetas').objectStore('recetas').get('tinga'); g.onsuccess = () => { a.result.close(); ok(g.result?.img_tipo); }; };
+  }));
+  expect(tipo).toBe('generada');
+  await revisarPantalla(page);
+
+  // Una foto tuya reemplaza la ilustración y ya no se llama ilustración
+  await page.getByLabel('Elegir la foto del platillo').setInputFiles({ name: 'mia.png', mimeType: 'image/png', buffer: Buffer.from(PNG_G, 'base64') });
+  await expect(page.getByRole('heading', { name: 'Foto del platillo', level: 4 })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Generar (otra )?imagen/ })).toHaveCount(0);
+  expect(errores).toEqual([]);
+});
+
+test('Gemini: si falla, explica por qué y no guarda nada', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  await sembrar(page, 'ajustes', [{ k: 'gem.on', v: true }, { k: 'gem.clave', v: CLAVE_G }, { k: 'gem.vista', v: true }]);
+  await page.reload();
+  let estado = 429;
+  await simularGemini(page, () => estado);
+  await abrirReceta(page, /Tacos de champiñón/);
+  await page.getByRole('button', { name: 'Generar imagen' }).click();
+  const hoja = page.getByRole('dialog', { name: 'Generar imagen' });
+  await expect(hoja.locator('p', { hasText: /Google pide esperar un momento/ })).toBeVisible();
+  await expect(hoja.getByRole('button', { name: 'Agregar mi foto' })).toBeVisible();
+  estado = 403;
+  await hoja.getByRole('button', { name: 'Intentar otra vez' }).click();
+  await expect(hoja.locator('p', { hasText: /Google no aceptó tu clave de Gemini/ })).toBeVisible();
+  estado = 404;
+  await hoja.getByRole('button', { name: 'Intentar otra vez' }).click();
+  await expect(hoja.locator('p', { hasText: /no encontró el modelo de imagen/ })).toBeVisible();
+  await revisarPantalla(page);
+  await hoja.getByRole('button', { name: 'Cerrar' }).first().click();
+  await expect(page.getByRole('heading', { name: 'Foto del platillo', level: 4 })).toBeVisible();
+  await expect(page.getByText('Aún no tiene. Se ve en las tarjetas')).toBeVisible();
+  await expect(errores.filter((e) => !/status of (4\d\d|5\d\d)|Failed to load resource/.test(e))).toEqual([]);
+});

@@ -33,7 +33,7 @@ computadora) y se importa en el otro, en cualquier dirección. No hay cuentas ni
 - `tablas`: una lista de filas por tabla de la base.
 
 ### Qué nunca viaja
-- La clave de la IA (`ajustes` → `ia.clave`) y cualquier otra clave privada.
+- Las claves de la IA (`ajustes` → `ia.clave` de Claude y `gem.clave` de Gemini) y cualquier otra clave privada.
 - Las copias internas (`copias`) y las fechas internas de cambio (`sync`).
 - Un cronómetro o temporizador corriendo.
 

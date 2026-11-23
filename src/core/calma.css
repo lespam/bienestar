@@ -943,7 +943,7 @@ h4 { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-t
 #rc-nt-t { width: 100%; border-radius: 12px; border: 1px solid var(--soft); background: var(--bg); color: var(--fg); font: inherit; font-size: 15px; padding: 10px; resize: vertical; }
 .rs-prev { display: grid; justify-items: center; gap: 4px; }
 .rs-prev img { max-width: 100%; max-height: 220px; border-radius: 14px; }
-.rc-page { max-width: 100%; border-radius: 14px; }
+.rc-page { max-width: 100%; min-width: 44px; min-height: 44px; border-radius: 14px; }
 .rc-ph { display: inline-grid; place-items: center; justify-self: start; cursor: pointer; min-height: 44px; padding: 0 16px; position: relative; }
 .rc-ph input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .rc-ph:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -1459,3 +1459,4 @@ textarea { font: inherit; color: var(--fg); }
   .phone.app:has(.tj-plan) .tj-tabla .tj-tc { min-height: 88px; padding: 8px 12px; font-size: 14px; }
   .phone.app:has(.tj-plan) .tj-tabla .tj-tc span { -webkit-line-clamp: 4; }
 }
+.gm-prev { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 14px; background: var(--soft); }
