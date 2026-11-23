@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { entrarConContenido, revisarPantalla, vigilarConsola } from './ayuda';
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
@@ -182,5 +182,41 @@ test('Hoy toca: una cosa a la vez, con Hecho y Después', async ({ page }) => {
   await page.getByRole('button', { name: 'Hecho', exact: true }).click();
   await expect(page.getByText('Nada por preparar ahora')).toBeVisible();
   await expect(page.getByText(/Hoy llevas 1 cosa lista/)).toBeVisible();
+  expect(errores).toEqual([]);
+});
+
+async function sembrarTabla(page: Page, tabla: string, filas: object[]) {
+  await page.evaluate(({ tabla, filas }) => new Promise<void>((ok, mal) => {
+    const abrir = indexedDB.open('bienestar');
+    abrir.onerror = () => mal(abrir.error);
+    abrir.onsuccess = () => {
+      const bd = abrir.result, tx = bd.transaction(tabla, 'readwrite');
+      for (const f of filas) tx.objectStore(tabla).put(f);
+      tx.oncomplete = () => { bd.close(); ok(); };
+      tx.onerror = () => mal(tx.error);
+    };
+  }), { tabla, filas });
+}
+const haceDias = (n: number) => { const d = new Date(Date.now() - n * 86_400_000); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+
+test('Compras: «Ya toca» por frecuencia, agregar a la lista y no me interesa', async ({ page }) => {
+  const errores = vigilarConsola(page);
+  await entrarConContenido(page);
+  // Comida de Timi cada ~30 días, la última hace 29; leche cada 7 días, la última hace 2 (todavía no toca)
+  await sembrarTabla(page, 'historial', [
+    ...[89, 59, 29].map((d) => ({ art: 'comida de timi', n: 'Comida de Timi', fecha: haceDias(d) })),
+    ...[16, 9, 2].map((d) => ({ art: 'leche', n: 'Leche', fecha: haceDias(d) }))
+  ]);
+  await page.reload();
+  await page.getByRole('button', { name: 'Comida', exact: true }).click();
+  await page.getByRole('button', { name: 'Menú', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Lista de compras' }).click();
+  const toca = page.getByRole('region', { name: 'Ya toca' });
+  await expect(toca.getByText(/Hace 29 días compraste comida de timi\. Lo compras cada mes\./)).toBeVisible();
+  await expect(toca.getByText(/leche/i)).toHaveCount(0);
+  await revisarPantalla(page);
+  await toca.getByRole('button', { name: 'Agregar Comida de Timi a la lista' }).click();
+  await expect(page.getByRole('region', { name: 'Ya toca' })).toHaveCount(0);
+  await expect(page.locator('.cp-row', { hasText: 'Comida de Timi' })).toBeVisible();
   expect(errores).toEqual([]);
 });

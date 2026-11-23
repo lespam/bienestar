@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ItemMenu, Receta } from '../../src/core/db';
+import { cadaTxt, intervaloMediano, yaToca } from '../../src/modules/comida/frecuencia';
 import { armarLista, cantidadCompra, comprasVacias, conteos, plantillaMarcada, repartir, seccionDe, sugerencias, textoCompartir } from '../../src/modules/comida/compras';
 
 const receta = (id: string, n: string, y: number, ing: Receta['ing']) => ({ id, n, y, ing, cat: 'Comida' }) as Receta;
@@ -100,5 +101,24 @@ describe('lista de compras con porciones de los perfiles', () => {
     // La porción que cambiaste en la receta manda sobre la del perfil
     const r2 = [{ ...rs[0], por: { jeff: 3 } }];
     expect(armarLista([dos('a')], r2, perfiles).find((f) => f.n === 'Cebolla')!.q).toBe('4 piezas');
+  });
+});
+
+describe('frecuencia de compras', () => {
+  const h = (n: string, fechas: string[]) => fechas.map((fecha) => ({ art: n.toLowerCase(), n, fecha }));
+  it('usa la mediana de días entre compras y pide al menos 3', () => {
+    expect(intervaloMediano(['2026-01-01', '2026-01-08'])).toBeNull();
+    expect(intervaloMediano(['2026-01-01', '2026-01-08', '2026-01-15', '2026-01-29'])).toBe(7);
+    expect(cadaTxt(7)).toBe('cada semana');
+    expect(cadaTxt(30)).toBe('cada mes');
+    expect(cadaTxt(21)).toBe('cada 21 días');
+  });
+  it('sugiere lo que ya casi toca, sin repetir lo que está en la lista ni lo silenciado', () => {
+    const hist = [...h('Leche', ['2026-01-01', '2026-01-08', '2026-01-15']), ...h('Arroz', ['2026-01-01', '2026-01-31', '2026-03-02'])];
+    expect(yaToca(hist, '2026-01-21', [], []).map((x) => x.n)).toEqual(['Leche']);
+    expect(yaToca(hist, '2026-01-21', ['leche'], [])).toEqual([]);
+    expect(yaToca(hist, '2026-01-21', [], ['leche'])).toEqual([]);
+    expect(yaToca(hist, '2026-01-16', [], [])).toEqual([]);
+    expect(yaToca(hist, '2026-01-21', [], [])[0].texto).toBe('Hace 6 días compraste leche. Lo compras cada semana.');
   });
 });

@@ -1,11 +1,12 @@
 <script lang="ts">
-  import type { ItemMenu, PerfilComida, Receta } from '../../core/db';
+  import type { HistCompra, ItemMenu, PerfilComida, Receta } from '../../core/db';
   import Hoja from '../../core/Hoja.svelte';
   import { avisos } from '../../core/aviso.svelte';
   import { nav } from '../../core/nav.svelte';
   import { fechaDe, norm } from './calculos';
   import { NOMBRE_TIENDA, SECCIONES, armarLista, comprasVacias, conteos, marcada, plantillaMarcada, repartir, seccionDe, sugerencias, textoCompartir, type Destino, type Extra, type FilaCompra, type Pestana } from './compras';
-  import { guardarCompras, leerCompras, leerPerfiles, listarRecetas, menuDe, sembrarRecetas } from './datos';
+  import { anotarCompra, guardarCompras, leerCompras, leerHistorial, leerPerfiles, leerSilenciadas, listarRecetas, menuDe, quitarCompra, sembrarRecetas, silenciarCompra } from './datos';
+  import { yaToca } from './frecuencia';
   import { fechasDeSemana, rangoSemana } from './semana';
 
   const semana = ((nav.pantalla?.datos as { k?: number } | undefined)?.k ?? 0);
@@ -41,7 +42,18 @@
     if (f.extra) { const e = estado.extras.find((x) => x.n === f.n); if (e) e.chk = v; }
     else estado.chk[f.n] = v;
     guardar();
+    // Lo que marcas como comprado alimenta el historial («ya toca»).
+    (v ? anotarCompra(f.n, hoyIso, f.dest, f.q) : quitarCompra(f.n, hoyIso)).then(cargarHist);
   }
+
+  // ---------- Ya toca (por frecuencia, sin IA) ----------
+  let hist = $state<HistCompra[]>([]);
+  let silencio = $state<string[]>([]);
+  async function cargarHist() { [hist, silencio] = await Promise.all([leerHistorial(), leerSilenciadas()]); }
+  cargarHist();
+  const toca = $derived(yaToca(hist, hoyIso, filas.map((f) => f.n), silencio, 3));
+  function agregarToca(n: string) { if (agregar(n)) cargarHist(); }
+  async function noMeInteresa(art: string) { await silenciarCompra(art); await cargarHist(); }
   function mover(f: FilaCompra) {
     const antes = estado.dest[f.n];
     const a: Destino = f.dest === 'walmart' ? 'enfrente' : 'walmart';
@@ -142,6 +154,17 @@
     <div class="m-chips" role="radiogroup" aria-label="Para cuándo">
       {#each RANGOS as [v, t] (v)}<button role="radio" class:on={rango === v} aria-checked={rango === v} onclick={() => (rango = v)}>{t}</button>{/each}
     </div>
+  {/if}
+  {#if toca.length}
+    <section class="cq" aria-label="Ya toca">
+      <b>Ya toca</b>
+      {#each toca as t (t.art)}
+        <div class="yt-row">
+          <p>{t.texto}</p>
+          <div class="yt-b"><button class="ghost" aria-label={'Agregar ' + t.n + ' a la lista'} onclick={() => agregarToca(t.n)}>Agregar a la lista</button><button class="link-btn" aria-label={'No me interesa: ' + t.n} onclick={() => noMeInteresa(t.art)}>No me interesa</button></div>
+        </div>
+      {/each}
+    </section>
   {/if}
   <section class="cq" aria-label="Falta o se acaba">
     <label for="cq-n"><b>Falta o se acaba</b></label>
