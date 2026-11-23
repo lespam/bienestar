@@ -1325,3 +1325,11 @@ textarea { font: inherit; color: var(--fg); }
 .hg-dos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .hg-dos > div { display: grid; gap: 4px; }
 @media (prefers-reduced-motion: reduce) { .hg-carta { transition: none; } }
+
+/* Mis fijos */
+.tj-reps { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tj-sug { display: grid; gap: 10px; padding: 14px 16px; border-radius: 20px; background: var(--panel); border: 1px solid var(--line); }
+.tj-sug p { margin: 0; font-size: 15px; line-height: 1.45; }
+.fj-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.fj-list li { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; font-size: 15px; }
+.tj-sug .two { grid-template-columns: 1.4fr 1fr; }

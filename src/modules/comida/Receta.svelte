@@ -10,7 +10,8 @@
   import { eleccion, numerosVisibles, vista } from './estado.svelte';
   import { NOMBRE_LUGAR, COMIDAS_MENU, etiquetaFecha, fechasDeSemana, indexar, itemCada, itemDos, llave, lugarDe, nombreDia, numeroDia, LETRA_DIA, platoTxt, rangoSemana } from './semana';
   import { fechaDe } from './calculos';
-  import { itemDeMenu, menuDe, ponerEnMenu, quitarDelMenu } from './datos';
+  import { guardarFijos, itemDeMenu, leerFijos, menuDe, nuevoFijo, ponerEnMenu, quitarDelMenu, semanasDeReceta } from './datos';
+  import type { Fijo, SemanasDe } from './fijos';
   import type { ItemMenu, LugarMenu } from '../../core/db';
   import FormReceta from './FormReceta.svelte';
   import { AnfitrionIA, cambiosDeIngredientes, iaLista, pedirIA, tipsDeReceta } from '../ia';
@@ -23,11 +24,25 @@
   let textoNota = $state('');
   let archivo: HTMLInputElement | undefined = $state();
 
+  // Cuántas semanas aparece en tu menú y en lo que registras, y si es de tus fijos.
+  let fijos = $state<Fijo[]>([]);
+  let semanas = $state<SemanasDe>({ plan: 0, comido: 0 });
+
   (async () => {
     perfiles = await leerPerfiles();
     const x = await verReceta(id);
     if (x) { r = x; y = x.y; } else nav.cerrar();
+    [fijos, semanas] = await Promise.all([leerFijos(), semanasDeReceta(id, fechaDe(0))]);
   })();
+
+  const esFijo = $derived(fijos.some((f) => f.r === id));
+  async function ponerFijos(lista: Fijo[]) { fijos = lista; await guardarFijos($state.snapshot(lista) as Fijo[]); }
+  async function alternarFijo() {
+    const antes = $state.snapshot(fijos) as Fijo[];
+    const quita = antes.some((f) => f.r === id);
+    await ponerFijos(quita ? antes.filter((f) => f.r !== id) : [...antes, await nuevoFijo(id, fechaDe(0))]);
+    avisos.deshacer(quita ? 'Salió de mis fijos' : 'Quedó en mis fijos', () => ponerFijos(antes));
+  }
 
   const ver = $derived(numerosVisibles());
   const les = $derived(r && perfiles ? porcionDe(r, 'les', perfiles) : 1);
@@ -259,6 +274,12 @@
       <p>Rinde {r.y}{r.y > 1 ? ' porciones' : ' porción'}{r.t ? ' · ' + r.t : ''}</p>
       {#if r.orig}<span class="tag f rc-ver">Tu versión</span>{/if}
     </div>
+
+    <section class="rc-sec" aria-labelledby="rc-hf">
+      <h4 id="rc-hf">En tus semanas</h4>
+      <p class="seg-help">{semanas.plan || semanas.comido ? 'En tu menú ' + semanas.plan + ' de las últimas 8 semanas. La registraste en ' + semanas.comido + '.' : 'Todavía no aparece en tu menú ni en lo que registras.'}</p>
+      <button class="add" aria-pressed={esFijo} onclick={alternarFijo}>{esFijo ? 'Quitar de mis fijos' : 'Agregar a mis fijos'}</button>
+    </section>
 
     <section class="rc-num" aria-label="Por porción">
       {#if ver}

@@ -6,6 +6,8 @@ import { agregarConsejos } from './consejos';
 import { idTanda, sincronizar } from './preparacion';
 import { tipsVacios, type TipsGuardados } from './tips';
 import { fechaDe, norm, type UsoReceta } from './calculos';
+import { fijoNuevo, semanasPorReceta, sugerir, VENTANA, type Fijo, type SemanasDe, type Sugerencia } from './fijos';
+import { lunesDe as lunesDeIso, sumar as sumarDiasIso } from './patrones';
 
 // Comida es la única dueña de recetas y perfiles. Las recetas del archivo de contenido se copian una vez
 // a tu tabla y desde ahí son tuyas: si quitas una, no vuelve; si el archivo trae nuevas, solo se agregan esas.
@@ -199,3 +201,28 @@ export async function quitarCompra(n: string, fecha: string) {
 }
 export async function leerSilenciadas(): Promise<string[]> { return ((await db.comida.get('silencio-compras'))?.v as string[] | undefined) ?? []; }
 export async function silenciarCompra(art: string) { await db.comida.put({ k: 'silencio-compras', v: [...new Set([...(await leerSilenciadas()), art])] }); }
+
+// ---------- Mis fijos y lo que se repite ----------
+export async function leerFijos(): Promise<Fijo[]> { return ((await db.comida.get('fijos'))?.v as Fijo[] | undefined) ?? []; }
+export const guardarFijos = (f: Fijo[]) => db.comida.put({ k: 'fijos', v: limpio(f) });
+export async function leerSilenciadasFijos(): Promise<Record<string, string>> { return ((await db.comida.get('fijos-no'))?.v as Record<string, string> | undefined) ?? {}; }
+export async function silenciarSugerencia(id: string, hoy: string) { await db.comida.put({ k: 'fijos-no', v: { ...(await leerSilenciadasFijos()), [id]: hoy } }); }
+/** El menú y lo registrado de las últimas `semanas` semanas (con la actual y lo que viene). */
+async function historiaReciente(hoy: string, semanas: number) {
+  const desde = sumarDiasIso(lunesDeIso(hoy), -7 * (semanas - 1));
+  const [menu, registro] = await Promise.all([db.menu.where('fecha').aboveOrEqual(desde).toArray(), db.registro.where('fecha').aboveOrEqual(desde).toArray()]);
+  return { menu, registro };
+}
+export async function sugerenciasDeFijos(hoy: string): Promise<Sugerencia[]> {
+  const [{ menu, registro }, fijos, no] = await Promise.all([historiaReciente(hoy, VENTANA), leerFijos(), leerSilenciadasFijos()]);
+  return sugerir(menu, registro, fijos.map((f) => f.r), no, hoy);
+}
+export async function semanasDeReceta(id: string, hoy: string, semanas = 8): Promise<SemanasDe> {
+  const { menu, registro } = await historiaReciente(hoy, semanas);
+  return semanasPorReceta(menu, registro, hoy, semanas)[id] ?? { plan: 0, comido: 0 };
+}
+/** Un fijo nuevo: sus huecos salen de donde la pusiste en las últimas semanas. */
+export async function nuevoFijo(id: string, hoy: string): Promise<Fijo> {
+  const { menu } = await historiaReciente(hoy, VENTANA);
+  return fijoNuevo(menu, id, hoy);
+}
