@@ -1,10 +1,11 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import type { Receta } from '../../core/db';
   import { visor } from '../../core/visor.svelte';
 
   // Tus fotos de platillos y unas ideas dibujadas, para mirar antes de planear. Empieza cerrada.
-  let { recetas }: { recetas: Receta[] } = $props();
-  let abierta = $state(false);
+  let { recetas, abrir = false }: { recetas: Receta[]; /** Empieza abierta (cuando la pides desde el cuadro único). */ abrir?: boolean } = $props();
+  let abierta = $state(untrack(() => abrir));
 
   const fotos = $derived(recetas.filter((r) => r.img).sort((a, b) => a.n.localeCompare(b.n, 'es')).slice(0, 6));
   let urls = $state<Record<string, string>>({});

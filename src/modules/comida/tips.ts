@@ -24,7 +24,7 @@ export const TIPS: Tip[] = [
 ];
 export const TIPS_AL_EMPEZAR = 6;
 
-export interface TipsGuardados { inicio: string | null; ok: string[]; mios: { id: string; t: string; ok: boolean; ia?: true }[] }
+export interface TipsGuardados { inicio: string | null; ok: string[]; mios: { id: string; t: string; ok: boolean; ia?: true }[]; /** Combinaciones que pediste a la IA (se guardan para no pedirlas otra vez). */ comb?: { b: string; t: string; x: string; ia: true }[] }
 export const tipsVacios = (): TipsGuardados => ({ inicio: null, ok: [], mios: [] });
 
 const dif = (a: string, b: string) => Math.round((new Date(+b.slice(0, 4), +b.slice(5, 7) - 1, +b.slice(8, 10)).getTime() - new Date(+a.slice(0, 4), +a.slice(5, 7) - 1, +a.slice(8, 10)).getTime()) / 864e5);

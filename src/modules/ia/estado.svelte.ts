@@ -6,7 +6,7 @@ import { anotar, tokensDe, usoVacio, type UsoIA } from './uso';
 // La IA es opcional y empieza apagada. Todo vive en tu teléfono: la clave nunca sale en el respaldo
 // (CLAVES_PRIVADAS) y la pantalla solo guarda si hay una y sus últimos 4 caracteres.
 
-export type FnIA = 'foto' | 'tips' | 'ing' | 'prep' | 'idea' | 'comida' | 'escaner' | 'resumen' | 'entreno';
+export type FnIA = 'foto' | 'tips' | 'ing' | 'prep' | 'idea' | 'comida' | 'escaner' | 'resumen' | 'entreno' | 'nevera' | 'huecos' | 'combos' | 'usuales' | 'caja';
 /** Nombre de cada función en Ajustes y qué datos se envían (el aviso se arma con este texto). */
 export const FUNCIONES: Record<FnIA, [string, string]> = {
   foto: ['Leer recetas desde una foto', 'la imagen de la receta'],
@@ -17,11 +17,16 @@ export const FUNCIONES: Record<FnIA, [string, string]> = {
   comida: ['Registrar comida escrita', 'solo el texto que escribas sobre lo que comiste'],
   escaner: ['Escáner de etiqueta o plato', 'la foto del plato o la etiqueta y el contexto que escribas'],
   resumen: ['Resumen de la semana', 'tus sesiones de entreno de dos semanas: ejercicios, pesos y repeticiones, y cómo te sentiste'],
-  entreno: ['Tips de ejercicios', 'los nombres de los ejercicios de la rutina, sus series y repeticiones']
+  entreno: ['Tips de ejercicios', 'los nombres de los ejercicios de la rutina, sus series y repeticiones'],
+  nevera: ['Leer lo que hay en casa', 'tus fotos del refrigerador y la alacena, reducidas, y lo que escribas'],
+  huecos: ['Ideas con lo que tengo y menú diferente', 'los ingredientes que hay, tus exclusiones y los nombres de hasta 15 recetas'],
+  combos: ['Más combinaciones de alimentos', 'tus exclusiones, los ingredientes de tu menú de la semana y las combinaciones que ya conoces'],
+  usuales: ['Ingredientes nuevos para tus usuales', 'tus ingredientes usuales, tus exclusiones, lo que ya rechazaste y los nombres de hasta 15 recetas'],
+  caja: ['Entender una frase libre', 'solo la frase que escribas o digas y la lista de acciones de la app']
 };
 export const NUNCA_SE_ENVIA = 'Nunca se envía: tu peso, medidas, fotos de cuerpo, calorías ni tu registro de comidas.';
 
-const FN_INICIAL = (): Record<FnIA, boolean> => ({ foto: true, tips: true, ing: true, prep: true, idea: true, comida: true, escaner: true, resumen: true, entreno: true });
+const FN_INICIAL = (): Record<FnIA, boolean> => ({ foto: true, tips: true, ing: true, prep: true, idea: true, comida: true, escaner: true, resumen: true, entreno: true, nevera: true, huecos: true, combos: true, usuales: true, caja: true });
 
 export const ia = $state({ cargada: false, on: false, fn: FN_INICIAL(), vistas: {} as Record<string, boolean>, tieneClave: false, fin: '' });
 
@@ -57,10 +62,10 @@ export async function guardarClave(v: string) {
 export async function leerUso(): Promise<UsoIA | null> { return leer<UsoIA | null>('ia.uso', null); }
 let cola = Promise.resolve();
 ganchos.uso = (modelo, usage) => {
-  const t = tokensDe(usage);
+  const t = tokensDe(usage), fn = ganchos.fn ?? undefined;
   if (!t) return;
   // En cola: dos respuestas a la vez (ideas del Menú) no se pisan.
-  cola = cola.then(async () => { const hoy = iso(new Date()); await poner('ia.uso', anotar((await leerUso()) ?? usoVacio(hoy), modelo, t, hoy)); }).catch(() => {});
+  cola = cola.then(async () => { const hoy = iso(new Date()); await poner('ia.uso', anotar((await leerUso()) ?? usoVacio(hoy), modelo, t, hoy, fn)); }).catch(() => {});
 };
 
 export async function quitarClave() {

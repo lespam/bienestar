@@ -16,6 +16,7 @@
   import Rico from './Rico.svelte';
   import SustitutoHoja from './SustitutoHoja.svelte';
   import VistaPrevia from './VistaPrevia.svelte';
+  import TiraSesion from './TiraSesion.svelte';
   import { MOVIMIENTO } from './musculos';
 
   const hoy = new Date();
@@ -267,6 +268,7 @@
     </div>
 
     <VistaPrevia programa={c.p} letra={c.letra} />
+    <TiraSesion programa={c.p} letra={c.letra} />
     {#if iaLista('entreno')}<button class="link-btn" onclick={tipsDeRutina}>Tips de la Rutina {c.letra} con IA</button>{/if}
 
     <section class="focus" aria-label="Dónde estás">

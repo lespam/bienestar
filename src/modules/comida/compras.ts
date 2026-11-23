@@ -62,7 +62,7 @@ export interface FilaCompra {
   extra?: boolean;
 }
 export interface Extra { n: string; q: string; sec: number; urg: 'falta' | 'pronto'; chk: boolean }
-export interface EstadoCompras { chk: Record<string, boolean>; dest: Record<string, Destino>; extras: Extra[] }
+export interface EstadoCompras { chk: Record<string, boolean>; dest: Record<string, Destino>; extras: Extra[]; /** Lo que ya tienes pero necesitas comprar de todos modos. */ nec?: Record<string, boolean> }
 export const comprasVacias = (): EstadoCompras => ({ chk: {}, dest: {}, extras: [] });
 
 const mayus = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);

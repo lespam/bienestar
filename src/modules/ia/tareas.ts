@@ -1,4 +1,4 @@
-import { ErrorIA, extraerJson, MODELO_FOTO, MODELO_TEXTO, preguntar, type Imagen } from './api';
+import { ErrorIA, extraerJson, MODELO_FOTO, MODELO_TEXTO, preguntar, SISTEMA_COCINA, type Imagen } from './api';
 
 // Cada función arma exactamente lo que se envía y revisa lo que vuelve. Lo que vuelve nunca se guarda solo:
 // la persona lo revisa y decide (por eso aquí no se toca ninguna base de datos).
@@ -156,4 +156,171 @@ export async function tipsDeEjercicios(clave: string, ejercicios: EjercicioCorto
     .slice(0, uno ? 3 : ejercicios.length + 1);
   if (!r.length) throw new ErrorIA('otro', 'sin tips');
   return r;
+}
+
+// ---------- Con lo que tengo: leer fotos del refrigerador ----------
+export interface Hallazgo { n: string; q: string; urgente: boolean }
+/** Las fotos ya vienen reducidas. Se leen una sola vez; la persona revisa la lista antes de usarla. */
+export async function leerRefri(clave: string, imagenes: Imagen[], texto: string, ask: Pregunta = preguntar): Promise<Hallazgo[]> {
+  const t = await ask({
+    modelo: MODELO_FOTO, imagenes, max: 1500,
+    texto: 'Las imágenes muestran un refrigerador, una alacena o un mostrador.' + (texto.trim() ? ' La persona también escribió: «' + texto.trim().slice(0, 400) + '».' : '') +
+      ' Lista los alimentos que se ven, con una cantidad aproximada en palabras (por ejemplo "3 piezas", "medio paquete") y marca "urgente": true si parece que se echará a perder pronto. ' +
+      'No inventes lo que no se ve. JSON: {"items": [{"n": "nombre corto", "q": "cantidad aproximada o vacío", "urgente": true|false}]}. Si no se ve comida, devuelve {"items": []}.'
+  }, clave);
+  const lista = Array.isArray(extraerJson(t).items) ? (extraerJson(t).items as unknown[]) : [];
+  const r: Hallazgo[] = [];
+  for (const x of lista.slice(0, 60)) {
+    const o = x as Record<string, unknown>;
+    if (typeof o?.n === 'string' && o.n.trim()) r.push({ n: o.n.trim().slice(0, 60), q: typeof o.q === 'string' ? o.q.trim().slice(0, 40) : '', urgente: o.urgente === true });
+  }
+  if (!r.length) throw new ErrorIA('otro', 'sin alimentos');
+  return r;
+}
+
+// ---------- Huecos del plan: ideas de comidas con lo que hay ----------
+export type TiempoIA = 'desayuno' | 'comida' | 'cena' | 'colacion';
+export interface PeticionCocina {
+  disponibles: string[];
+  urgentes: string[];
+  /** Las exclusiones de los dos por nivel, ya escritas como regla dura. */
+  exclusiones: string;
+  /** Hasta 15: solo id y nombre. La IA no recibe el catálogo. */
+  candidatas: RecetaCorta[];
+  tiempos: TiempoIA[];
+  prohibidas?: string[];
+}
+export interface ComidaIA { tiempo: TiempoIA; receta_id: string; adaptacion: string | null; usa: string[]; falta: string[] }
+const TIEMPOS_IA: TiempoIA[] = ['desayuno', 'comida', 'cena', 'colacion'];
+function leerComidas(t: string, p: PeticionCocina): { comidas: ComidaIA[]; nota: string } {
+  const j = extraerJson(t);
+  const ids = new Set(p.candidatas.map((c) => c.id));
+  const lista = Array.isArray(j.comidas) ? (j.comidas as unknown[]) : [];
+  const comidas: ComidaIA[] = [];
+  for (const x of lista.slice(0, 14)) {
+    const o = x as Record<string, unknown>;
+    // Lo que no es una de las candidatas que se enviaron se descarta: la IA no inventa recetas.
+    if (typeof o?.receta_id !== 'string' || !ids.has(o.receta_id) || !TIEMPOS_IA.includes(o.tiempo as TiempoIA)) continue;
+    comidas.push({ tiempo: o.tiempo as TiempoIA, receta_id: o.receta_id, adaptacion: typeof o.adaptacion === 'string' && o.adaptacion.trim() && o.adaptacion !== 'null' ? o.adaptacion.trim().slice(0, 200) : null, usa: textos(o.usa, 8), falta: textos(o.falta, 8) });
+  }
+  return { comidas, nota: typeof j.nota === 'string' ? j.nota.trim().slice(0, 200) : '' };
+}
+function textoPeticion(p: PeticionCocina, rechazos: string[]): string {
+  return 'Ingredientes disponibles: ' + (p.disponibles.join(', ') || 'no se dijo') + '\nSe deben usar pronto: ' + (p.urgentes.join(', ') || 'nada en particular') +
+    '\nExclusiones:\n' + p.exclusiones + (p.prohibidas?.length ? '\nCombinaciones prohibidas: ' + p.prohibidas.join('; ') : '') +
+    '\nRecetas candidatas (id: nombre):\n' + p.candidatas.slice(0, 15).map((c) => c.id + ': ' + c.n).join('\n') +
+    '\nTiempos de comida por llenar: ' + p.tiempos.join(', ') +
+    (rechazos.length ? '\nLa propuesta anterior no sirvió por esto, evítalo: ' + rechazos.join('; ') : '');
+}
+/**
+ * Una llamada de texto para los huecos. `revisar` es el doble seguro: devuelve por qué se descarta una comida, o null si pasa.
+ * Si se descarta todo, se hace una segunda llamada con la lista de rechazos; si también falla, se lanza el error y la pantalla usa las reglas.
+ */
+export async function proponerComidas(clave: string, p: PeticionCocina, revisar: (c: ComidaIA) => string | null, ask: Pregunta = preguntar): Promise<{ comidas: ComidaIA[]; nota: string }> {
+  let rechazos: string[] = [];
+  for (let vuelta = 0; vuelta < 2; vuelta++) {
+    const t = await ask({ modelo: MODELO_TEXTO, sistema: SISTEMA_COCINA, max: 1500, texto: textoPeticion(p, rechazos) }, clave);
+    const { comidas, nota } = leerComidas(t, p);
+    const buenas: ComidaIA[] = [];
+    const malos: string[] = [];
+    for (const c of comidas) { const r = revisar(c); if (r) malos.push(c.receta_id + ' (' + r + ')'); else buenas.push(c); }
+    if (buenas.length) return { comidas: buenas, nota };
+    rechazos = [...rechazos, ...malos];
+  }
+  throw new ErrorIA('otro', 'sin propuestas');
+}
+
+// ---------- Combinaciones nuevas, acordes a tu plan y tus exclusiones ----------
+export interface PeticionCombos {
+  /** Las exclusiones de los dos por nivel, ya escritas como regla dura. */
+  exclusiones: string;
+  /** Ingredientes de las recetas del menú de esta semana. */
+  plan: string[];
+  /** Títulos de las que ya conoces, para no repetirlas. */
+  conocidas: string[];
+  /** Parejas que no se deben proponer («huevo + verduras»). */
+  prohibidas: string[];
+}
+export interface ComboNuevo { b: string; t: string; x: string; partes: string[] }
+function leerCombos(t: string): ComboNuevo[] {
+  const lista = Array.isArray(extraerJson(t).combos) ? (extraerJson(t).combos as unknown[]) : [];
+  const r: ComboNuevo[] = [];
+  for (const x of lista.slice(0, 6)) {
+    const o = x as Record<string, unknown>;
+    const titulo = typeof o?.t === 'string' ? o.t.trim().slice(0, 70) : '';
+    const porque = typeof o?.x === 'string' ? o.x.trim().slice(0, 260) : '';
+    const partes = textos(o?.partes, 3);
+    if (!titulo || !porque || partes.length < 2) continue;
+    r.push({ b: (typeof o.b === 'string' && o.b.trim() ? o.b.trim() : 'Para probar').slice(0, 40), t: titulo, x: porque, partes });
+  }
+  return r;
+}
+const textoCombos = (p: PeticionCombos, rechazos: string[]) =>
+  'Propón 3 combinaciones de alimentos que se complementen por sabor o por aprovechar mejor sus nutrientes, distintas de las que ya conozco. Prefiere ingredientes de mi plan de esta semana.' +
+  '\nIngredientes de mi plan: ' + (p.plan.join(', ') || 'no se dijo') +
+  '\nReglas duras (de las dos personas):\n' + p.exclusiones +
+  '\nNo uses ningún ingrediente de nivel «odio» o «no lo como». Los de «no me gusta» no pueden ser parte de la combinación.' +
+  (p.prohibidas.length ? '\nParejas prohibidas: ' + p.prohibidas.join('; ') : '') +
+  '\nYa las conozco (no las repitas): ' + (p.conocidas.join('; ') || 'ninguna') +
+  (rechazos.length ? '\nLa propuesta anterior no sirvió por esto, evítalo: ' + rechazos.join('; ') : '') +
+  '\nCada una lleva el porqué en una frase, sin consejos médicos ni de dieta, sin calorías, peso ni culpa.' +
+  '\nJSON: {"combos":[{"b":"beneficio en pocas palabras","t":"A + B","x":"por qué en una frase","partes":["A","B"]}]}';
+/** Una llamada (dos como máximo) a pedido. `revisar` es el doble seguro: el motivo por el que se descarta una combinación, o null si pasa. */
+export async function masCombinaciones(clave: string, p: PeticionCombos, revisar: (c: ComboNuevo) => string | null, ask: Pregunta = preguntar): Promise<ComboNuevo[]> {
+  let rechazos: string[] = [];
+  for (let vuelta = 0; vuelta < 2; vuelta++) {
+    const t = await ask({ modelo: MODELO_TEXTO, max: 1000, texto: textoCombos(p, rechazos) }, clave);
+    const buenas: ComboNuevo[] = [], malas: string[] = [];
+    for (const c of leerCombos(t)) { const r = revisar(c); if (r) malas.push(c.t + ' (' + r + ')'); else buenas.push(c); }
+    if (buenas.length) return buenas.slice(0, 3);
+    rechazos = [...rechazos, ...malas];
+  }
+  throw new ErrorIA('otro', 'sin combinaciones');
+}
+
+// ---------- Mis usuales: un ingrediente nuevo a la vez ----------
+export interface PeticionUsual {
+  usuales: string[];
+  exclusiones: string;
+  /** Lo que ya dijiste que no te interesa: no vuelve. */
+  rechazados: string[];
+  /** Hasta 15 de tus recetas (id y nombre). La IA no recibe el catálogo. */
+  recetas: RecetaCorta[];
+}
+export interface IdeaDeUsual { n: string; por: string; recetaIds: string[]; adaptacion: string | null; paso: string }
+function leerIdea(t: string, p: PeticionUsual): IdeaDeUsual | null {
+  const j = extraerJson(t);
+  const n = typeof j.ingrediente === 'string' ? j.ingrediente.trim().slice(0, 50) : '';
+  const por = typeof j.por_que === 'string' ? j.por_que.trim().slice(0, 220) : '';
+  const paso = typeof j.paso === 'string' ? j.paso.trim().slice(0, 160) : '';
+  if (!n || !por || !paso) return null;
+  const ids = new Set(p.recetas.map((r) => r.id));
+  const recetaIds = textos(j.receta_ids, 2).filter((id) => ids.has(id));
+  const adaptacion = typeof j.adaptacion === 'string' && j.adaptacion.trim() && j.adaptacion !== 'null' ? j.adaptacion.trim().slice(0, 200) : null;
+  return { n, por, recetaIds, adaptacion, paso };
+}
+const textoUsual = (p: PeticionUsual, rechazos: string[]) =>
+  'Propón UN ingrediente nuevo para sumar a «mis usuales» (lo que tengo siempre en casa o quiero tener).' +
+  '\nYa tengo como usuales: ' + (p.usuales.join(', ') || 'ninguno todavía') +
+  '\nNo me interesan (no los propongas): ' + (p.rechazados.join(', ') || 'ninguno') +
+  '\nReglas duras (de las dos personas):\n' + p.exclusiones +
+  '\nNo uses ningún ingrediente de nivel «odio» o «no lo como». Los de «no me gusta» no pueden ser el ingrediente que propongas.' +
+  '\nMis recetas (id: nombre):\n' + p.recetas.slice(0, 15).map((r) => r.id + ': ' + r.n).join('\n') +
+  (rechazos.length ? '\nLa propuesta anterior no sirvió por esto, evítalo: ' + rechazos.join('; ') : '') +
+  '\nDi por qué conviene en una frase corta, por ejemplo «practica el aroma del tomillo» o «cambiar de verduras suma variedad». Sin consejos médicos ni de dieta, sin calorías, peso ni culpa.' +
+  '\nElige una o dos de mis recetas donde usarlo (receta_ids) o, si ninguna sirve, una adaptación corta de una de ellas. Termina con un siguiente paso concreto («agrega tomillo a la lista de compras»).' +
+  '\nJSON: {"ingrediente":"...","por_que":"...","receta_ids":["..."],"adaptacion":"texto corto o null","paso":"..."}';
+/** Una sugerencia a pedido. `revisar` es el doble seguro. Si no pasa, una segunda llamada con lo rechazado. */
+export async function ideaDeUsual(clave: string, p: PeticionUsual, revisar: (i: IdeaDeUsual) => string | null, ask: Pregunta = preguntar): Promise<IdeaDeUsual> {
+  let rechazos: string[] = [];
+  for (let vuelta = 0; vuelta < 2; vuelta++) {
+    const t = await ask({ modelo: MODELO_TEXTO, max: 700, texto: textoUsual(p, rechazos) }, clave);
+    const i = leerIdea(t, p);
+    if (i) {
+      const r = revisar(i);
+      if (!r) return i;
+      rechazos = [...rechazos, i.n + ' (' + r + ')'];
+    }
+  }
+  throw new ErrorIA('otro', 'sin idea');
 }

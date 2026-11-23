@@ -228,7 +228,7 @@
     <p class="tool-note left">Es una semana pasada, solo para ver. <button class="link-btn" onclick={() => irSemana(0)}>Volver a esta semana</button></p>
   {/if}
 
-  {#if k === 0}<Inspiracion {recetas} />{/if}
+  {#if k === 0}<Inspiracion {recetas} abrir={!!nav.pantalla?.datos?.inspiracion} />{/if}
 
   <div class="wk-grid" aria-label="Semana de un vistazo">
     <span></span>
@@ -254,6 +254,7 @@
   {#if !pasadaVista}
     <div class="mn-plan">
       <button class="start" onclick={planear}>Planear</button>
+      <button class="ghost" onclick={() => nav.abrir('nevera')}>Con lo que tengo</button>
     </div>
     {#if planeadasLibres}
       <p class="tool-note left">{planeadasLibres} {planeadasLibres === 1 ? 'comida por decidir' : 'comidas por decidir'}.{proxima ? ' El lunes pasa a ser tu semana actual.' : ' Ábrela y elige cuando quieras.'}</p>

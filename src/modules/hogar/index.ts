@@ -8,3 +8,6 @@ export { listarTareas } from './datos';
 
 /** Lo que Inicio muestra de Hogar: cuántas cosas hiciste hoy (solo suma). */
 export const resumenDeHogar = (hoy = new Date()): Promise<number> => hechasDeHoy(iso(hoy));
+export { aplicarFrase } from './aplicar';
+export { buscarTarea } from './reglas';
+export type { Energia } from './reglas';

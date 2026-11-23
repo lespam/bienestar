@@ -1,7 +1,8 @@
 // Puerta pública de Entreno. Las pantallas se cargan cuando las abres.
 export { programa } from './programa';
 export type { Programa } from './programa';
-export { resumenDeHoy, empezarHoy, terminarHoy } from './hoy';
+export { resumenDeHoy, empezarHoy, terminarHoy, elegirRutinaHoy, letrasDeRutina } from './hoy';
+export type { EleccionDeHoy } from './hoy';
 export type { ResumenHoy } from './hoy';
 export const Rutina = () => import('./Rutina.svelte');
 export const Curso = () => import('./Curso.svelte');

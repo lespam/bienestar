@@ -10,6 +10,7 @@ import { copiaAntesDeActualizar, limpiarCopias } from './core/respaldo';
 import { cargarPrefs } from './modules/ajustes';
 import { cargarIA } from './modules/ia';
 import { cargarUso } from './core/uso';
+import { registrarIntenciones } from './intenciones';
 
 async function iniciar() {
   // Antes de abrir la base: si va a cambiar de estructura, guarda una copia interna de lo que ya tienes.
@@ -20,6 +21,7 @@ async function iniciar() {
   await limpiarCopias();
   plataforma.revisarGuardado();
   nav.conectar((t) => avisos.mostrar(t));
+  registrarIntenciones();
   mount(App, { target: document.getElementById('app')! });
 
   // Versión nueva: Inicio muestra "Actualizar". La app nunca se recarga sola.
