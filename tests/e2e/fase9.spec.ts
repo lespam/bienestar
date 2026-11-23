@@ -259,7 +259,7 @@ for (const [id, nombre] of [['bosque', 'Bosque'], ['oceano', 'Océano'], ['atard
     await revisarPantalla(page);
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-paleta', id);
-    for (const tab of ['Inicio', 'Rutina', 'Comida', 'Cuerpo']) {
+    for (const tab of ['Inicio', 'Rutina', 'Comida', 'Planeador']) {
       await page.getByRole('button', { name: tab, exact: true }).click();
       await revisarPantalla(page);
     }

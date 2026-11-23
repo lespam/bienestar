@@ -180,7 +180,7 @@
     <div class="group">
       <button class="in-row" onclick={() => nav.irTab('rutina')}><span class="in-ic"><Icono nombre="rutina" /></span><span><b>Rutina</b><small>Tu semana y tus récords</small></span><i aria-hidden="true">›</i></button>
       <button class="in-row" onclick={() => nav.irTab('comida')}><span class="in-ic"><Icono nombre="comida" /></span><span><b>Comida</b><small>Aún no hay menú para esta semana</small></span><i aria-hidden="true">›</i></button>
-      <button class="in-row" onclick={() => nav.irTab('cuerpo')}><span class="in-ic"><Icono nombre="cuerpo" /></span><span><b>Cuerpo</b><small>Medidas, fotos y período</small></span><i aria-hidden="true">›</i></button>
+      <button class="in-row" onclick={() => nav.abrir('cuerpo')}><span class="in-ic"><Icono nombre="cuerpo" /></span><span><b>Cuerpo</b><small>Medidas, fotos y período</small></span><i aria-hidden="true">›</i></button>
       <button class="in-row" onclick={() => nav.abrir('nevera')}><span class="in-ic"><Icono nombre="comida" /></span><span><b>Con lo que tengo</b><small>Un plan con lo que hay en casa</small></span><i aria-hidden="true">›</i></button>
       <button class="in-row" onclick={() => nav.abrir('patrones')}><span class="in-ic"><Icono nombre="patrones" /></span><span><b>Patrones</b><small>Cuándo tienes días flexibles</small></span><i aria-hidden="true">›</i></button>
     </div>

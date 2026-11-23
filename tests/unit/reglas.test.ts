@@ -40,6 +40,15 @@ describe('gesto atrás', () => {
     expect(n.atras(2000)).toBe(true);
     expect(n.atras(10000)).toBe(false);
   });
+  it('desde el Planeador (pestaña de Alma) regresa a Inicio y Cuerpo se abre como pantalla desde Inicio', () => {
+    const n = new Nav();
+    n.irTab('alma');
+    expect(n.tab).toBe('alma'); expect(n.pantalla).toBeNull();
+    expect(n.atras(0)).toBe(false); expect(n.tab).toBe('inicio');
+    n.abrir('cuerpo');
+    expect(n.pantalla?.id).toBe('cuerpo'); expect(n.tab).toBe('inicio');
+    expect(n.atras(0)).toBe(false); expect(n.pantalla).toBeNull();
+  });
 });
 
 // Reglas de tono: nada de culpa, rojos de alerta ni cuentas regresivas de castigo.

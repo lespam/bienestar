@@ -6,6 +6,8 @@
   import { guardarAreas, guardarSemana, leerAreas, leerSemana } from './datos';
   import { colorDe, copiarAreas, DIAS, diaCompleto, diaDePlan, estaVacia, lunesDeSemana, nombreSemana, numeroDeDia, rangoCorto, SEMANA_MAX, SEMANA_MIN, semanaVacia } from './semanas';
 
+  // Como pestaña de la barra no hay pantalla debajo: no hay a dónde «Volver». Abierta desde Inicio o Mente sí hay.
+  const enPestaña = nav.pantalla?.id !== 'alma';
   const datos = nav.pantalla?.datos as { k?: number; dia?: number } | undefined;
   let k = $state(Math.max(SEMANA_MIN, Math.min(SEMANA_MAX, datos?.k ?? 0)));
   let modo = $state<'lejos' | 'editar'>('lejos');
@@ -92,8 +94,8 @@
   const coach = $derived(modo === 'lejos' ? 'Semana en blanco. Toca un recuadro para escribir, o usa «Editar semana» arriba para llenar todo.' : k > 0 ? 'Aquí puedes dejar lista la próxima semana. Todo es opcional.' : 'Semana en blanco. Puedes empezar por lo que quieres lograr en cada área.');
 </script>
 
-<header class="cur-head">
-  <button class="back" aria-label="Volver" onclick={() => nav.cerrar()}>‹ Volver</button>
+<header class="cur-head" class:sin-volver={enPestaña}>
+  {#if !enPestaña}<button class="back" aria-label="Volver" onclick={() => nav.cerrar()}>‹ Volver</button>{/if}
   <span class="al-hb">
     <button class="edit" class:on={modo === 'editar'} aria-pressed={modo === 'editar'} onclick={() => { modo = modo === 'editar' ? 'lejos' : 'editar'; guardado = false; }}>{modo === 'editar' ? 'Listo' : 'Editar semana'}</button>
     <button class="edit" onclick={abrirAreas}>Editar áreas</button>

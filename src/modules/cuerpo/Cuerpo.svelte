@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { nav } from '../../core/nav.svelte';
   import Medidas from './Medidas.svelte';
   import Fotos from './Fotos.svelte';
   import Periodo from './Periodo.svelte';
@@ -8,6 +9,9 @@
   let parte = $state<Parte>('med');
 </script>
 
+<header class="cur-head">
+  <button class="back" aria-label="Volver" onclick={() => nav.cerrar()}>‹ Volver</button>
+</header>
 <div class="screen">
   <div class="tl-head">
     <h2 tabindex="-1">Cuerpo</h2>

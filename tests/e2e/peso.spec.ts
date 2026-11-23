@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { entrarConContenido, vigilarConsola } from './ayuda';
+import { entrarConContenido, irACuerpo, vigilarConsola } from './ayuda';
 
 test('Cuerpo: el peso se anota directo desde su tarjeta y avisa si no se entiende', async ({ page }) => {
   const errores = vigilarConsola(page);
   await entrarConContenido(page);
-  await page.getByRole('button', { name: 'Cuerpo', exact: true }).click();
+  await irACuerpo(page);
   await page.getByRole('button', { name: 'Anotar', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Peso de hoy' })).toBeVisible();
   await page.getByLabel(/^Peso \(/).fill('abc');
