@@ -23,3 +23,11 @@ export function saludo(d: Date): string {
 export function diasEntre(a: number, b: number): number {
   return Math.floor((b - a) / DIA_MS);
 }
+/** "hoy 8:15 pm", "ayer 6:30 am" o "12 nov, 6:30 pm". */
+export function cuandoTxt(ms: number, ahora = Date.now()): string {
+  const d = new Date(ms);
+  const hora = (d.getHours() % 12 || 12) + ':' + String(d.getMinutes()).padStart(2, '0') + (d.getHours() < 12 ? ' am' : ' pm');
+  if (iso(d) === iso(new Date(ahora))) return 'hoy ' + hora;
+  if (iso(d) === iso(new Date(ahora - DIA_MS))) return 'ayer ' + hora;
+  return d.getDate() + ' ' + MESES[d.getMonth()].slice(0, 3) + ', ' + hora;
+}

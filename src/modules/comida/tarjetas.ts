@@ -1,5 +1,6 @@
-import type { LugarMenu, Receta } from '../../core/db';
+import type { LugarMenu, PerfilComida, Receta } from '../../core/db';
 import { vecesUsada, type UsoReceta } from './calculos';
+import { acercarARef, type Quien } from './macros';
 
 // Elegir con tarjetas: derecha es sí, izquierda es no. Las que dices que sí se acomodan en la semana.
 // Salen desayunos, comidas, cenas y bases (Les las pidió de vuelta, 2026-10-15); las colaciones se arman aparte.
@@ -36,14 +37,15 @@ export function repartirPorTiempos(recetas: Receta[], dias: string[], ocupado: (
  * Primero lo que ya sabes cocinar (lo más usado arriba) y, cada cuarta tarjeta, una que casi no usas,
  * para ampliar las opciones sin que estorben. Sin historial, van en orden alfabético.
  */
-export function mazoDe(recetas: Receta[], liked: string[], passed: string[], cat: string, uso: Record<string, UsoReceta> = {}, conColaciones = false, fijos: string[] = []): Receta[] {
+export function mazoDe(recetas: Receta[], liked: string[], passed: string[], cat: string, uso: Record<string, UsoReceta> = {}, conColaciones = false, fijos: string[] = [], cerca?: Record<Quien, Pick<PerfilComida, 'por' | 'mk' | 'mp'>>): Receta[] {
   const todas = recetas
     .filter((r) => ((CATS_TARJETA as readonly string[]).includes(r.cat) || (conColaciones && r.cat === 'Colación')) && !liked.includes(r.id) && !passed.includes(r.id) && (cat === 'todo' || r.cat === cat))
     .sort((a, b) => a.n.localeCompare(b.n, 'es'));
   // Mis fijos van primero, en el orden en que los guardaste.
   const primeros = fijos.map((id) => todas.find((r) => r.id === id)).filter((r): r is Receta => !!r);
   const lista = primeros.length ? todas.filter((r) => !fijos.includes(r.id)) : todas;
-  return [...primeros, ...resto(lista, uso)];
+  // Con «Acerca a mis referencias» solo cambia el orden: las más cercanas primero y ninguna se quita.
+  return [...primeros, ...(cerca ? acercarARef(lista, cerca) : resto(lista, uso))];
 }
 function resto(lista: Receta[], uso: Record<string, UsoReceta>): Receta[] {
   const conocidas = lista.filter((r) => vecesUsada(uso[r.id]) >= 2).sort((a, b) => vecesUsada(uso[b.id]) - vecesUsada(uso[a.id]));

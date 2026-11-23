@@ -7,7 +7,10 @@
   import { contarFuncion } from '../../core/uso';
   import type { ItemMenu, LugarMenu, PerfilComida, Receta } from '../../core/db';
   import { AnfitrionIA, aBase64, iaLista, leerRefri, pedirIA } from '../ia';
+  import Interruptor from '../../core/Interruptor.svelte';
   import { fechaDe, type UsoReceta } from './calculos';
+  import { orden } from './estado.svelte';
+  import { hayReferenciaPorComida } from './macros';
   import { agregarFaltantes, guardarHay, leerFijos, leerHay, leerPerfiles, listarRecetas, menuDe, perfilInicial, ponerVariosEnMenu, quitarFaltantes, reponerMenu, sembrarRecetas, usoDeRecetas } from './datos';
   import type { Fijo } from './fijos';
   import { DIAS_VIGENTE, leerTextoHay, mezclarHay, resumenHay, vigente } from './nevera';
@@ -123,7 +126,7 @@
     contarFuncion('nevera');
     usado = null;
     plan = {
-      recetas, perfiles, uso, fijos, dias: fechas, tiempos: [...tiempos], hoy, hay: $state.snapshot(hay) as Hay[], nevera: true,
+      recetas, perfiles, uso, fijos, dias: fechas, tiempos: [...tiempos], hoy, hay: $state.snapshot(hay) as Hay[], nevera: true, cerca: orden.cerca,
       ocupado: (f, l) => idx.has(llave(f, l)),
       yaEnMenu: items.flatMap((m) => [m.r, m.rl, m.rj]).filter((x): x is string => !!x)
     };
@@ -204,6 +207,9 @@
     <div class="m-chips" role="group" aria-labelledby="nv-t-t">
       {#each NOMBRE_T as [l, n] (l)}<button class:on={tiempos.includes(l)} aria-pressed={tiempos.includes(l)} onclick={() => alternarT(l)}>{n}</button>{/each}
     </div>
+    {#if hayReferenciaPorComida(perfiles)}
+      <Interruptor id="nv-cerca" encendido={orden.cerca} titulo="Acerca a mis referencias" detalle="Entre las ideas que usan lo mismo de lo que tienes, van primero las más cerca de la referencia por comida. Solo ordena: no esconde ninguna." onchange={() => { orden.cerca = !orden.cerca; plan = null; }} />
+    {/if}
     <button class="start" disabled={!hay.length || !listo} onclick={armar}>Armar un plan con lo que tengo</button>
   </section>
 

@@ -1412,3 +1412,50 @@ textarea { font: inherit; color: var(--fg); }
 .us-top { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .us-top li { display: grid; grid-template-columns: 1fr auto; gap: 8px; font-size: 15px; }
 .us-top b { font-size: 14px; color: var(--muted); }
+
+/* Macros en el plan: una barra suave por persona contra la referencia que escribieron ellos. Sin rojos. */
+.mc { background: var(--panel); border-radius: 18px; padding: 14px; display: grid; gap: 12px; }
+.mc-h h3 { margin: 0; font-size: 16px; }
+.mc-h p, .mc-nota { margin: 2px 0 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.mc-p { display: grid; gap: 6px; }
+.mc-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.mc-top b { font-size: 15px; }
+.mc-top span { font-size: 13px; color: var(--muted); }
+.mc-bar { position: relative; height: 12px; border-radius: 99px; background: var(--soft); overflow: hidden; }
+.mc-bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: var(--accent); }
+.mc-bar.jeff i { background: var(--sky); }
+.mc-band { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--mint) 30%, transparent); }
+.mc-m { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 13px; }
+.mc-m > span:first-child { color: var(--muted); }
+.mc-m > span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.mc-mbar { position: relative; height: 8px; border-radius: 99px; background: var(--soft); }
+.mc-mbar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: var(--accent); opacity: .85; }
+.mc-mbar.jeff i { background: var(--sky); }
+.mc-mbar em { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--mint); }
+.mc-sem { display: grid; gap: 8px; margin: 10px 0 14px; }
+.mc-quien { font-size: 15px; }
+.mc-dia { display: grid; grid-template-columns: 52px minmax(0, 1fr) 78px; gap: 8px; align-items: center; }
+.mc-dn { font-size: 13px; color: var(--muted); }
+.mc-dn b { color: var(--fg); }
+.mc-dk { font-size: 12px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mc-bar:has(+ .mc-dk) { height: 10px; }
+.mc-prom { margin: 2px 0 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
+
+/* Importar un paquete: qué se reemplaza, qué se conserva y qué se combina, por área. */
+.ip-area { display: grid; gap: 6px; padding: 12px 0; border-top: 1px solid var(--line); }
+.ip-area > b { font-size: 15px; }
+.ip-fechas, .ip-nota { margin: 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
+
+/* Computadora (versión 2, continuidad): Acomoda la semana usa el ancho para ver la semana completa y más grande.
+   En el teléfono y en pantallas angostas nada cambia. */
+@media (min-width: 900px) and (pointer: fine) {
+  .phone.app:has(.tj-plan) { max-width: min(1280px, 100%); }
+  .phone.app:has(.tj-plan) .nav { width: 600px; max-width: 100%; align-self: center; }
+  .phone.app:has(.tj-plan) .screen { padding-left: 32px; padding-right: 32px; }
+  .phone.app:has(.tj-plan) .tl-head, .phone.app:has(.tj-plan) .tj-plan, .phone.app:has(.tj-plan) .tj-sug, .phone.app:has(.tj-plan) .tj-mes, .phone.app:has(.tj-plan) .tj-acc { max-width: 760px; }
+  .phone.app:has(.tj-plan) .tj-tabla thead th:first-child, .phone.app:has(.tj-plan) .tj-tabla tbody th { width: 72px; }
+  .phone.app:has(.tj-plan) .tj-tabla th { font-size: 13px; }
+  .phone.app:has(.tj-plan) .tj-tabla tbody th b { font-size: 16px; }
+  .phone.app:has(.tj-plan) .tj-tabla .tj-tc { min-height: 88px; padding: 8px 12px; font-size: 14px; }
+  .phone.app:has(.tj-plan) .tj-tabla .tj-tc span { -webkit-line-clamp: 4; }
+}

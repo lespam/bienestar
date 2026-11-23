@@ -2,13 +2,37 @@ import Dexie from 'dexie';
 import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
 import { db, FUERA_DEL_RESPALDO, CLAVES_PRIVADAS } from './db';
 import { iso, DIA_MS } from './fechas';
+import { fechasPorGrupo } from './grupos';
+import { fechasDeCambio } from './modificado';
 
-// Respaldo: un ZIP con datos.json y la carpeta fotos/ (plan, punto 2a).
-export const FORMATO = 1;
+// Respaldo y paquete de continuidad: un ZIP con datos.json y la carpeta fotos/ (plan, punto 2a).
+// El formato está documentado en docs/respaldo-formato.md. Formato 1: solo las tablas. Formato 2: además cuándo se
+// creó, en qué tipo de aparato y cuándo cambió cada área, para decidir qué se reemplaza o se combina al importarlo.
+export const FORMATO = 2;
 const DIAS_COPIA = 7;
 
-type Fila = Record<string, unknown>;
-interface Datos { app: 'bienestar'; formato: number; fecha: string; tablas: Record<string, Fila[]> }
+export type Fila = Record<string, unknown>;
+export interface Datos {
+  app: 'bienestar';
+  formato: number;
+  /** AAAA-MM-DD de cuando se creó. */
+  fecha: string;
+  /** Formato 2: cuándo se creó, en milisegundos. */
+  creado?: number;
+  /** Formato 2: de dónde salió. */
+  origen?: 'telefono' | 'computadora' | 'otro';
+  /** Formato 2: cuándo cambió cada área por última vez (milisegundos). Las áreas sin cambios anotados no aparecen. */
+  areas?: Record<string, number>;
+  tablas: Record<string, Fila[]>;
+}
+
+/** Teléfono o computadora, solo para decírtelo al importar. */
+export function dispositivo(): NonNullable<Datos['origen']> {
+  try {
+    if (typeof window === 'undefined' || !window.matchMedia) return 'otro';
+    return window.matchMedia('(min-width: 900px) and (pointer: fine)').matches ? 'computadora' : 'telefono';
+  } catch { return 'otro'; }
+}
 
 const EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 
@@ -28,7 +52,7 @@ async function sacarFotos(v: unknown, fotos: Record<string, Uint8Array>): Promis
   return v;
 }
 
-function ponerFotos(v: unknown, archivos: Record<string, Uint8Array>): unknown {
+export function ponerFotos(v: unknown, archivos: Record<string, Uint8Array>): unknown {
   if (Array.isArray(v)) return v.map((x) => ponerFotos(x, archivos));
   if (v && typeof v === 'object') {
     const o = v as Fila;
@@ -55,7 +79,9 @@ export async function crearZip(ahora = new Date(), base: Dexie = db): Promise<Ui
     if (t.name === 'herramientas') filas = filas.filter((f) => !String(f.k).startsWith('en-marcha:'));
     tablas[t.name] = (await sacarFotos(filas, fotos)) as Fila[];
   }
-  const datos: Datos = { app: 'bienestar', formato: FORMATO, fecha: iso(ahora), tablas };
+  let areas: Record<string, number> = {};
+  try { areas = fechasPorGrupo(await fechasDeCambio(base)); } catch { /* una base vieja todavía no lleva fechas */ }
+  const datos: Datos = { app: 'bienestar', formato: FORMATO, fecha: iso(ahora), creado: ahora.getTime(), origen: dispositivo(), areas, tablas };
   return zipSync({ 'datos.json': strToU8(JSON.stringify(datos)), ...fotos }, { level: 6 });
 }
 
@@ -96,14 +122,14 @@ async function reemplazar(datos: Datos, archivos: Record<string, Uint8Array>) {
 }
 
 /** Copia interna de lo que tienes ahora. Se borra sola después de 7 días. */
-export async function guardarCopia(motivo: string, ahora = Date.now()): Promise<number> {
-  await limpiarCopias(ahora);
-  const zip = await crearZip(new Date(ahora));
-  return db.copias.add({ fecha: ahora, motivo, datos: new Blob([zip as BlobPart], { type: 'application/zip' }) });
+export async function guardarCopia(motivo: string, ahora = Date.now(), base: Dexie = db): Promise<number> {
+  await limpiarCopias(ahora, base);
+  const zip = await crearZip(new Date(ahora), base);
+  return (await base.table('copias').add({ fecha: ahora, motivo, datos: new Blob([zip as BlobPart], { type: 'application/zip' }) })) as number;
 }
 
-export async function limpiarCopias(ahora = Date.now()) {
-  await db.copias.where('fecha').below(ahora - DIAS_COPIA * DIA_MS).delete();
+export async function limpiarCopias(ahora = Date.now(), base: Dexie = db) {
+  await base.table('copias').where('fecha').below(ahora - DIAS_COPIA * DIA_MS).delete();
 }
 
 /** La copia más reciente que todavía se puede usar. */

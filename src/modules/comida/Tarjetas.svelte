@@ -10,7 +10,9 @@
   import { cambiosFijos, sugerenciaTxt, type Fijo, type Sugerencia } from './fijos';
   import { vigente } from './nevera';
   import type { Hay } from './sugerir';
-  import { filtros, numerosVisibles, tarjetas } from './estado.svelte';
+  import Interruptor from '../../core/Interruptor.svelte';
+  import { filtros, numerosVisibles, orden, tarjetas } from './estado.svelte';
+  import { hayReferenciaPorComida } from './macros';
   import { COMIDAS_MENU, LETRA_DIA, NOMBRE_LUGAR, cambiosRepetir, etiquetaFecha, fechasDeSemana, indexar, itemDecidir, itemDos, llave, nombreDia, nombreMes, numeroDia, platoTxt, rangoSemana, semanasDelMes, llenuraDia, fechasDeSemana as semanaDe } from './semana';
   import { CATS_TARJETA, RONDA, TIEMPOS, TODOS_TIEMPOS, COLACIONES, lugarDeReceta, cuentaRonda, elegidasTxt, mazoDe, repartirPorTiempos, tiemposTxt } from './tarjetas';
   import FiltrosRecetas from './FiltrosRecetas.svelte';
@@ -74,7 +76,7 @@
   const tiempoOk = (r: Receta) => r.cat !== 'Colación' || !tarjetas.porTiempos || tarjetas.tiempos.includes(lugarDeReceta(r)!);
   let buscar = $state('');
   const qBuscar = $derived(norm(buscar.trim()));
-  const mazo = $derived(mazoDe(recetas.filter((r) => pasaFiltros(r, { ...filtros, foto: 'todo', guardadas: false }, perfiles, uso) && (!qBuscar || norm(r.n).includes(qBuscar)) && (!catsTiempos || catsTiempos.includes(r.cat)) && tiempoOk(r)), tarjetas.liked, tarjetas.passed, catsTiempos ? 'todo' : tarjetas.cat, uso, !!catsTiempos && conColaciones, fijos.map((f) => f.r)));
+  const mazo = $derived(mazoDe(recetas.filter((r) => pasaFiltros(r, { ...filtros, foto: 'todo', guardadas: false }, perfiles, uso) && (!qBuscar || norm(r.n).includes(qBuscar)) && (!catsTiempos || catsTiempos.includes(r.cat)) && tiempoOk(r)), tarjetas.liked, tarjetas.passed, catsTiempos ? 'todo' : tarjetas.cat, uso, !!catsTiempos && conColaciones, fijos.map((f) => f.r), orden.cerca && hayReferenciaPorComida(perfiles) ? perfiles : undefined));
   // La ronda: cuántas decidiste desde que empezó y cuántas tiene (menos si quedan pocas).
   const inicio = $derived(Math.min(tarjetas.ronda, tarjetas.hist.length));
   const enRonda = $derived(tarjetas.hist.slice(inicio));
@@ -386,7 +388,7 @@
   const entradaDe = (maxMin?: number): EntradaSugerir => ({
     recetas, perfiles, uso, fijos, dias: diasParaSugerir, tiempos: [...tarjetas.tiempos], hoy, hay: $state.snapshot(hayHoy) as Hay[],
     ocupado: (f, l) => indice.has(llave(f, l)),
-    yaEnMenu: items.flatMap((m) => [m.r, m.rl, m.rj]).filter((x): x is string => !!x), maxMin
+    yaEnMenu: items.flatMap((m) => [m.r, m.rl, m.rj]).filter((x): x is string => !!x), maxMin, cerca: orden.cerca
   });
   function abrirSugerir() {
     if (!tarjetas.tiempos.length) { avisos.mostrar('Elige al menos un tiempo de comida'); return; }
@@ -518,6 +520,9 @@
       <input type="search" placeholder="Buscar por nombre" aria-label="Buscar receta por nombre" bind:value={buscar} />
     </label>
     <FiltrosRecetas {recetas} {perfiles} />
+    {#if hayReferenciaPorComida(perfiles)}
+      <Interruptor id="tj-cerca" encendido={orden.cerca} titulo="Acerca a mis referencias" detalle="Pone antes las recetas más cerca de la referencia por comida de tu perfil. Solo cambia el orden: no esconde ninguna." onchange={() => (orden.cerca = !orden.cerca)} />
+    {/if}
     <div class="tj-stack">
       {#if listo && !mazo.length}
         <div class="tj-empty">

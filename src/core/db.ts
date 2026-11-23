@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie';
+import { vigilarCambios } from './modificado';
 
 // Una sola base para toda la app. Cada tabla tiene un módulo dueño (plan, punto 3):
 // solo ese módulo escribe en ella; los demás leen por su puerta pública.
@@ -250,6 +251,8 @@ export interface Tanda { id: string; fecha: string; hora: string; auto?: boolean
 export interface DiaFlexible { fecha: string; hora: string; emo: string; lugar: string; sueno: string; estres: string; comi: string }
 /** Comida: una compra que marcaste en la lista (alimenta «ya toca»). `art` es el nombre sin acentos ni mayúsculas. */
 export interface HistCompra { id?: number; art: string; n: string; fecha: string; lugar?: string; q?: string; precio?: number }
+/** Base: fechas de cambio y de la última vez que pasaste tus datos a otro aparato. Se guardan solo aquí; nunca van en el respaldo. */
+export interface FilaSync { k: string; v: unknown }
 /** Base: copias internas antes de importar o de cambiar la estructura. Nunca van en el respaldo. */
 export interface CopiaInterna { id?: number; fecha: number; motivo: string; datos: Blob }
 
@@ -285,6 +288,7 @@ export class BaseBienestar extends Dexie {
   historial!: Table<HistCompra, number>;
   hogar!: Table<TareaHogar, number>;
   hogarDia!: Table<DiaHogar, string>;
+  sync!: Table<FilaSync, string>;
 
   constructor(nombre = 'bienestar') {
     super(nombre);
@@ -323,11 +327,14 @@ export class BaseBienestar extends Dexie {
     this.version(10).stores({ historial: '++id, art, fecha' });
     // Versión 2: tareas del hogar y lo que elegiste cada día.
     this.version(11).stores({ hogar: '++id', hogarDia: 'fecha' });
+    // Versión 2: cuándo cambió cada cosa y cuándo fue la última vez que pasaste tus datos a otro aparato (continuidad).
+    this.version(12).stores({ sync: 'k' });
+    vigilarCambios(this);
   }
 }
 
 /** Tablas que nunca salen en el respaldo. */
-export const FUERA_DEL_RESPALDO = new Set(['copias']);
+export const FUERA_DEL_RESPALDO = new Set(['copias', 'sync']);
 /** Claves de Ajustes que nunca salen del teléfono (tu clave de IA, fase 8). */
 export const CLAVES_PRIVADAS = new Set(['ia.clave']);
 

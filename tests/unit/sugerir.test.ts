@@ -105,6 +105,15 @@ describe('sugerir menú', () => {
     expect(s[0].r.id).not.toBe('c2');
     expect(s[0].otras).not.toContain('c2');
   });
+  it('«acerca a mis referencias» solo ordena: la más cercana va primero y ninguna se quita', () => {
+    const rs = [{ ...rec('c1', 'Tinga', 'Comida', ['pollo']), k: 900, p: 10 }, { ...rec('c2', 'Sopa', 'Comida', ['verduras']), k: 410, p: 31 }];
+    const perfiles = { les: { ...perfil('les'), mk: 400, mp: 30 }, jeff: { ...perfil('jeff'), mk: 400, mp: 30 } };
+    const sin = sugerirMenu(base({ recetas: rs, perfiles, dias: [dias[0]], tiempos: ['c'] }));
+    const con = sugerirMenu(base({ recetas: rs, perfiles, dias: [dias[0]], tiempos: ['c'], cerca: true }));
+    expect(sin[0].r.id).toBe('c1');
+    expect(con[0].r.id).toBe('c2');
+    expect([con[0].r.id, ...con[0].otras].sort()).toEqual(['c1', 'c2']);
+  });
   it('lo que prefiero evitar queda al final, no se oculta', () => {
     const perfiles = { les: perfil('les', ['pollo'], { pollo: 'prefiero' }), jeff: perfil('jeff') };
     const s = sugerirMenu(base({ perfiles, dias: [dias[0]], tiempos: ['c'] }));

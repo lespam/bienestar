@@ -1,4 +1,5 @@
 import { crearZip, nombreRespaldo } from '../../core/respaldo';
+import { marcarEntrega } from '../../core/continuidad';
 import { entregarArchivo, elegirArchivo } from '../../core/archivos';
 import { cargarContenido, type ResultadoCarga } from '../../core/contenido';
 import { guardar } from './prefs.svelte';
@@ -11,7 +12,9 @@ export async function hacerRespaldo(): Promise<string | null> {
   const r = await entregarArchivo(nombre, await crearZip(ahora));
   if (r === 'cancelado') return null;
   await guardar('ultimoRespaldo', ahora.getTime());
-  return 'Listo: ' + nombre + '. Guárdalo en Drive o en tu computadora.';
+  // Lo que salió en este archivo cuenta como el último intercambio: lo que cambies después se verá como cambio de aquí.
+  await marcarEntrega();
+  return 'Listo: ' + nombre + '. Guárdalo en Drive o llévalo a tu computadora.';
 }
 
 /** Elige y carga el archivo de contenido personal. null si no eligió nada. */
